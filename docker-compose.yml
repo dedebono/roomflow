@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: roomflow-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: roomflow
+      POSTGRES_PASSWORD: roomflow
+      POSTGRES_DB: roomflow
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U roomflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: roomflow-backend
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://roomflow:roomflow@postgres:5432/roomflow?schema=public
+      JWT_SECRET: roomflow-super-secret-key-123!
+      PORT: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - '3000:3000'
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: roomflow-frontend
+    restart: always
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost/api
+    depends_on:
+      - backend
+    ports:
+      - '3001:3000'
+
+  nginx:
+    image: nginx:alpine
+    container_name: roomflow-nginx
+    restart: always
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - '80:80'
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  postgres_data:

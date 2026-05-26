@@ -1,0 +1,120 @@
+// RoomFlow - Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN_IT
+  ROOM_ADMIN
+  USER
+}
+
+enum RoomStatus {
+  ACTIVE
+  MAINTENANCE
+}
+
+enum BookingStatus {
+  BOOKED
+  CANCELLED
+}
+
+enum ChangeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(USER)
+
+  bookings              Booking[]
+  bookingChangeRequests BookingChangeRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Building {
+  id    String @id @default(uuid())
+  name  String
+  rooms Room[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Room {
+  id          String     @id @default(uuid())
+  buildingId  String
+  building    Building   @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  name        String
+  capacity    Int
+  description String?
+  imageUrl    String?
+  status      RoomStatus @default(ACTIVE)
+
+  bookings Booking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([buildingId])
+  @@index([status])
+}
+
+model Booking {
+  id     String @id @default(uuid())
+  roomId String
+  room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title   String
+  notes   String?
+  startTime DateTime
+  endTime   DateTime
+  status    BookingStatus @default(BOOKED)
+
+  changeRequests BookingChangeRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([roomId])
+  @@index([userId])
+  @@index([startTime, endTime])
+  @@index([status])
+}
+
+model BookingChangeRequest {
+  id        String @id @default(uuid())
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  requestedById String
+  requestedBy   User   @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+
+  requestedRoomId String?
+  requestedStart  DateTime?
+  requestedEnd    DateTime?
+  reason          String?
+
+  status ChangeRequestStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bookingId])
+  @@index([requestedById])
+  @@index([status])
+}
