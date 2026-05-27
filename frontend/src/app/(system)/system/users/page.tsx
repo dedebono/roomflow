@@ -243,6 +243,7 @@ export default function AdminUsersPage() {
             label="Access Clearance / Role"
             options={[
               { value: 'USER', label: 'USER (Standard Employee)' },
+              { value: 'RENTER', label: 'RENTER (Room Renter)' },
               { value: 'ROOM_ADMIN', label: 'ROOM_ADMIN (Operations Manager)' },
               { value: 'ADMIN_IT', label: 'ADMIN_IT (System Controller)' },
             ]}

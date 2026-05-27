@@ -12,6 +12,7 @@ enum Role {
   ADMIN_IT
   ROOM_ADMIN
   USER
+  RENTER
 }
 
 enum RoomStatus {
@@ -30,15 +31,49 @@ enum ChangeRequestStatus {
   REJECTED
 }
 
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BookingHoldStatus {
+  ACTIVE
+  CONVERTED
+  EXPIRED
+  CANCELLED
+}
+
+enum NotificationType {
+  BOOKING_CREATED
+  BOOKING_CANCELLED
+  BOOKING_CONFIRMED
+  BOOKING_EXPIRED
+  PAYMENT_UPLOADED
+  PAYMENT_APPROVED
+  PAYMENT_REJECTED
+  NEW_MESSAGE
+  RENTAL_BOOKED
+  CHANGE_REQUEST_APPROVED
+  CHANGE_REQUEST_REJECTED
+  CHANGE_REQUEST_SUBMITTED
+}
+
 model User {
-  id           String   @id @default(uuid())
+  id           String @id @default(uuid())
   name         String
-  email        String   @unique
+  email        String @unique
   passwordHash String
-  role         Role     @default(USER)
+  role         Role   @default(USER)
 
   bookings              Booking[]
   bookingChangeRequests BookingChangeRequest[]
+  payments              Payment[]
+  managedPayments       Payment[]              @relation("PaymentManager")
+  sentMessages          ChatMessage[]          @relation("ChatSender")
+  receivedMessages      ChatMessage[]          @relation("ChatReceiver")
+  bookingHolds          BookingHold[]
+  notifications         Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -54,16 +89,22 @@ model Building {
 }
 
 model Room {
-  id          String     @id @default(uuid())
-  buildingId  String
-  building    Building   @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  name        String
-  capacity    Int
-  description String?
-  imageUrl    String?
-  status      RoomStatus @default(ACTIVE)
+  id              String     @id @default(uuid())
+  buildingId      String
+  building        Building   @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  name            String
+  capacity        Int
+  description     String?
+  imageUrl        String?
+  status          RoomStatus @default(ACTIVE)
+  amenities       String?
+  isRentable      Boolean    @default(false)
+  maxBookingHours Int?
 
-  bookings Booking[]
+  bookings     Booking[]
+  rentalSlots  RentalSlot[]
+  bookingHolds BookingHold[]
+  chatMessages ChatMessage[] @relation("RoomChat")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -79,12 +120,14 @@ model Booking {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  title   String
-  notes   String?
+  title     String
+  notes     String?
   startTime DateTime
   endTime   DateTime
   status    BookingStatus @default(BOOKED)
+  isRental  Boolean       @default(false)
 
+  payment        Payment?
   changeRequests BookingChangeRequest[]
 
   createdAt DateTime @default(now())
@@ -97,7 +140,7 @@ model Booking {
 }
 
 model BookingChangeRequest {
-  id        String @id @default(uuid())
+  id        String  @id @default(uuid())
   bookingId String
   booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
@@ -117,4 +160,100 @@ model BookingChangeRequest {
   @@index([bookingId])
   @@index([requestedById])
   @@index([status])
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  bookingId     String        @unique
+  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingHoldId String?       @unique
+  bookingHold   BookingHold?  @relation(fields: [bookingHoldId], references: [id])
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  fileUrl       String
+  amount        Float
+  description   String?
+  status        PaymentStatus @default(PENDING)
+  managerId     String?
+  manager       User?         @relation("PaymentManager", fields: [managerId], references: [id])
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([bookingId])
+  @@index([bookingHoldId])
+}
+
+model ChatMessage {
+  id         String   @id @default(uuid())
+  senderId   String
+  sender     User     @relation("ChatSender", fields: [senderId], references: [id])
+  receiverId String
+  receiver   User     @relation("ChatReceiver", fields: [receiverId], references: [id])
+  content    String
+  roomId     String?
+  room       Room?    @relation("RoomChat", fields: [roomId], references: [id])
+  bookingId  String?
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([roomId])
+}
+
+model RentalSlot {
+  id        String  @id @default(uuid())
+  roomId    String
+  room      Room    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  price     Float
+  isActive  Boolean @default(true)
+
+  @@unique([roomId, dayOfWeek, startTime, endTime])
+  @@index([roomId, dayOfWeek, isActive])
+}
+
+model BookingHold {
+  id        String            @id @default(uuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roomId    String
+  room      Room              @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  holdDate  DateTime
+  startTime DateTime
+  endTime   DateTime
+  expiresAt DateTime
+  status    BookingHoldStatus @default(ACTIVE)
+  paymentId String?           @unique
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  payments  Payment[]
+
+  @@index([userId])
+  @@index([roomId])
+  @@index([holdDate])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([paymentId])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String
+  data      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, isRead])
+  @@index([createdAt])
 }

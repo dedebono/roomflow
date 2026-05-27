@@ -12,7 +12,12 @@ import {
   Building2,
   FolderLock,
   LogOut,
-  BellRing
+  BellRing,
+  CreditCard,
+  MessageSquare,
+  Home,
+  DollarSign,
+  Bell,
 } from 'lucide-react';
 
 export const Sidebar = () => {
@@ -33,12 +38,14 @@ export const Sidebar = () => {
   const getRoleBadgeVariant = (role: string) => {
     if (role === 'ADMIN_IT') return 'danger';
     if (role === 'ROOM_ADMIN') return 'info';
-    return 'success';
+    if (role === 'RENTER') return 'success';
+    return 'neutral';
   };
 
   const getRoleDisplayName = (role: string) => {
     if (role === 'ADMIN_IT') return 'IT Admin';
     if (role === 'ROOM_ADMIN') return 'Room Manager';
+    if (role === 'RENTER') return 'Renter';
     return 'Employee';
   };
 
@@ -77,6 +84,32 @@ export const Sidebar = () => {
           </>
         )}
 
+        {/* RENTER Links */}
+        {hasRole(['RENTER']) && (
+          <>
+            <Link href="/renter/dashboard" className={getLinkClass('/renter/dashboard')}>
+              <Home className="w-5 h-5" />
+              <span>Dashboard</span>
+            </Link>
+            <Link href="/renter/rooms" className={getLinkClass('/renter/rooms')}>
+              <Building2 className="w-5 h-5" />
+              <span>Available Rooms</span>
+            </Link>
+            <Link href="/renter/bookings" className={getLinkClass('/renter/bookings')}>
+              <Calendar className="w-5 h-5" />
+              <span>My Bookings</span>
+            </Link>
+            <Link href="/renter/payments" className={getLinkClass('/renter/payments')}>
+              <CreditCard className="w-5 h-5" />
+              <span>Payments</span>
+            </Link>
+            <Link href="/renter/chat" className={getLinkClass('/renter/chat')}>
+              <MessageSquare className="w-5 h-5" />
+              <span>Messages</span>
+            </Link>
+          </>
+        )}
+
         {/* ROOM_ADMIN Links */}
         {hasRole(['ROOM_ADMIN']) && (
           <>
@@ -87,6 +120,18 @@ export const Sidebar = () => {
             <Link href="/admin/rooms" className={getLinkClass('/admin/rooms')}>
               <Building2 className="w-5 h-5" />
               <span>Rooms & Buildings</span>
+            </Link>
+            <Link href="/rentals" className={getLinkClass('/rentals')}>
+              <DollarSign className="w-5 h-5" />
+              <span>Rental Bookings</span>
+            </Link>
+            <Link href="/chat" className={getLinkClass('/chat')}>
+              <MessageSquare className="w-5 h-5" />
+              <span>Chat with Renters</span>
+            </Link>
+            <Link href="/notifications" className={getLinkClass('/notifications')}>
+              <Bell className="w-5 h-5" />
+              <span>Notifications</span>
             </Link>
             <Link href="/admin/change-requests" className={getLinkClass('/admin/change-requests')}>
               <BellRing className="w-5 h-5" />

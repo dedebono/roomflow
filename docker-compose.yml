@@ -29,6 +29,9 @@ services:
       DATABASE_URL: postgresql://roomflow:roomflow@postgres:5432/roomflow?schema=public
       JWT_SECRET: roomflow-super-secret-key-123!
       PORT: 3000
+      STORAGE_TYPE: LOCAL
+      EMAIL_ENABLED: "false"
+      EMAIL_FROM: noreply@roomflow.local
     depends_on:
       postgres:
         condition: service_healthy

@@ -7,12 +7,22 @@ import { v4 as uuidv4 } from 'uuid';
 @Injectable()
 export class StorageService {
   private readonly uploadDir: string;
+  private storageType: string;
 
   constructor(private configService: ConfigService) {
     this.uploadDir = path.resolve(__dirname, '..', '..', 'uploads');
+    this.storageType = this.configService.get<string>('STORAGE_TYPE') || 'LOCAL';
     if (!fs.existsSync(this.uploadDir)) {
       fs.mkdirSync(this.uploadDir, { recursive: true });
     }
+  }
+
+  getStorageType(): string {
+    return this.storageType;
+  }
+
+  setStorageType(storageType: string): void {
+    this.storageType = storageType;
   }
 
   async upload(file: Express.Multer.File): Promise<string> {
@@ -32,7 +42,7 @@ export class StorageService {
   async delete(filePath: string): Promise<void> {
     const storageType = this.configService.get<string>('STORAGE_TYPE');
 
-    if (storageType === 'LOCAL' && filePath.startsWith('/uploads/')) {
+    if (this.storageType === 'LOCAL' && filePath.startsWith('/uploads/')) {
       const fullPath = path.join(this.uploadDir, path.basename(filePath));
       if (fs.existsSync(fullPath)) {
         fs.unlinkSync(fullPath);

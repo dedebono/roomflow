@@ -10,11 +10,13 @@ import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import api from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import { Booking, BookingChangeRequest, Room } from '@/types';
 import toast from 'react-hot-toast';
 import { Calendar, Trash2, Edit3, AlignLeft, Info } from 'lucide-react';
 
 export default function MyBookingsPage() {
+  const { user } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [changeRequests, setChangeRequests] = useState<BookingChangeRequest[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -28,6 +30,11 @@ export default function MyBookingsPage() {
   const [reqEnd, setReqEnd] = useState('');
   const [reqReason, setReqReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Cancellation Request Modal State
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCancelSubmitting, setIsCancelSubmitting] = useState(false);
 
   // Fetch initial details
   const fetchData = useCallback(async () => {
@@ -65,6 +72,37 @@ export default function MyBookingsPage() {
       fetchData();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Cancellation failed');
+    }
+  };
+
+  // Open Cancellation Request Modal (for USER role)
+  const handleOpenCancelModal = (booking: Booking) => {
+    setSelectedBooking(booking);
+    setCancelReason('');
+    setIsCancelModalOpen(true);
+  };
+
+  // Submit Cancellation Request
+  const handleSubmitCancelRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedBooking || !cancelReason.trim()) {
+      toast.error('Please provide a reason for cancellation');
+      return;
+    }
+
+    setIsCancelSubmitting(true);
+    try {
+      await api.post('/booking-change-requests', {
+        bookingId: selectedBooking.id,
+        reason: cancelReason.trim(),
+      });
+      toast.success('Cancellation request submitted. Your manager will review it shortly.');
+      setIsCancelModalOpen(false);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Submission failed');
+    } finally {
+      setIsCancelSubmitting(false);
     }
   };
 
@@ -173,22 +211,32 @@ export default function MyBookingsPage() {
     {
       header: 'Actions',
       className: 'text-right',
-      cell: (b: Booking) => (
-        <div className="flex items-center justify-end gap-2">
-          {b.status === 'BOOKED' && (
-            <>
-              <Button size="sm" variant="secondary" onClick={() => handleOpenModModal(b)}>
-                <Edit3 className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Reschedule</span>
-              </Button>
-              <Button size="sm" variant="danger" onClick={() => handleCancelBooking(b.id)}>
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Cancel</span>
-              </Button>
-            </>
-          )}
-        </div>
-      ),
+      cell: (b: Booking) => {
+        const isUser = user?.role === 'USER';
+        return (
+          <div className="flex items-center justify-end gap-2">
+            {b.status === 'BOOKED' && (
+              <>
+                {isUser ? (
+                  <Button size="sm" variant="danger" onClick={() => handleOpenCancelModal(b)}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Request Cancellation</span>
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="danger" onClick={() => handleCancelBooking(b.id)}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Cancel</span>
+                  </Button>
+                )}
+                <Button size="sm" variant="secondary" onClick={() => handleOpenModModal(b)}>
+                  <Edit3 className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Reschedule</span>
+                </Button>
+              </>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -330,6 +378,44 @@ export default function MyBookingsPage() {
             </Button>
             <Button type="submit" variant="primary" isLoading={isSubmitting}>
               Submit Request
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Cancellation Request Modal (USER role only) */}
+      <Modal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        title={`Request Cancellation: ${selectedBooking?.title || ''}`}
+        size="md"
+      >
+        <form onSubmit={handleSubmitCancelRequest} className="space-y-4">
+          <div className="p-3.5 rounded-lg border border-amber-500/10 bg-amber-500/5 text-xs text-amber-300 flex items-start gap-2 mb-2">
+            <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <span>As a regular employee, you cannot cancel bookings directly. Your cancellation request will be sent to the Room Manager for approval.</span>
+          </div>
+
+          <div className="p-3 rounded-lg border border-slate-800 bg-slate-800/30 text-xs text-slate-400">
+            <p className="font-semibold text-slate-300 mb-1">{selectedBooking?.room?.name}</p>
+            <p>{selectedBooking ? displayDateTime(selectedBooking.startTime) : ''} → {selectedBooking ? displayDateTime(selectedBooking.endTime) : ''}</p>
+          </div>
+
+          <Input
+            label="Reason for Cancellation"
+            type="text"
+            placeholder="e.g., Meeting cancelled, double-booked, no longer needed"
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            required
+          />
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/40">
+            <Button type="button" variant="secondary" onClick={() => setIsCancelModalOpen(false)}>
+              Back
+            </Button>
+            <Button type="submit" variant="primary" isLoading={isCancelSubmitting}>
+              Submit Cancellation Request
             </Button>
           </div>
         </form>

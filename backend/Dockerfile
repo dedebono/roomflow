@@ -1,32 +1,37 @@
-# --- Build Stage ---
-FROM node:18-alpine AS builder
+# Build stage
+FROM node:20-alpine AS builder
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
+# Install dependencies first (layer caching)
 COPY package*.json ./
-COPY prisma ./prisma/
-
 RUN npm ci
 
+# Copy source and build
 COPY . .
-
 RUN npx prisma generate
 RUN npm run build
 
-# --- Production Stage ---
-FROM node:18-alpine
+# Production stage
+FROM node:20-alpine
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
+# Install production deps only
 COPY package*.json ./
-COPY prisma ./prisma/
-
 RUN npm ci --only=production
 
-COPY --from=builder /usr/src/app/dist ./dist
-COPY --from=builder /usr/src/app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /usr/src/app/node_modules/@prisma ./node_modules/@prisma
+# Copy built app
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.prisma /app/node_modules/.prisma
+
+# Create uploads directory
+RUN mkdir -p /app/uploads
+
+ENV NODE_ENV=production
+ENV PORT=3000
 
 EXPOSE 3000
 
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main.js"]

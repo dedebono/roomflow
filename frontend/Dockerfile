@@ -1,28 +1,29 @@
-# --- Build Stage ---
-FROM node:18-alpine AS builder
+# Build stage
+FROM node:20-alpine AS builder
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
+# Install dependencies (needed for build)
 COPY package*.json ./
 RUN npm ci
 
+# Copy source and build
 COPY . .
-ENV NEXT_PUBLIC_API_URL=http://localhost/api
 RUN npm run build
 
-# --- Production Stage ---
-FROM node:18-alpine
+# Production stage
+FROM node:20-alpine
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --only=production
+# Copy standalone server from builder
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
 
-COPY --from=builder /usr/src/app/.next ./.next
-COPY --from=builder /usr/src/app/public ./public
-COPY --from=builder /usr/src/app/src ./src
+ENV NODE_ENV=production
+ENV PORT=3000
 
 EXPOSE 3000
 
-ENV PORT=3000
-CMD ["npm", "run", "start"]
+CMD ["node", "server.js"]

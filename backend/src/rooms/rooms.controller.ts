@@ -15,6 +15,7 @@ import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { Role, RoomStatus } from '@prisma/client';
 
 @Controller('rooms')
@@ -39,9 +40,21 @@ export class RoomsController {
     return this.roomsService.findAll(buildingId, status);
   }
 
+  @Get('rentable')
+  @Public()
+  getRentableRooms() {
+    return this.roomsService.getRentableRooms();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.roomsService.findOne(id);
+  }
+
+  @Get(':id/slots')
+  @Public()
+  getRoomWithSlots(@Param('id') id: string) {
+    return this.roomsService.getRoomWithSlots(id);
   }
 
   @Patch(':id')
@@ -53,6 +66,33 @@ export class RoomsController {
     @UploadedFile() file?: Express.Multer.File,
   ) {
     return this.roomsService.update(id, updateRoomDto, file);
+  }
+
+  @Patch(':id/amenities')
+  @Roles(Role.ADMIN_IT, Role.ROOM_ADMIN)
+  updateAmenities(
+    @Param('id') id: string,
+    @Body('amenities') amenities: string[],
+  ) {
+    return this.roomsService.updateAmenities(id, amenities);
+  }
+
+  @Patch(':id/rentable')
+  @Roles(Role.ADMIN_IT, Role.ROOM_ADMIN)
+  setRentable(
+    @Param('id') id: string,
+    @Body('isRentable') isRentable: boolean,
+  ) {
+    return this.roomsService.setRentable(id, isRentable);
+  }
+
+  @Patch(':id/max-booking-hours')
+  @Roles(Role.ADMIN_IT, Role.ROOM_ADMIN)
+  updateMaxBookingHours(
+    @Param('id') id: string,
+    @Body('maxBookingHours') maxBookingHours: number | null,
+  ) {
+    return this.roomsService.updateMaxBookingHours(id, maxBookingHours);
   }
 
   @Delete(':id')

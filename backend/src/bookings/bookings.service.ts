@@ -2,10 +2,14 @@ import { Injectable, BadRequestException, NotFoundException, ForbiddenException 
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { BookingStatus, Role } from '@prisma/client';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class BookingsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private emailService: EmailService,
+  ) {}
 
   async validateBookingConflict(
     roomId: string,
@@ -51,14 +55,31 @@ export class BookingsService {
       throw new BadRequestException('Room is already booked for this time period');
     }
 
-    return this.prisma.booking.create({
+    const booking = await this.prisma.booking.create({
       data: {
         ...createBookingDto,
         userId,
         startTime,
         endTime,
       },
+      include: {
+        room: true,
+        user: { select: { email: true, name: true } },
+      },
     });
+
+    // Send booking confirmation email
+    if (booking.user.email) {
+      await this.emailService.sendBookingConfirmation(
+        booking.user.email,
+        booking.title,
+        booking.room.name,
+        booking.startTime,
+        booking.endTime,
+      );
+    }
+
+    return booking;
   }
 
   async findAll(roomId?: string, userId?: string) {
@@ -77,11 +98,27 @@ export class BookingsService {
   }
 
   async cancel(bookingId: string, userId: string, userRole: Role) {
-    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } });
+    const booking = await this.prisma.booking.findUnique({ 
+      where: { id: bookingId },
+      include: { room: true, user: { select: { email: true, name: true } } },
+    });
     if (!booking) throw new NotFoundException('Booking not found');
+
+    if (userRole === Role.USER) {
+      throw new ForbiddenException('USER role cannot directly cancel bookings. Please submit a cancellation request instead.');
+    }
 
     if (userRole !== Role.ADMIN_IT && userRole !== Role.ROOM_ADMIN && booking.userId !== userId) {
       throw new ForbiddenException('You can only cancel your own bookings');
+    }
+
+    // Send cancellation email
+    if (booking.user.email) {
+      await this.emailService.sendBookingCancellation(
+        booking.user.email,
+        booking.title,
+        booking.room.name,
+      );
     }
 
     return this.prisma.booking.update({

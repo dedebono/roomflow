@@ -37,19 +37,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string) => {
     try {
       const response = await api.post('/auth/login', { email, password });
-      const { accessToken, user: loggedUser } = response.data;
+      const { access_token, user: loggedUser } = response.data;
 
-      localStorage.setItem('roomflow_token', accessToken);
+      localStorage.setItem('roomflow_token', access_token);
       localStorage.setItem('roomflow_user', JSON.stringify(loggedUser));
 
-      setToken(accessToken);
+      setToken(access_token);
       setUser(loggedUser);
 
       // Redirect based on role
       if (loggedUser.role === 'ADMIN_IT') {
         router.push('/system/users');
       } else if (loggedUser.role === 'ROOM_ADMIN') {
-        router.push('/admin/bookings');
+        router.push('/dashboard');
+      } else if (loggedUser.role === 'RENTER') {
+        router.push('/renter/dashboard');
       } else {
         router.push('/dashboard');
       }

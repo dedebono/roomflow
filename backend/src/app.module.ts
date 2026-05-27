@@ -13,6 +13,12 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { EmailModule } from './email/email.module';
+import { RentalsModule } from './rentals/rentals.module';
+import { PaymentsModule } from './payments/payments.module';
+import { ChatModule } from './chat/chat.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { WebSocketModule } from './websocket/websocket.module';
 
 @Module({
   imports: [
@@ -25,6 +31,12 @@ import { RolesGuard } from './common/guards/roles.guard';
     BookingsModule,
     BookingChangeRequestsModule,
     StorageModule,
+    EmailModule,
+    RentalsModule,
+    PaymentsModule,
+    ChatModule,
+    NotificationsModule,
+    WebSocketModule,
   ],
   controllers: [AppController],
   providers: [

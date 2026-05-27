@@ -50,7 +50,7 @@ export class AuthService {
         name: registerDto.name,
         email: registerDto.email,
         passwordHash: hashedPassword,
-        role: Role.USER,
+        role: registerDto.role ? registerDto.role : Role.RENTER,
       },
     });
 
