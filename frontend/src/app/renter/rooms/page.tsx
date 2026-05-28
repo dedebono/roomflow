@@ -32,6 +32,7 @@ export default function AvailableRoomsPage() {
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   useEffect(() => {
     fetchAvailableRooms();
@@ -44,9 +45,31 @@ export default function AvailableRoomsPage() {
       if (dateFilter) {
         params.date = dateFilter;
       }
-      const res = await api.get('/rentals/available-rooms', { params });
-      setRooms(res.data);
-    } catch {
+      const res = await api.get(`/rentals/available-rooms?_=${Date.now()}`, { params });
+      setDebugInfo(`res.data type: ${typeof res.data}, isArray: ${Array.isArray(res.data)}, keys: ${res.data && typeof res.data === 'object' ? Object.keys(res.data).join(',') : 'N/A'}, length: ${Array.isArray(res.data) ? res.data.length : 'N/A'}`);
+      // Defensive: ensure res.data is an array
+      const rawRooms = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
+      if (rawRooms.length === 0 && !dateFilter) {
+        console.warn('[rooms] API returned 0 rooms — check backend response or auth');
+      }
+      // amenities may come as JSON string or array — normalise to array
+      const normalised = rawRooms.map((room: any) => ({
+        ...room,
+        amenities: Array.isArray(room.amenities)
+          ? room.amenities
+          : typeof room.amenities === 'string'
+            ? room.amenities
+                .split(',')
+                .map((s: string) => s.trim())
+                .filter(Boolean)
+            : [],
+        imageUrl: room.imageUrl
+          ? (room.imageUrl.startsWith('http') ? room.imageUrl : `${window.location.origin}${room.imageUrl}`)
+          : undefined,
+      }));
+      setRooms(normalised);
+    } catch (err: any) {
+      console.error('[rooms] fetch error:', err?.response?.data, err?.message, err);
       toast.error('Failed to load available rooms');
     } finally {
       setLoading(false);
@@ -83,10 +106,19 @@ export default function AvailableRoomsPage() {
                 type="date"
                 value={dateFilter}
                 onChange={handleDateChange}
+                onBlur={(e) => {
+                  if (e.target.value && e.target.value !== dateFilter) {
+                    setDateFilter(e.target.value);
+                  }
+                }}
                 leftIcon={<Calendar className="w-4 h-4" />}
               />
             </div>
-            <Button variant="secondary" onClick={fetchAvailableRooms}>
+            <Button variant="secondary" onClick={() => {
+              setSearchTerm('');
+              setDateFilter('');
+              fetchAvailableRooms();
+            }}>
               Refresh
             </Button>
           </div>

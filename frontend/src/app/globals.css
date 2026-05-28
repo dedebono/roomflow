@@ -50,7 +50,56 @@ body {
   background: #4f46e5;
 }
 
-/* FullCalendar Custom Theme Overrides */
+/* ── Keyframe Animations ── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scale-up {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-fade-in { animation: fade-in 0.2s ease-out; }
+.animate-scale-up { animation: scale-up 0.2s ease-out; }
+
+/* ── Viewport meta fix (for Next.js head) ── */
+viewport-fix { content: width=device-width, initial-scale=1; }
+
+/* ── Mobile touch improvements ── */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Better mobile scrolling ── */
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ── Mobile input zoom prevention ── */
+input, select, textarea {
+  font-size: 16px; /* Prevents iOS zoom on focus */
+}
+
+/* ── Mobile: prevent horizontal overflow ── */
+.overflow-x-auto {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Safe area for notched devices ── */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ── FullCalendar Custom Theme Overrides */
 .fc {
   --fc-border-color: rgba(255, 255, 255, 0.08) !important;
   --fc-daygrid-event-dot-width: 8px !important;

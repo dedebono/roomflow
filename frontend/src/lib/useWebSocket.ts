@@ -3,6 +3,23 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import websocketClient from './websocket';
 
+function getStorage() {
+  if (typeof window === 'undefined') return null;
+  try {
+    localStorage.setItem('__test__', '1');
+    localStorage.removeItem('__test__');
+    return localStorage;
+  } catch {
+    try {
+      sessionStorage.setItem('__test__', '1');
+      sessionStorage.removeItem('__test__');
+      return sessionStorage;
+    } catch {
+      return null;
+    }
+  }
+}
+
 export interface WebSocketMessage {
   event: string;
   data: any;
@@ -113,7 +130,7 @@ export function useUnreadMessages() {
       try {
         const response = await fetch('/api/chat/unread-count', {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('roomflow_token')}`,
+            Authorization: `Bearer ${getStorage()?.getItem('roomflow_token')}`,
           },
         });
         if (response.ok) {

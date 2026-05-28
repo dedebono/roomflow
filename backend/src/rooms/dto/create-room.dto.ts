@@ -1,6 +1,6 @@
-import { IsNotEmpty, IsString, IsInt, IsOptional, IsUUID, IsEnum } from 'class-validator';
+import { IsNotEmpty, IsString, IsInt, IsOptional, IsUUID, IsEnum, IsBoolean } from 'class-validator';
 import { RoomStatus } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 export class CreateRoomDto {
   @IsUUID()
@@ -23,4 +23,18 @@ export class CreateRoomDto {
   @IsEnum(RoomStatus)
   @IsOptional()
   status?: RoomStatus;
+
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  @IsOptional()
+  isRentable?: boolean;
+
+  @IsString()
+  @IsOptional()
+  amenities?: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @IsOptional()
+  maxBookingHours?: number;
 }

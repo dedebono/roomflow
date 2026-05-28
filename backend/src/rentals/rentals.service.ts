@@ -221,6 +221,19 @@ export class RentalsService implements OnModuleInit {
       throw new ConflictException('You already have an active hold for this time period');
     }
 
+    // Get rental slot to determine price
+    const slot = await this.prisma.rentalSlot.findFirst({
+      where: {
+        roomId,
+        dayOfWeek: startTimeDate.getDay(),
+        isActive: true,
+        startTime: startTime,
+        endTime: endTime,
+      },
+    });
+
+    const price = slot?.price || 0;
+
     // Create hold that expires in 1 hour
     const expiresAt = new Date(startTimeDate);
     expiresAt.setHours(expiresAt.getHours() + 1);
@@ -233,6 +246,7 @@ export class RentalsService implements OnModuleInit {
         startTime: startTimeDate,
         endTime: endTimeDate,
         expiresAt,
+        price,
         status: BookingHoldStatus.ACTIVE,
       },
       include: {
@@ -401,6 +415,119 @@ export class RentalsService implements OnModuleInit {
   }
 
   // RentalSlot CRUD
+  // Get all holds for a renter (for renter bookings page)
+  async getMyHolds(userId: string) {
+    return this.prisma.bookingHold.findMany({
+      where: { userId },
+      include: {
+        room: { include: { building: true } },
+        payments: {
+          select: { id: true, status: true, amount: true, createdAt: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // Get active hold for a specific room (for renter room detail page)
+  async getActiveHoldForRoom(userId: string, roomId: string) {
+    const hold = await this.prisma.bookingHold.findFirst({
+      where: {
+        userId,
+        roomId,
+        status: BookingHoldStatus.ACTIVE,
+      },
+      include: {
+        room: {
+          include: { building: true },
+        },
+      },
+    });
+    return hold;
+  }
+
+  // Get available time slots for a room on a given date
+  async getAvailableSlots(roomId: string, date: string) {
+    // Parse date string (YYYY-MM-DD) as UTC to avoid timezone issues
+    const dateObj = new Date(date + 'T00:00:00Z');
+    const dayOfWeek = dateObj.getUTCDay();
+    console.log(`[getAvailableSlots] roomId=${roomId}, date=${date}, dayOfWeek=${dayOfWeek}`);
+
+    // Get all active rental slots for this room on this day
+    const slots = await this.prisma.rentalSlot.findMany({
+      where: {
+        roomId,
+        dayOfWeek,
+        isActive: true,
+      },
+      orderBy: { startTime: 'asc' },
+    });
+
+    // Calculate day boundaries
+    const dayStart = new Date(dateObj);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dateObj);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    // Check for conflicts with booked slots
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        roomId,
+        status: BookingStatus.BOOKED,
+        startTime: { lte: dayEnd },
+        endTime: { gte: dayStart },
+      },
+    });
+
+    const holds = await this.prisma.bookingHold.findMany({
+      where: {
+        roomId,
+        status: BookingHoldStatus.ACTIVE,
+        startTime: { lte: dayEnd },
+        endTime: { gte: dayStart },
+      },
+    });
+
+    // Build availability map from booked/held ranges
+    const isSlotBooked = (slotStart: string, slotEnd: string) => {
+      const slotStartDate = new Date(slotStart);
+      const slotEndDate = new Date(slotEnd);
+      return bookings.some((b) => {
+        const bStart = new Date(b.startTime);
+        const bEnd = new Date(b.endTime);
+        return slotStartDate < bEnd && slotEndDate > bStart;
+      });
+    };
+
+    const isSlotHeld = (slotStart: string, slotEnd: string) => {
+      const slotStartDate = new Date(slotStart);
+      const slotEndDate = new Date(slotEnd);
+      return holds.some((h) => {
+        const hStart = new Date(h.startTime);
+        const hEnd = new Date(h.endTime);
+        return slotStartDate < hEnd && slotEndDate > hStart;
+      });
+    };
+
+    // For each rental slot, construct full datetime and check availability
+    const result = slots.map((slot) => {
+      const slotStartTime = new Date(dateObj);
+      const [startHour, startMin] = slot.startTime.split(':').map(Number);
+      slotStartTime.setHours(startHour, startMin, 0, 0);
+      const slotEndTime = new Date(dateObj);
+      const [endHour, endMin] = slot.endTime.split(':').map(Number);
+      slotEndTime.setHours(endHour, endMin, 0, 0);
+      return {
+        ...slot,
+        startTime: slotStartTime.toISOString(),
+        endTime: slotEndTime.toISOString(),
+        available: slot.isActive && !isSlotBooked(slotStartTime.toISOString(), slotEndTime.toISOString()) && !isSlotHeld(slotStartTime.toISOString(), slotEndTime.toISOString()),
+      };
+    });
+    console.log(`[getAvailableSlots] returning ${result.length} slots`);
+    return result;
+  }
+
   async getSlots(roomId?: string) {
     return this.prisma.rentalSlot.findMany({
       where: { roomId },

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, use } from 'react';
+import React, { useState, useEffect, useCallback, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -41,7 +41,20 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
   const fetchRoom = useCallback(async () => {
     try {
       const res = await api.get(`/rooms/${roomId}`);
-      setRoom(res.data);
+      const data = res.data;
+      // Normalise amenities (may be JSON string or array) and imageUrl (may need origin prefix)
+      const normalized = {
+        ...data,
+        amenities: Array.isArray(data.amenities)
+          ? data.amenities
+          : typeof data.amenities === 'string'
+            ? data.amenities.split(',').map((s: string) => s.trim()).filter(Boolean)
+            : [],
+        imageUrl: data.imageUrl
+          ? (data.imageUrl.startsWith('http') ? data.imageUrl : `${window.location.origin}${data.imageUrl}`)
+          : undefined,
+      };
+      setRoom(normalized);
     } catch {
       toast.error('Failed to load room details');
       router.push('/renter/rooms');
@@ -52,11 +65,14 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
   const fetchTimeSlots = useCallback(async (date: string) => {
     if (!date) return;
     try {
+      console.log('[fetchTimeSlots] roomId:', roomId, 'date:', date);
       const res = await api.get(`/rentals/available-slots`, {
         params: { roomId, date },
       });
+      console.log('[fetchTimeSlots] response:', res.data);
       setTimeSlots(res.data);
-    } catch {
+    } catch (err) {
+      console.error('[fetchTimeSlots] error:', err);
       toast.error('Failed to load available time slots');
     }
   }, [roomId]);
@@ -84,16 +100,166 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
     init();
   }, [fetchRoom, fetchActiveHold]);
 
-  // Handle date change
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const date = e.target.value;
-    setSelectedDate(date);
-    setSelectedSlot(null);
-    if (date) {
-      fetchTimeSlots(date);
-    } else {
-      setTimeSlots([]);
-    }
+  // Attach native event listener to date input (React synthetic events don't always fire for date inputs)
+  useEffect(() => {
+    const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
+    if (!dateInput) return;
+
+    const handleNativeDateChange = () => {
+      const date = dateInput.value;
+      console.log('[native date listener] date changed to:', date);
+      setSelectedDate(date);
+      setSelectedSlot(null);
+      if (date) {
+        fetchTimeSlots(date);
+      } else {
+        setTimeSlots([]);
+      }
+    };
+
+    dateInput.addEventListener('change', handleNativeDateChange);
+    dateInput.addEventListener('input', handleNativeDateChange);
+    return () => {
+      dateInput.removeEventListener('change', handleNativeDateChange);
+      dateInput.removeEventListener('input', handleNativeDateChange);
+    };
+  }, [fetchTimeSlots]);
+
+  useEffect(() => {
+    const init = async () => {
+      setLoading(true);
+      await fetchRoom();
+      await fetchActiveHold();
+      setLoading(false);
+    };
+    init();
+  }, [fetchRoom, fetchActiveHold]);
+
+  const fetchTimeSlotsRef = useRef<(date: string) => Promise<void>>();
+
+  useEffect(() => {
+    fetchTimeSlotsRef.current = fetchTimeSlots;
+  }, [fetchTimeSlots]);
+
+  // Attach native event listener to date input (React synthetic events don't always fire for date inputs)
+  useEffect(() => {
+    const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
+    if (!dateInput) return;
+
+    const handleDateChange = () => {
+      const date = dateInput.value;
+      console.log('[native listener] date:', date);
+      setSelectedDate(date);
+      setSelectedSlot(null);
+      if (date && fetchTimeSlotsRef.current) {
+        useEffect(() => {
+          const init = async () => {
+            setLoading(true);
+            await fetchRoom();
+            await fetchActiveHold();
+            setLoading(false);
+          };
+          init();
+        }, [fetchRoom, fetchActiveHold]);
+
+        const fetchTimeSlotsRef = useRef<(date: string) => Promise<void>>();
+
+        useEffect(() => {
+          fetchTimeSlotsRef.current = fetchTimeSlots;
+        }, [fetchTimeSlots]);
+
+        // Attach native event listener to date input
+        useEffect(() => {
+          const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
+          if (!dateInput) {
+            console.error('[useEffect] Date input not found!');
+            return;
+          }
+
+          const handleNativeChange = () => {
+            const date = dateInput.value;
+            console.log('[native listener] date changed:', date);
+            setSelectedDate(date);
+            setSelectedSlot(null);
+            if (date && fetchTimeSlotsRef.current) {
+              fetchTimeSlotsRef.current(date);
+            } else {
+              setTimeSlots([]);
+            }
+          };
+
+          dateInput.addEventListener('change', handleNativeChange);
+          dateInput.addEventListener('input', handleNativeDateChange); // Trigger on input as well
+
+          // Cleanup listener on unmount
+          return () => {
+            dateInput.removeEventListener('change', handleNativeChange);
+            dateInput.removeEventListener('input', handleNativeDateChange);
+          };
+        }, []); // Empty dependency array: run once on mount
+
+        useEffect(() => {
+          const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
+          if (!dateInput) {
+            console.error('[useEffect] Date input not found!');
+            return;
+          }
+
+          const handleNativeChange = () => {
+            const date = dateInput.value;
+            console.log('[native listener] date changed:', date);
+            setSelectedDate(date);
+            setSelectedSlot(null);
+            if (date && fetchTimeSlots) {
+              fetchTimeSlots(date);
+            } else {
+              setTimeSlots([]);
+            }
+          };
+
+          useEffect(() => {
+            const init = async () => {
+              setLoading(true);
+              await fetchRoom();
+              await fetchActiveHold();
+              setLoading(false);
+            };
+            init();
+          }, [fetchRoom, fetchActiveHold]);
+
+          // Attach native event listener to date input
+          useEffect(() => {
+            const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
+            if (!dateInput) {
+              console.error('[useEffect] Date input not found!');
+              return;
+            }
+
+            const handleNativeChange = () => {
+              const date = dateInput.value;
+              console.log('[native listener] date changed:', date);
+              setSelectedDate(date);
+              setSelectedSlot(null);
+              if (date && fetchTimeSlots) {
+                fetchTimeSlots(date);
+              } else {
+                setTimeSlots([]);
+              }
+            };
+
+            useEffect(() => {
+              // Handle date change
+              const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                const date = e.target.value;
+                console.log('[React onChange] date changed to:', date);
+                setSelectedDate(date);
+                setSelectedSlot(null);
+                if (date) {
+                  fetchTimeSlots(date);
+                } else {
+                  setTimeSlots([]);
+                }
+              };
   };
 
   // Create booking hold
@@ -105,11 +271,14 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
 
     setIsSubmitting(true);
     try {
-      const res = await api.post('/rentals/holds', {
+      // Extract HH:MM from ISO string (e.g., "2026-05-29T09:00:00.000Z" -> "09:00")
+      const extractTime = (isoString: string) => isoString.split('T')[1].substring(0, 5);
+      
+      const res = await api.post('/rentals/create-hold', {
         roomId,
         date: selectedDate,
-        startTime: selectedSlot.startTime,
-        endTime: selectedSlot.endTime,
+        startTime: extractTime(selectedSlot.startTime),
+        endTime: extractTime(selectedSlot.endTime),
       });
       setActiveHold(res.data);
       toast.success('Booking hold created! Complete payment within 1 hour.');
@@ -144,7 +313,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
     setIsUploading(true);
     try {
       const formData = new FormData();
-      formData.append('bookingId', activeHold.id);
+      formData.append('paymentData', JSON.stringify({ bookingHoldId: activeHold.id, amount: activeHold.price }));
       formData.append('file', paymentFile);
 
       await api.post('/payments/upload', formData, {
@@ -314,14 +483,18 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
               <CardDescription>Choose your preferred date and hourly slot</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Input
-                label="Rental Date"
-                type="date"
-                value={selectedDate}
-                onChange={handleDateChange}
-                leftIcon={<Calendar className="w-4 h-4" />}
-                min={new Date().toISOString().split('T')[0]}
-              />
+              <div className="w-full flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-300 tracking-wide uppercase">
+                  Rental Date
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={handleDateChange}
+                  min={new Date().toISOString().split('T')[0]}
+                  style={{ colorScheme: 'dark' }}
+                  className="w-full bg-slate-900/60 hover:bg-slate-900/80 focus:bg-slate-950 text-slate-100 text-sm rounded-lg border border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/20 px-3.5 py-2.5 transition-all duration-200 focus:ring-4 outline-none"
+                />
+              </div>
 
               {selectedDate && (
                 <>

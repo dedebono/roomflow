@@ -40,6 +40,17 @@ async function main() {
     },
   });
 
+  const renter = await prisma.user.upsert({
+    where: { email: 'jack@mail.com' },
+    update: {},
+    create: {
+      name: 'Jack Renter',
+      email: 'jack@mail.com',
+      passwordHash,
+      role: Role.RENTER,
+    },
+  });
+
   console.log('Users created');
 
   // Buildings

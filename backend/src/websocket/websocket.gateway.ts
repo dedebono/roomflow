@@ -32,8 +32,8 @@ export class RoomFlowWebSocketGateway implements OnGatewayConnection, OnGatewayD
       const token = url.searchParams.get('token');
 
       if (!token) {
-        this.logger.warn(`Client ${client._socket?.id || 'unknown'} connected without token`);
-        client.close();
+        this.logger.warn(`Client ${client.id || 'unknown'} connected without token`);
+        client.disconnect(true);
         return;
       }
 
@@ -70,7 +70,7 @@ export class RoomFlowWebSocketGateway implements OnGatewayConnection, OnGatewayD
       });
     } catch (error) {
       this.logger.warn(`Invalid token for client`);
-      client.close();
+      client.disconnect(true);
     }
   }
 

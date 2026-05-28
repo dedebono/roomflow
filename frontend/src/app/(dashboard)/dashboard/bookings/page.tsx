@@ -172,6 +172,7 @@ export default function MyBookingsPage() {
     {
       header: 'Reservation Title',
       accessor: 'title' as const,
+      mobileTitle: true,
       cell: (b: Booking) => (
         <div>
           <p className="font-bold text-slate-100">{b.title}</p>
@@ -187,6 +188,7 @@ export default function MyBookingsPage() {
           <p className="text-xs text-slate-400">{b.room?.building?.name || 'Building'}</p>
         </div>
       ),
+      mobileHidden: true,
     },
     {
       header: 'Scheduled Duration',
@@ -196,7 +198,8 @@ export default function MyBookingsPage() {
             <Calendar className="w-3.5 h-3.5" />
             {displayDateTime(b.startTime)}
           </span>
-          <span className="text-xs text-slate-400 pl-4.5">to {displayDateTime(b.endTime)}</span>
+          <span className="text-xs text-slate-400 pl-4.5 hidden sm:block">to {displayDateTime(b.endTime)}</span>
+          <span className="text-xs text-slate-400 sm:hidden">{displayDateTime(b.endTime)}</span>
         </div>
       ),
     },
@@ -214,23 +217,24 @@ export default function MyBookingsPage() {
       cell: (b: Booking) => {
         const isUser = user?.role === 'USER';
         return (
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex items-center justify-end gap-1.5 flex-wrap">
             {b.status === 'BOOKED' && (
               <>
                 {isUser ? (
-                  <Button size="sm" variant="danger" onClick={() => handleOpenCancelModal(b)}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Request Cancellation</span>
+                  <Button size="sm" variant="danger" onClick={() => handleOpenCancelModal(b)} className="text-xs px-2 py-1">
+                    <Trash2 className="w-3 h-3" />
+                    <span className="hidden sm:inline">Request Cancellation</span>
+                    <span className="sm:hidden">Cancel</span>
                   </Button>
                 ) : (
-                  <Button size="sm" variant="danger" onClick={() => handleCancelBooking(b.id)}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Cancel</span>
+                  <Button size="sm" variant="danger" onClick={() => handleCancelBooking(b.id)} className="text-xs px-2 py-1">
+                    <Trash2 className="w-3 h-3" />
+                    <span className="hidden sm:inline">Cancel</span>
                   </Button>
                 )}
-                <Button size="sm" variant="secondary" onClick={() => handleOpenModModal(b)}>
-                  <Edit3 className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Reschedule</span>
+                <Button size="sm" variant="secondary" onClick={() => handleOpenModModal(b)} className="text-xs px-2 py-1">
+                  <Edit3 className="w-3 h-3 text-indigo-400" />
+                  <span className="hidden sm:inline">Reschedule</span>
                 </Button>
               </>
             )}
@@ -242,13 +246,14 @@ export default function MyBookingsPage() {
 
   const requestColumns = [
     {
-      header: 'Original Reservation',
+      header: 'Reservation',
+      mobileTitle: true,
       cell: (r: BookingChangeRequest) => (
         <span className="font-semibold text-slate-200">{r.booking?.title || 'Reservation'}</span>
       ),
     },
     {
-      header: 'Proposed Modifications',
+      header: 'Proposed Changes',
       cell: (r: BookingChangeRequest) => {
         const roomName = rooms.find((rm) => rm.id === r.requestedRoomId)?.name;
         return (
@@ -267,6 +272,7 @@ export default function MyBookingsPage() {
           </div>
         );
       },
+      mobileHidden: true,
     },
     {
       header: 'Filed On',
@@ -346,7 +352,7 @@ export default function MyBookingsPage() {
             required
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Propose New Start"
               type="datetime-local"

@@ -73,10 +73,25 @@ export class RentalsController {
     return this.rentalsService.getActiveHolds(userId);
   }
 
+  @Get('my-holds')
+  getMyHolds(@CurrentUser('userId') userId: string) {
+    return this.rentalsService.getMyHolds(userId);
+  }
+
   // RentalSlot CRUD
   @Get('slots')
   getSlots(@Query('roomId') roomId?: string) {
     return this.rentalsService.getSlots(roomId);
+  }
+
+  @Get('available-slots')
+  getAvailableSlots(@Query('roomId') roomId: string, @Query('date') date: string) {
+    return this.rentalsService.getAvailableSlots(roomId, date);
+  }
+
+  @Get('active-hold')
+  getActiveHold(@CurrentUser('userId') userId: string, @Query('roomId') roomId: string) {
+    return this.rentalsService.getActiveHoldForRoom(userId, roomId);
   }
 
   @Post('slots')

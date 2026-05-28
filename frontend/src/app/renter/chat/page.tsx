@@ -52,7 +52,7 @@ export default function RenterChatPage() {
 
   const markAsRead = useCallback(async (participantId: string) => {
     try {
-      await api.post(`/chat/read/${participantId}`);
+      await api.post(`/chat/mark-read/${participantId}`);
       fetchConversations();
     } catch {
       // silently fail
@@ -131,6 +131,30 @@ export default function RenterChatPage() {
               <MessageSquare className="w-5 h-5 text-indigo-400" />
               Conversations
             </CardTitle>
+            <button
+              onClick={async () => {
+                try {
+                  const res = await api.post('/chat/conversations', { participantId: '85a6ea55-4c75-4652-bbe1-7e34e7a8b3a2' });
+                  const conv: Conversation = {
+                    userId: res.data.participant2?.id || '85a6ea55-4c75-4652-bbe1-7e34e7a8b3a2',
+                    userName: res.data.participant2?.name || 'Manager',
+                    userEmail: res.data.participant2?.email || '',
+                    lastMessage: res.data.lastMessage || '',
+                    lastMessageAt: res.data.lastMessageAt || '',
+                    unreadCount: res.data.unreadCount,
+                  };
+                  setConversations(prev => {
+                    const exists = prev.some(c => c.userId === conv.userId);
+                    if (exists) return prev;
+                    return [conv, ...prev];
+                  });
+                  handleSelectConversation(conv);
+                } catch {}
+              }}
+              className="mt-2 w-full py-1.5 px-3 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+            >
+              + New Message
+            </button>
           </CardHeader>
           <CardContent className="p-0 flex-1 overflow-y-auto">
             {isLoading ? (

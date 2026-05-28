@@ -370,6 +370,7 @@ export default function AdminRoomsPage() {
     {
       header: 'Building Name',
       accessor: 'name' as const,
+      mobileTitle: true,
       cell: (b: Building) => (
         <span className="font-bold text-slate-100 flex items-center gap-2">
           <Building2 className="w-4 h-4 text-indigo-400" />
@@ -410,6 +411,7 @@ export default function AdminRoomsPage() {
     {
       header: 'Room Detail',
       accessor: 'name' as const,
+      mobileTitle: true,
       cell: (r: Room) => (
         <div>
           <p className="font-bold text-slate-100">{r.name}</p>
@@ -419,6 +421,7 @@ export default function AdminRoomsPage() {
     },
     {
       header: 'Assigned Building',
+      mobileHidden: true,
       cell: (r: Room) => {
         const b = buildings.find((bl) => bl.id === r.buildingId);
         return <span className="font-semibold text-slate-300">{b?.name || 'Building'}</span>;

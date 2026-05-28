@@ -67,7 +67,7 @@ export default function NotificationsPage() {
   // Mark all as read
   const handleMarkAllAsRead = async () => {
     try {
-      await api.post('/notifications/mark-all-read');
+      await api.patch('/notifications/read-all');
       setNotifications((prev) =>
         prev.map((n) => ({ ...n, read: true }))
       );

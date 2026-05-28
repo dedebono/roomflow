@@ -54,7 +54,7 @@ class WebSocketClient {
     const token = typeof window !== 'undefined' ? localStorage.getItem('roomflow_token') : null;
 
     const opts: any = {
-      path: '/api/ws',
+      path: '/socket.io',
       transports: ['websocket', 'polling'],
       auth: {},
     };

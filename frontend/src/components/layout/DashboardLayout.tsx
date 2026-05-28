@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode, useEffect } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { Sidebar } from './Sidebar';
@@ -22,12 +22,12 @@ export const DashboardLayout = ({
 }: DashboardLayoutProps) => {
   const { user, loading, hasRole } = useAuth();
   const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
     } else if (!loading && user && allowedRoles && !hasRole(allowedRoles)) {
-      // Redirect if user doesn't have sufficient clearance
       if (user.role === 'ADMIN_IT') {
         router.push('/system/users');
       } else if (user.role === 'ROOM_ADMIN') {
@@ -60,20 +60,23 @@ export const DashboardLayout = ({
     );
   }
 
-  // If role check was specified and failed, return null (handled by useEffect redirect)
   if (allowedRoles && !hasRole(allowedRoles)) {
     return null;
   }
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-100 overflow-hidden">
-      {/* Persistent Sidebar */}
-      <Sidebar />
+      {/* Sidebar — desktop persistent, mobile drawer */}
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main Content Pane */}
       <div className="flex-1 flex flex-col min-w-0">
-        <Header title={title} description={description} />
-        <main className="flex-1 overflow-y-auto p-8">
+        <Header
+          title={title}
+          description={description}
+          onMenuClick={() => setSidebarOpen(true)}
+        />
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-8">
           <div className="max-w-7xl mx-auto space-y-6">
             {children}
           </div>

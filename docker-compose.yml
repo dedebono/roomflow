@@ -37,15 +37,19 @@ services:
         condition: service_healthy
     ports:
       - '3000:3000'
+    volumes:
+      - uploads_data:/app/dist/uploads
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: /api
     container_name: roomflow-frontend
     restart: always
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost/api
+      NEXT_PUBLIC_API_URL: /api
     depends_on:
       - backend
     ports:
@@ -65,3 +69,4 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:

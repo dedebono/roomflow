@@ -37,7 +37,7 @@ export default function RenterDashboard() {
       {/* Welcome Section */}
       <Card className="border border-slate-900 glass bg-gradient-to-r from-indigo-950/40 to-slate-900/40">
         <CardContent>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:items-center sm:flex-row gap-4">
             <div className="h-14 w-14 rounded-full bg-slate-800 flex items-center justify-center font-bold text-xl text-indigo-400 border border-indigo-500/20">
               {user?.name?.charAt(0) || 'R'}
             </div>

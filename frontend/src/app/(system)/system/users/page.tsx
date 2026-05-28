@@ -148,6 +148,7 @@ export default function AdminUsersPage() {
     },
     {
       header: 'Registered On',
+      mobileHidden: true,
       cell: (u: User) => (
         <span className="text-xs text-slate-400">{new Date(u.createdAt).toLocaleDateString()}</span>
       ),

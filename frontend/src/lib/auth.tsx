@@ -17,6 +17,27 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Storage helper — localStorage first, sessionStorage fallback for restricted envs
+function getStorage() {
+  if (typeof window === 'undefined') return null;
+  try {
+    localStorage.setItem('__test__', '1');
+    localStorage.removeItem('__test__');
+    return localStorage;
+  } catch {
+    try {
+      sessionStorage.setItem('__test__', '1');
+      sessionStorage.removeItem('__test__');
+      return sessionStorage;
+    } catch {
+      return null;
+    }
+  }
+}
+
+const TOKEN_KEY = 'roomflow_token';
+const USER_KEY  = 'roomflow_user';
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -24,55 +45,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('roomflow_token');
-    const storedUser = localStorage.getItem('roomflow_user');
-
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+    const storage = getStorage();
+    if (storage) {
+      const storedToken = storage.getItem(TOKEN_KEY);
+      const storedUser  = storage.getItem(USER_KEY);
+      if (storedToken && storedUser) {
+        setToken(storedToken);
+        try { setUser(JSON.parse(storedUser)); } catch { /* ignore */ }
+      }
     }
     setLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
-    try {
-      const response = await api.post('/auth/login', { email, password });
-      const { access_token, user: loggedUser } = response.data;
+    const response = await api.post('/auth/login', { email, password });
+    const { access_token, user: loggedUser } = response.data;
 
-      localStorage.setItem('roomflow_token', access_token);
-      localStorage.setItem('roomflow_user', JSON.stringify(loggedUser));
-
-      setToken(access_token);
-      setUser(loggedUser);
-
-      // Redirect based on role
-      if (loggedUser.role === 'ADMIN_IT') {
-        router.push('/system/users');
-      } else if (loggedUser.role === 'ROOM_ADMIN') {
-        router.push('/dashboard');
-      } else if (loggedUser.role === 'RENTER') {
-        router.push('/renter/dashboard');
-      } else {
-        router.push('/dashboard');
-      }
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Login failed');
+    const storage = getStorage();
+    if (storage) {
+      storage.setItem(TOKEN_KEY, access_token);
+      storage.setItem(USER_KEY,  JSON.stringify(loggedUser));
     }
+
+    setToken(access_token);
+    setUser(loggedUser);
+
+    if (loggedUser.role === 'ADMIN_IT')      router.push('/system/users');
+    else if (loggedUser.role === 'ROOM_ADMIN') router.push('/dashboard');
+    else if (loggedUser.role === 'RENTER')     router.push('/renter/dashboard');
+    else                                       router.push('/dashboard');
   };
 
   const register = async (name: string, email: string, password: string) => {
-    try {
-      await api.post('/auth/register', { name, email, password });
-      // Automaticaly log in after registration
-      await login(email, password);
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Registration failed');
-    }
+    await api.post('/auth/register', { name, email, password });
+    await login(email, password);
   };
 
   const logout = () => {
-    localStorage.removeItem('roomflow_token');
-    localStorage.removeItem('roomflow_user');
+    const storage = getStorage();
+    if (storage) { storage.removeItem(TOKEN_KEY); storage.removeItem(USER_KEY); }
     setToken(null);
     setUser(null);
     router.push('/login');
@@ -92,8 +103,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };

@@ -228,6 +228,7 @@ model BookingHold {
   startTime DateTime
   endTime   DateTime
   expiresAt DateTime
+  price     Float             // Rental price for this hold
   status    BookingHoldStatus @default(ACTIVE)
   paymentId String?           @unique
 

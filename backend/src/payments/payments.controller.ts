@@ -8,13 +8,15 @@ import {
   UseInterceptors,
   UploadedFile,
   ParseUUIDPipe,
+  Req,
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
-import { UploadPaymentDto } from './dto/upload-payment.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
+import * as express from 'express';
+import { UploadPaymentDto } from './dto/upload-payment.dto';
 
 @Controller('payments')
 export class PaymentsController {
@@ -24,14 +26,26 @@ export class PaymentsController {
   @UseInterceptors(FileInterceptor('file'))
   upload(
     @CurrentUser('userId') userId: string,
-    @Body() dto: UploadPaymentDto,
+    @Req() req: express.Request,
     @UploadedFile() file: Express.Multer.File,
   ) {
+    let dto: UploadPaymentDto;
+    try {
+      const rawData = req.body.paymentData || req.body;
+      dto = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+    } catch (e) {
+      throw new Error('Invalid payment data format');
+    }
+    
+    if (!dto || !dto.bookingHoldId) {
+      throw new Error('Missing bookingHoldId in payment data');
+    }
+
     return this.paymentsService.upload(
       userId,
       dto.bookingHoldId,
       file,
-      dto.amount,
+      Number(dto.amount),
       dto.description,
     );
   }

@@ -17,6 +17,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'RoomFlow — Premium Multi-Building Booking Engine',
   description: 'Manage and schedule rooms across multiple corporate buildings with intuitive conflict detection, dynamic calendars, and advanced RBAC rules.',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
 };
 
 export default function RootLayout({

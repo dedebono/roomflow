@@ -10,6 +10,19 @@ import { BookingHold, Payment } from '@/types';
 import toast from 'react-hot-toast';
 import { Upload, CreditCard, CheckCircle, Clock, XCircle, FileText, Calendar, DollarSign, Timer } from 'lucide-react';
 
+// Shape returned by /rentals/my-holds
+interface PendingHold {
+  id: string;
+  roomId: string;
+  holdDate: string;
+  startTime: string;
+  endTime: string;
+  expiresAt: string;
+  status: string;
+  room: { name: string };
+  payments: { id: string; status: string; amount: number; createdAt: string }[];
+}
+
 interface PendingPayment {
   id: string;
   bookingHoldId: string;
@@ -41,11 +54,12 @@ function getCountdownPercent(expiresAt: string): number {
 }
 
 export default function RenterPaymentsPage() {
-  const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
+  const [pendingHolds, setPendingHolds] = useState<PendingHold[]>([]);
   const [allPayments, setAllPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [selectedHoldId, setSelectedHoldId] = useState<string>('');
+  const [selectedAmount, setSelectedAmount] = useState<number>(0);
   const [paymentFile, setPaymentFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   // countdownMap: holdId → "Mm Ss" string
@@ -55,20 +69,20 @@ export default function RenterPaymentsPage() {
   const fetchPayments = useCallback(async () => {
     setIsLoading(true);
     try {
-      const holdsRes = await api.get('/rentals/pending-payments');
-      const payments: PendingPayment[] = holdsRes.data;
+      const holdsRes = await api.get('/rentals/my-holds');
+      const holds: PendingHold[] = holdsRes.data;
 
       // Seed initial countdowns
       const initial: Record<string, string> = {};
-      payments.forEach((p) => {
-        if (p.bookingHold?.expiresAt) {
-          initial[p.bookingHoldId] = getCountdown(p.bookingHold.expiresAt);
+      holds.forEach((h) => {
+        if (h.expiresAt) {
+          initial[h.id] = getCountdown(h.expiresAt);
         }
       });
       setCountdowns(initial);
-      setPendingPayments(payments);
+      setPendingHolds(holds);
 
-      const paymentsRes = await api.get('/payments');
+      const paymentsRes = await api.get('/payments/my');
       setAllPayments(paymentsRes.data);
     } catch {
       toast.error('Failed to load payment data');
@@ -85,14 +99,14 @@ export default function RenterPaymentsPage() {
   useEffect(() => {
     const interval = setInterval(() => {
       setTick((t) => t + 1);
-      setPendingPayments((prev) => {
+      setPendingHolds((prev) => {
         const updated: Record<string, string> = {};
         let changed = false;
-        prev.forEach((p) => {
-          if (p.bookingHold?.expiresAt) {
-            const cd = getCountdown(p.bookingHold.expiresAt);
-            updated[p.bookingHoldId] = cd;
-            if (cd !== countdowns[p.bookingHoldId]) changed = true;
+        prev.forEach((h) => {
+          if (h.expiresAt) {
+            const cd = getCountdown(h.expiresAt);
+            updated[h.id] = cd;
+            if (cd !== countdowns[h.id]) changed = true;
           }
         });
         if (changed) setCountdowns(updated);
@@ -104,6 +118,8 @@ export default function RenterPaymentsPage() {
 
   const handleOpenUpload = (holdId: string) => {
     setSelectedHoldId(holdId);
+    const hold = pendingHolds.find((h) => h.id === holdId);
+    setSelectedAmount(hold?.payments?.[0]?.amount ?? 0);
     setPaymentFile(null);
     setIsUploadModalOpen(true);
   };
@@ -117,7 +133,7 @@ export default function RenterPaymentsPage() {
     setIsUploading(true);
     try {
       const formData = new FormData();
-      formData.append('bookingId', selectedHoldId);
+      formData.append('paymentData', JSON.stringify({ bookingHoldId: selectedHoldId, amount: selectedAmount }));
       formData.append('file', paymentFile);
 
       await api.post('/payments/upload', formData, {
@@ -150,10 +166,19 @@ export default function RenterPaymentsPage() {
   };
 
   const formatDate = (dateStr: string) => {
+    if (!dateStr) return '';
     return new Date(dateStr).toLocaleDateString([], {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
+    });
+  };
+
+  const formatTime = (dateStr: string) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
@@ -175,21 +200,24 @@ export default function RenterPaymentsPage() {
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full" />
             </div>
-          ) : pendingPayments.length === 0 ? (
+          ) : pendingHolds.length === 0 ? (
             <div className="text-center py-8 text-slate-500">
               <CheckCircle className="w-12 h-12 mx-auto mb-3 text-emerald-500/50" />
               <p>No pending payments. You're all caught up!</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {pendingPayments.map((payment) => {
-                const countdown = countdowns[payment.bookingHoldId] ?? '';
-                const pct = getCountdownPercent(payment.bookingHold?.expiresAt ?? new Date().toISOString());
+              {pendingHolds.map((hold) => {
+                const countdown = countdowns[hold.id] ?? '';
+                const pct = getCountdownPercent(hold.expiresAt ?? new Date().toISOString());
                 const isExpired = countdown === 'Expired';
+                const latestPayment = hold.payments?.[0];
+                const paymentStatus = latestPayment?.status ?? 'PENDING';
+                const amount = latestPayment?.amount ?? 0;
 
                 return (
                   <div
-                    key={payment.id}
+                    key={hold.id}
                     className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors ${
                       isExpired
                         ? 'border-slate-700/50 bg-slate-800/20'
@@ -208,20 +236,22 @@ export default function RenterPaymentsPage() {
                       </div>
                       <div>
                         <p className="font-bold text-slate-100">
-                          {payment.bookingHold?.room?.name || 'Room'}
+                          {hold.room?.name || 'Room'}
                         </p>
                         <p className="text-sm text-slate-400">
-                          {payment.bookingHold?.holdDate && formatDate(payment.bookingHold.holdDate)} at {payment.bookingHold?.startTime} - {payment.bookingHold?.endTime}
+                          {hold.holdDate && formatDate(hold.holdDate)} at {formatTime(hold.startTime)} - {formatTime(hold.endTime)}
                         </p>
-                        <p className="text-lg font-bold text-amber-400 mt-1">
-                          ${payment.amount}
-                        </p>
+                        {amount > 0 && (
+                          <p className="text-lg font-bold text-amber-400 mt-1">
+                            ${amount}
+                          </p>
+                        )}
                       </div>
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
                       {/* Countdown timer */}
-                      {!isExpired && payment.bookingHold?.expiresAt && (
+                      {!isExpired && hold.expiresAt && (
                         <div className="w-full sm:w-48">
                           <div className="flex items-center justify-between text-xs mb-1">
                             <span className="text-amber-400 font-semibold flex items-center gap-1">
@@ -244,12 +274,12 @@ export default function RenterPaymentsPage() {
                       )}
 
                       <div className="flex items-center gap-2">
-                        {getStatusBadge(payment.status)}
-                        {!isExpired && (
+                        {getStatusBadge(paymentStatus)}
+                        {!isExpired && paymentStatus !== 'APPROVED' && (
                           <Button
                             variant="primary"
                             size="sm"
-                            onClick={() => handleOpenUpload(payment.bookingHoldId)}
+                            onClick={() => handleOpenUpload(hold.id)}
                           >
                             <Upload className="w-4 h-4" />
                             Upload Proof
@@ -307,10 +337,10 @@ export default function RenterPaymentsPage() {
                     </div>
                     <div>
                       <p className="font-semibold text-slate-200">
-                        {payment.room?.name || 'Room Rental'}
+                        {(payment as any).booking?.room?.name || (payment as any).booking?.title || 'Room Rental'}
                       </p>
                       <p className="text-xs text-slate-500">
-                        {formatDate(payment.date)} at {payment.time}
+                        {formatDate((payment as any).booking?.startTime)} at {formatTime((payment as any).booking?.startTime)}
                       </p>
                     </div>
                   </div>

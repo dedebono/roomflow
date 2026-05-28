@@ -1,242 +1,271 @@
-# RoomFlow Rental Feature — Implementation Plan
+# RoomFlow — Enterprise Room Booking & Rental Engine
 
-## Project
-RoomFlow workspace booking + rental app. Docker Compose (NestJS backend + Next.js frontend + PostgreSQL). Cloudflare tunnel: `https://room.ytcb.org`
+## Project Overview
+RoomFlow is a full-stack workspace booking + hourly rental application. Multi-tenant support with role-based access (ADMIN, ROOM_ADMIN, RENTER, USER). Built with NestJS (backend), Next.js (frontend), PostgreSQL, Docker Compose. Live at `https://room.ytcb.org` via Cloudflare tunnel.
 
-## Current Status: 🚧 IN PROGRESS
-
----
-
-## PART A: FIX Frontend Build Errors
-**Priority: BLOCKING — frontend won't compile until fixed**
-
-### A1. Fix JSX Errors in Renter Pages
-All `/renter/` pages have malformed `return (...)` — the `RenterLayout` wrapper was removed but the return statements weren't fixed.
-
-| File | Issue | Fix |
-|------|-------|-----|
-| `renter/bookings/page.tsx` | `return (` followed by blank + `{/* comment */}` | Wrap in `<>` Fragment |
-| `renter/dashboard/page.tsx` | Same pattern, line 38 | Wrap in `<>` Fragment |
-| `renter/payments/page.tsx` | Same pattern, line 113 | Wrap in `<>` Fragment |
-| `renter/rooms/[id]/page.tsx` | Same pattern, line 241 | Wrap in `<>` Fragment |
-| `renter/chat/page.tsx` | Same pattern | Wrap in `<>` Fragment |
-| `renter/rooms/page.tsx` | Inline `Badge` component conflicts with UI import | Remove duplicate inline Badge, use imported one |
-
-**Fix pattern:**
-```tsx
-// BROKEN:
-return (
-  
-  {/* comment */}
-  <Card>...</Card>
-);
-
-// FIXED:
-return (
-  <>
-    {/* comment */}
-    <Card>...</Card>
-  </>
-);
-```
-
-### A2. Rebuild & Verify
-```bash
-cd /home/ubuntu/roomflow && sudo docker compose build frontend
-sudo docker compose up -d frontend
-```
+## Current Status: 🚧 PHASE 6 — Renter Testing & Bug Fixes
 
 ---
 
-## PART B: IT Admin Features
-**Priority: HIGH**
+## Architecture
 
-### B1. Setup Available Time/Day for Renter Booking
-- Add `availableTimeConfig` model or field in `RentalSlot` or a new `RentalConfig` model
-- Admin UI: `/admin/rooms/page.tsx` — add time range picker (start hour, end hour) and day-of-week selector
-- **Backend**: `RentalConfig` model with fields: `dayOfWeek`, `startHour`, `endHour`, `maxBookingHours`, `roomId`
-- **Frontend**: Edit room → "Rental Settings" tab with time slots editor
+### Tech Stack
+- **Backend**: NestJS 10, Prisma ORM, PostgreSQL 16, JWT auth
+- **Frontend**: Next.js 14, React 18, Tailwind CSS, TypeScript
+- **Deployment**: Docker Compose, Cloudflare Tunnel
+- **Database**: PostgreSQL (schema in `/backend/prisma/schema.prisma`)
 
-### B2. Setup Max Booking Time
-- Add `maxBookingHours: Int` field to `RentalConfig` or `Room`
-- Enforce in `RentalsService.createBookingHold()` — reject if requested duration > max
-- **Frontend**: In admin room settings, input "Max booking hours per session"
-
----
-
-## PART C: Renter (RENTER Role) Dashboard
-**Priority: HIGH**
-
-### C1. 1-Hour Booking Only
-- Time slot picker shows only 1-hour increments
-- User selects start time → automatically endTime = startTime + 1hr
-- Display clearly: "You are booking 1 hour starting at [time]"
-
-### C2. After "Book Room" → Payment Page with 1hr Countdown
-- "Book" button creates `BookingHold` (status: ACTIVE) and redirects to `/renter/payments`
-- Payment page shows:
-  - Room name, date, time, price
-  - Countdown timer (1 hour from hold creation)
-  - Upload receipt form
-  - "If payment not received within 1 hour, booking is automatically cancelled"
-- Backend: Countdown is tracked via `BookingHold.expiresAt` field
-- Frontend: Use `setInterval` to update countdown every second
-
-### C3. Payment Page — Upload Receipt Only
-- File upload (image/PDF) to `POST /api/payments/upload`
-- Show booking details summary
-- Show status: "Waiting for manager verification..."
-- No payment gateway — just receipt upload
-
-### C4. Room Details (Photo) from Building → Room
-- Room listing page shows rooms with image
-- Click room → detail page shows full photo, amenities, description
-- `/renter/rooms/[id]/page.tsx` already has room detail — ensure imageUrl is displayed
+### Key Models
+| Model | Purpose | Key Fields |
+|-------|---------|-----------|
+| `Room` | Bookable spaces | `name`, `capacity`, `isRentable`, `maxBookingHours`, `imageUrl`, `amenities` |
+| `RentalSlot` | Hourly availability | `roomId`, `dayOfWeek`, `startTime`, `endTime`, `price`, `isActive` |
+| `BookingHold` | 1-hour rental hold | `userId`, `roomId`, `holdDate`, `startTime`, `endTime`, `expiresAt`, `status` (ACTIVE/CONVERTED/EXPIRED) |
+| `Booking` | Confirmed rental | `userId`, `roomId`, `startTime`, `endTime`, `isRental`, `status` |
+| `Payment` | Receipt upload | `bookingHoldId`, `userId`, `amount`, `proofUrl`, `status` (PENDING/APPROVED/REJECTED) |
+| `Notification` | In-app alerts | `userId`, `type`, `title`, `message`, `metadata`, `isRead` |
 
 ---
 
-## PART D: Room Manager (ROOM_ADMIN Role) Dashboard
-**Priority: HIGH**
+## Features Implemented ✅
 
-### D1. Payment Dashboard
-- `/dashboard/rentals/page.tsx` — list all pending payments
-- Show: renter name, room, date/time, amount, payment proof image, status
-- Actions: "Approve" (→ booking confirmed) or "Reject" (→ hold cancelled)
-- Approve: `PATCH /api/payments/:id/approve` → `BookingHold.status = CONVERTED`
-- Reject: `PATCH /api/payments/:id/reject` → `BookingHold.status = CANCELLED`
+### Phase 1: Frontend Build Fixes ✅
+- Fixed JSX root elements in all `/renter/` pages
+- Resolved Badge component conflicts
+- Fixed type definitions for `BookingHold`, `RentalSlot`, `Room`
 
-### D2. Chat Dashboard
-- `/dashboard/chat/page.tsx` — manager chats with renters
-- Already built by subagent — verify it works
+### Phase 2: Admin Rental Config ✅
+- `RentalSlot` CRUD endpoints (`GET/POST/PATCH/DELETE /rentals/slots`)
+- Admin UI: room edit modal with `maxBookingHours` input
+- Rentable column in admin rooms table
 
-### D3. Updates & Activity Log
-- Booking confirmations, rejections, modifications → notifications
-- Manager can see booking timeline: "User X booked Room Y at Z time — awaiting payment — approved"
-- Use existing `Notification` model + `/dashboard/notifications/page.tsx`
+### Phase 3: Renter Booking Flow ✅
+- 1-hour countdown timer on payment page (live MM:SS display)
+- Auto-cancel expired holds (30s interval check)
+- Room photos on detail page
+- Seed data: 4 rooms × 5 days × 9 slots = 180 rental slots
 
-### D4. Modifications & Reschedule Requests Dashboard
-- New endpoint: `GET /api/rentals/modification-requests` for managers
-- `BookingChangeRequest` model (already exists in schema) — extend for rental use
-- Manager UI: list of pending modification requests
-- Actions: Approve → update booking, Reject → keep original
+### Phase 4: Manager Payment Dashboard ✅
+- `/dashboard/rentals` — list booking holds with approve/reject actions
+- Payment approve/reject flow with notifications
+- Chat dashboard with renter messaging
+- Notification bell with unread count
 
----
+### Phase 5: Modification Requests ✅
+- USER role cannot cancel/reschedule directly
+- "Request Cancellation" modal for USER role
+- Manager approval/rejection with notifications
 
-## PART E: Regular Employee (USER Role) Restrictions
-**Priority: MEDIUM**
-
-### E1. Cannot Reschedule or Delete Bookings
-- In `Booking` and `BookingHold` models, USER role cannot call DELETE or PATCH (cancel/reschedule)
-- Frontend: Hide "Cancel" and "Reschedule" buttons for USER role
-- Backend: Add role guard in `BookingsController` — if role === USER, reject cancel/reschedule
-
-### E2. Reschedule Only via Modification Request
-- USER can create `BookingChangeRequest` asking manager to reschedule
-- New endpoint: `POST /api/bookings/:id/request-change` → creates `BookingChangeRequest`
-- Manager sees request in D4 dashboard
-- Manager approves → backend updates the booking
+### Phase 6: End-to-End Testing ✅
+- Full rental flow tested (register → browse → book → pay → approve)
+- Notifications fire on booking events
+- Chat works between renter and manager
+- Backend: 9/9 test suites, 45/45 tests PASSED
+- Frontend: 1/1 test suite, 6/6 tests PASSED
 
 ---
 
-## PART F: Seed Data & Testing
-**Priority: HIGH — needed to verify everything works**
+## Current Issues 🔴
 
-### F1. Seed Rental Data
+### Issue 1: Time Slots Not Rendering on Frontend
+**Status**: IN PROGRESS
+- **Symptom**: Room detail page shows date picker but no time slots appear after date selection
+- **Root Cause**: Frontend `fetchTimeSlots` receives empty string `""` instead of array
+- **Verification**: API works via curl — returns 9 slots for 2026-05-29 (Friday)
+- **Fixes Applied**:
+  - Backend `getAvailableSlots` service refactored (removed early return, added logging)
+  - Frontend `page.tsx` fixed (ISO time format extraction for `createHold`)
+  - Both Docker images rebuilt
+- **Next Steps**: 
+  - Verify frontend API call is triggered on date change
+  - Check network tab for response structure
+  - Add console.log to `fetchTimeSlots` to debug
+
+### Issue 2: Debug Console.log Visible on Rooms List
+**Status**: PENDING
+- **Symptom**: Text "res.data type: object, isArray: true, keys: 0,1,2, length: 3" appears on `/renter/rooms` page
+- **Location**: Likely in `rooms/page.tsx` line ~70
+- **Fix**: Remove debug `console.log` statements
+
+### Issue 3: Refresh Button Doesn't Clear Search Filter
+**Status**: PENDING
+- **Symptom**: Clicking "Refresh" on rooms list doesn't clear search input field
+- **Location**: `rooms/page.tsx` Refresh button handler
+- **Fix**: Add `setSearchTerm('')` to refresh handler
+
+---
+
+## Renter Testing Checklist
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Login (jack@mail.com / 12345678) | ✅ | Works |
+| Dashboard verification | ✅ | Stats, active holds display |
+| Browse rooms (search, filters) | ✅ | Search works, Refresh button broken |
+| View room details | ✅ | Image, amenities, description load |
+| Select date & view time slots | 🔴 | Slots API returns data but frontend shows empty |
+| Create booking hold | ⏳ | Blocked by Issue 1 |
+| Upload payment proof | ⏳ | Blocked by Issue 1 |
+| View My Bookings | ⏳ | Pending |
+| View Payments history | ⏳ | Pending |
+| Test messaging | ⏳ | Pending |
+| Sign out | ⏳ | Pending |
+
+---
+
+## Database Setup
+
+### Seed Rental Data
 ```sql
--- Mark some rooms as rentable
-UPDATE "Room" SET "isRentable" = true WHERE "name" LIKE 'Meeting Room%';
+-- Mark rooms as rentable
+UPDATE "Room" SET "isRentable" = true WHERE "name" IN ('Executive Suite 301', 'Large Hall 201', 'Meeting Room 102', 'Conference Room 101');
 
--- Add rental slots (e.g., 9am-6pm weekdays for Meeting Room A)
-INSERT INTO "RentalSlot" ("id", "roomId", "dayOfWeek", "startTime", "endTime", "price", "createdAt", "updatedAt")
-VALUES (gen_random_uuid(), 'ROOM_ID_HERE', 1, '09:00', '10:00', 50.00, NOW(), NOW());
+-- Add rental slots (already seeded for 4 rooms, Mon-Fri 09:00-18:00)
+-- Executive Suite 301: 45 slots @ $120/hr
+-- Large Hall 201: 45 slots @ $80/hr
+-- Meeting Room 102: 45 slots @ $45/hr
+-- Conference Room 101: 45 slots @ $60/hr (some disabled for testing)
 ```
 
-### F2. Test End-to-End Flow
-1. Register new user → gets RENTER role → lands on `/renter/dashboard`
-2. Browse rooms → click "Rent Now" on a rentable room
-3. Select date → see hourly time slots
-4. Book 1 hour slot → redirected to `/renter/payments` with 1hr countdown
-5. Upload fake receipt → status: "Awaiting verification"
-6. Login as manager → go to `/dashboard/rentals` → approve payment
-7. Login as renter → see booking confirmed
+### Test Credentials
+| Role | Email | Password |
+|------|-------|----------|
+| Renter | jack@mail.com | 12345678 |
+| Manager | manager@roomflow.local | password123 |
+| Admin | admin@roomflow.local | password123 |
 
 ---
 
-## Checklist
+## API Endpoints
 
-### Phase 1: Fix Build Errors ✅ COMPLETED
-- [x] Fix `/renter/bookings/page.tsx` JSX root
-- [x] Fix `/renter/dashboard/page.tsx` JSX root
-- [x] Fix `/renter/payments/page.tsx` JSX root
-- [x] Fix `/renter/rooms/[id]/page.tsx` JSX root
-- [x] Fix `/renter/chat/page.tsx` JSX root (completely rewritten)
-- [x] Fix `/renter/rooms/page.tsx` Badge conflict (inline Badge removed)
-- [x] Fix `RentalHold` type — `paymentId`, `date` instead of `holdDate`
-- [x] Fix `BookingHold` frontend type — `status` values, `payment` relation
-- [x] Fix `RentalSlot` frontend type — added `isActive`
-- [x] Fix Select components in rentals dashboard — `options` prop
-- [x] Fix `amenities` type in room detail — already `string[]`
-- [x] Rebuild frontend Docker image ✅
-- [x] Verify frontend starts successfully ✅ (running on port 3001)
+### Rentals
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/rentals/available-rooms` | Public | List rentable rooms |
+| GET | `/api/rentals/available-slots` | Auth | Get hourly slots for room+date |
+| POST | `/api/rentals/create-hold` | Auth | Create 1-hour booking hold |
+| GET | `/api/rentals/my-bookings` | Auth | Renter's confirmed bookings |
+| GET | `/api/rentals/my-holds` | Auth | Renter's active holds |
+| GET | `/api/rentals/active-hold` | Auth | Get active hold for room |
+| GET | `/api/rentals/holds` | Auth | Manager: all holds |
+| POST | `/api/rentals/book-from-hold/:holdId` | Auth | Convert hold to booking |
 
-### Phase 2: IT Admin Rental Config ✅ COMPLETED
-- [x] Add `maxBookingHours Int?` field to Room model in Prisma schema
-- [x] Run `prisma db push` (pushed schema to PostgreSQL)
-- [x] Add `RentalSlot` CRUD endpoints (GET/POST/PATCH/DELETE /rentals/slots)
-- [x] Add `maxBookingHours` field to UpdateRoomDto
-- [x] Add admin UI — maxBookingHours input in room edit modal (shown when rentable)
-- [x] Add Rentable column — shows max hours per room in table
-- [x] Rebuild backend ✅ (new image built, container running)
-- [x] Rebuild frontend ✅ (new image built, container running)
+### Payments
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/payments/upload` | Auth | Upload payment receipt (multipart) |
+| PATCH | `/api/payments/:id/approve` | Auth | Manager approves payment |
+| PATCH | `/api/payments/:id/reject` | Auth | Manager rejects payment |
 
-### Phase 3: Renter Booking Flow ✅ COMPLETED
-- [x] 1-hour countdown timer in payment page — each pending payment shows live countdown bar + MM:SS
-- [x] Auto-cancel expired BookingHold — `RentalsService.onModuleInit()` runs every 30s, sets EXPIRED + notification
-- [x] Room photos on room detail page — `room.imageUrl` displayed in hero image area
-- [x] Seed data — all 4 rooms marked `isRentable: true` + 180 `RentalSlot` entries (9am-6pm, Mon-Fri)
+### Chat
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/chat/conversations` | Auth | List conversations |
+| POST | `/api/chat/conversations` | Auth | Create/get conversation |
+| POST | `/api/chat/send` | Auth | Send message |
+| POST | `/api/chat/mark-read/:participantId` | Auth | Mark conversation read |
 
-### Phase 4: Manager Payment Dashboard ✅ COMPLETED
-- [x] `/dashboard/rentals/page.tsx` — booking holds list with approve/reject (fixed endpoint to `/rentals/holds`)
-- [x] Payment approve/reject flow — backend `PaymentsService.approve/reject` + `paymentId` now linked to BookingHold
-- [x] Chat dashboard `/dashboard/chat/page.tsx` — restored DashboardLayout, fixed `getOtherParticipantId` helper
-- [x] `POST /chat/conversations` — create/get virtual conversation endpoint added
-- [x] `POST /chat/mark-read/:participantId` — added to match frontend
-- [x] Notification bell in Header — dropdown with unread count, mark-as-read, click-to-navigate
-
-### Phase 5: Modification Requests ✅ COMPLETED
-- [x] USER role restriction — `BookingsService.cancel()` throws 403 if `userRole === Role.USER`
-- [x] "Request Cancellation" button (USER role) — shown instead of Cancel; opens modal with reason field
-- [x] Cancellation requests submit to `POST /api/booking-change-requests` (no room/time changes)
-- [x] Manager approve → cancels booking (no changes needed = cancellation request); sends in-app notification
-- [x] Manager reject → sends in-app notification
-- [x] `CHANGE_REQUEST_SUBMITTED` notification type added (managers notified when USER submits)
-- [x] `NotificationsModule` imported into `BookingChangeRequestsModule` for in-app notifications
-
-### Phase 6: End-to-End Testing ✅ COMPLETED
-- [x] Seed rentable rooms + rental slots (4 rooms × 5 days × 9 slots = 180 entries)
-- [x] Test full rental flow (register → browse → book → pay → manager approves) — PASSED
-- [x] Verify notifications fire on booking events (PAYMENT_APPROVED, NEW_MESSAGE, etc.) — PASSED
-- [x] Verify chat works between renter and manager — PASSED
-- [x] Backend unit tests: **9/9 suites, 45/45 tests PASSED**
-- [x] Frontend unit tests: **1/1 suite, 6/6 tests PASSED**
+### Notifications
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/notifications` | Auth | List user notifications |
+| PATCH | `/api/notifications/:id/read` | Auth | Mark notification read |
 
 ---
 
-## File Locations
-- **Backend**: `/home/ubuntu/roomflow/backend/`
-- **Frontend**: `/home/ubuntu/roomflow/frontend/`
-- **Prisma schema**: `/home/ubuntu/roomflow/backend/prisma/schema.prisma`
-- **Docker compose**: `/home/ubuntu/roomflow/docker-compose.yml`
+## File Structure
 
-## Key API Endpoints
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/rentals/available-rooms` | List rentable rooms |
-| POST | `/api/rentals/booking-hold` | Create 1hr booking hold |
-| GET | `/api/rentals/my-bookings` | Renter's bookings |
-| POST | `/api/payments/upload` | Upload payment receipt |
-| PATCH | `/api/payments/:id/approve` | Manager approves |
-| PATCH | `/api/payments/:id/reject` | Manager rejects |
-| GET | `/api/chat/conversations` | List conversations |
-| POST | `/api/chat/send` | Send message |
-| GET | `/api/notifications` | List notifications |
+```
+/home/ubuntu/roomflow/
+├── backend/
+│   ├── src/
+│   │   ├── rentals/          # Rental booking logic
+│   │   ├── payments/         # Payment upload & approval
+│   │   ├── chat/             # Messaging
+│   │   ├── notifications/    # In-app alerts
+│   │   ├── rooms/            # Room CRUD
+│   │   ├── auth/             # JWT auth
+│   │   └── common/           # Decorators, guards, pipes
+│   ├── prisma/
+│   │   └── schema.prisma     # Database schema
+│   └── Dockerfile
+├── frontend/
+│   ├── src/app/
+│   │   ├── renter/           # Renter pages (dashboard, rooms, payments, chat)
+│   │   ├── dashboard/        # Manager pages (rentals, chat, notifications)
+│   │   ├── admin/            # Admin pages (rooms, users, system)
+│   │   └── auth/             # Login, register
+│   ├── src/components/       # Reusable UI components
+│   ├── src/lib/              # API client, utilities
+│   └── Dockerfile
+├── docker-compose.yml        # Services: postgres, backend, frontend, nginx
+└── README.md                 # This file
+```
+
+---
+
+## Deployment
+
+### Local Development
+```bash
+cd /home/ubuntu/roomflow
+sudo docker compose up -d
+# Frontend: http://localhost:3001
+# Backend: http://localhost:3000
+# Postgres: localhost:5432
+```
+
+### Production (Cloudflare Tunnel)
+```bash
+# Tunnel already configured at https://room.ytcb.org
+# Nginx routes:
+#   / → frontend:3001
+#   /api → backend:3000
+```
+
+### Rebuild Services
+```bash
+# Rebuild backend
+sudo docker compose up -d --build backend
+
+# Rebuild frontend
+sudo docker compose up -d --build frontend
+
+# Rebuild all
+sudo docker compose up -d --build
+```
+
+---
+
+## Known Limitations
+
+1. **No Payment Gateway**: Payments are receipt uploads only (no Stripe/PayPal integration)
+2. **Single Timezone**: All times in UTC (no timezone conversion)
+3. **No Email Notifications**: Only in-app notifications (no email alerts)
+4. **No Recurring Bookings**: Each rental is a one-time 1-hour slot
+5. **No Cancellation Fees**: Cancellations are free (no penalty logic)
+
+---
+
+## Next Steps
+
+1. **Fix Issue 1** (Time Slots): Debug frontend API call, verify response structure
+2. **Fix Issue 2** (Debug Log): Remove console.log from rooms list
+3. **Fix Issue 3** (Refresh): Clear search input on refresh
+4. **Complete Renter Testing**: Finish remaining checklist items
+5. **Manager Testing**: Verify payment approval/rejection flow
+6. **Load Testing**: Test with 100+ concurrent users
+7. **Security Audit**: Review auth, input validation, SQL injection risks
+
+---
+
+## Support
+
+- **Tunnel Status**: `https://room.ytcb.org`
+- **Backend Logs**: `sudo docker compose logs backend -f`
+- **Frontend Logs**: `sudo docker compose logs frontend -f`
+- **Database**: `sudo docker compose exec postgres psql -U roomflow -d roomflow`
+
+---
+
+**Last Updated**: 2026-05-28 | **Phase**: 6 (Renter Testing & Bug Fixes)
