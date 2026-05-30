@@ -51,6 +51,7 @@ export interface Booking {
   startTime: string;
   endTime: string;
   status: BookingStatus;
+  isRental?: boolean; // Add isRental
   createdAt: string;
   updatedAt: string;
 }
@@ -107,12 +108,10 @@ export interface Payment {
   bookingHold?: BookingHold;
   userId: string;
   user?: Partial<User>;
-  roomId: string;
-  room?: Room;
+  bookingId?: string; // Add bookingId
+  booking?: Booking;  // Add booking
   amount: number;
-  date: string;
-  time: string;
-  image?: string;
+  fileUrl?: string; // Add fileUrl
   status: PaymentStatus;
   notes?: string;
   createdAt: string;

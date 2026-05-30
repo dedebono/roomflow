@@ -58,13 +58,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (email: string, password: string) => {
+    console.log('[auth] attempting login for:', email);
     const response = await api.post('/auth/login', { email, password });
     const { access_token, user: loggedUser } = response.data;
+    console.log('[auth] login response:', response.status, response.data);
 
     const storage = getStorage();
     if (storage) {
       storage.setItem(TOKEN_KEY, access_token);
       storage.setItem(USER_KEY,  JSON.stringify(loggedUser));
+      console.log('[auth] token persisted to storage:', access_token.slice(0, 20) + '...');
+    } else {
+      console.warn('[auth] storage unavailable, token NOT persisted');
     }
 
     setToken(access_token);

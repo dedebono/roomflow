@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import api from '@/lib/api';
+import api, { getImageUrl } from '@/lib/api';
 import { Room } from '@/types';
 import toast from 'react-hot-toast';
 import { Calendar, MapPin, Users } from 'lucide-react';
@@ -38,12 +38,13 @@ export default function AvailableRoomsPage() {
     fetchAvailableRooms();
   }, []);
 
-  const fetchAvailableRooms = async () => {
+  const fetchAvailableRooms = async (date?: string) => {
     setLoading(true);
     try {
       const params: any = {};
-      if (dateFilter) {
-        params.date = dateFilter;
+      const dateToUse = date !== undefined ? date : dateFilter;
+      if (dateToUse) {
+        params.date = dateToUse;
       }
       const res = await api.get(`/rentals/available-rooms?_=${Date.now()}`, { params });
       setDebugInfo(`res.data type: ${typeof res.data}, isArray: ${Array.isArray(res.data)}, keys: ${res.data && typeof res.data === 'object' ? Object.keys(res.data).join(',') : 'N/A'}, length: ${Array.isArray(res.data) ? res.data.length : 'N/A'}`);
@@ -64,7 +65,7 @@ export default function AvailableRoomsPage() {
                 .filter(Boolean)
             : [],
         imageUrl: room.imageUrl
-          ? (room.imageUrl.startsWith('http') ? room.imageUrl : `${window.location.origin}${room.imageUrl}`)
+          ? getImageUrl(room.imageUrl)
           : undefined,
       }));
       setRooms(normalised);
@@ -116,8 +117,8 @@ export default function AvailableRoomsPage() {
             </div>
             <Button variant="secondary" onClick={() => {
               setSearchTerm('');
+              fetchAvailableRooms(dateFilter);
               setDateFilter('');
-              fetchAvailableRooms();
             }}>
               Refresh
             </Button>

@@ -23,12 +23,12 @@ export default function EmployeeDashboard() {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [selectedBuildingId, setSelectedBuildingId] = useState<string>('');
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [selectedRoomId, setSelectedRoomId] = useState<string>('');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
 
   // Booking Modal Form State
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
-  const [selectedRoomId, setSelectedRoomId] = useState('');
   const [bookingTitle, setBookingTitle] = useState('');
   const [bookingNotes, setBookingNotes] = useState('');
   const [bookingStart, setBookingStart] = useState('');
@@ -51,35 +51,50 @@ export default function EmployeeDashboard() {
     fetchBuildings();
   }, []);
 
-  // Fetch rooms & bookings when selectedBuildingId changes
-  const loadBuildingData = useCallback(async () => {
+  // Fetch rooms when building changes
+  const loadRooms = useCallback(async () => {
     if (!selectedBuildingId) return;
-
     try {
-      // 1. Fetch Rooms in Building
       const roomsRes = await api.get(`/rooms?buildingId=${selectedBuildingId}`);
       setRooms(roomsRes.data);
+      // Auto-select first room
+      if (roomsRes.data.length > 0) {
+        setSelectedRoomId(roomsRes.data[0].id);
+      }
+    } catch {
+      toast.error('Failed to load rooms');
+    }
+  }, [selectedBuildingId]);
 
-      // 2. Fetch all bookings
-      const bookingsRes = await api.get('/bookings');
-      const allBookings: Booking[] = bookingsRes.data;
+  // Fetch bookings for the selected room
+  const loadRoomBookings = useCallback(async () => {
+    if (!selectedRoomId) {
+      setCalendarEvents([]);
+      setBookings([]);
+      return;
+    }
+    try {
+      const bookingsRes = await api.get('/bookings?roomId=' + selectedRoomId);
+      const roomBookings: Booking[] = bookingsRes.data;
+      setBookings(roomBookings);
 
-      // Filter bookings that belong to the active building's rooms
-      const activeRoomsIds = roomsRes.data.map((r: Room) => r.id);
-      const buildingBookings = allBookings.filter((b) => activeRoomsIds.includes(b.roomId));
-      setBookings(buildingBookings);
+      const room = rooms.find((r: Room) => r.id === selectedRoomId);
+      const roomName = room?.name || 'Room';
 
-      // 3. Map bookings to FullCalendar events
-      const events = buildingBookings.map((b) => {
-        const roomName = roomsRes.data.find((r: Room) => r.id === b.roomId)?.name || 'Room';
+      // Map bookings to FullCalendar events
+      const events = roomBookings.map((b) => {
+        const color = b.isRental ? '#ef4444' : '#3b82f6';
+        const startStr = typeof b.startTime === 'string' ? b.startTime : new Date(b.startTime).toISOString();
+        const endStr = typeof b.endTime === 'string' ? b.endTime : new Date(b.endTime).toISOString();
+
         return {
           id: b.id,
-          title: `[${roomName}] ${b.title}`,
-          start: b.startTime,
-          end: b.endTime,
-          backgroundColor: '#4f46e5',
-          borderColor: '#6366f1',
-          textColor: '#e0e7ff',
+          title: b.title,
+          start: startStr,
+          end: endStr,
+          backgroundColor: color,
+          borderColor: b.isRental ? '#f87171' : '#60a5fa',
+          textColor: '#ffffff',
           extendedProps: {
             booking: b,
             roomName,
@@ -87,18 +102,31 @@ export default function EmployeeDashboard() {
         };
       });
       setCalendarEvents(events);
-    } catch (err: any) {
-      toast.error('Failed to fetch rooms and bookings data');
+    } catch {
+      toast.error('Failed to fetch bookings');
     }
-  }, [selectedBuildingId]);
+  }, [selectedRoomId, rooms]);
 
   useEffect(() => {
-    loadBuildingData();
-  }, [loadBuildingData]);
+    loadRooms();
+  }, [loadRooms]);
+
+  useEffect(() => {
+    if (selectedRoomId) {
+      loadRoomBookings();
+    }
+  }, [loadRoomBookings]);
 
   // Handle building dropdown change
   const handleBuildingChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedBuildingId(e.target.value);
+    setSelectedRoomId('');
+    setCalendarEvents([]);
+  };
+
+  // Handle room dropdown change
+  const handleRoomChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedRoomId(e.target.value);
   };
 
   // Handle clicking/dragging a slot on the calendar
@@ -119,12 +147,9 @@ export default function EmployeeDashboard() {
     setBookingTitle('');
     setBookingNotes('');
     
-    // Default to the first active room
-    const activeRooms = rooms.filter((r) => r.status === 'ACTIVE');
-    if (activeRooms.length > 0) {
-      setSelectedRoomId(activeRooms[0].id);
-    } else {
-      setSelectedRoomId('');
+    // Default to the currently selected calendar room
+    if (selectedRoomId) {
+      setSelectedRoomId(selectedRoomId);
     }
 
     setIsBookModalOpen(true);
@@ -191,7 +216,7 @@ export default function EmployeeDashboard() {
 
       toast.success('Room successfully booked!');
       setIsBookModalOpen(false);
-      loadBuildingData();
+      loadRoomBookings();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Conflict detected! Try another time slot.');
     } finally {
@@ -202,49 +227,61 @@ export default function EmployeeDashboard() {
   return (
     <DashboardLayout title="Employee Portal" description="Browse meeting rooms, view schedules, and book instantly.">
       {/* Filters & Information Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <Card className="lg:col-span-1 border border-slate-900 glass flex flex-col justify-between">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="border border-slate-900 glass">
           <CardHeader className="p-0 mb-4">
             <CardTitle className="flex items-center gap-2">
               <Building2 className="w-5 h-5 text-indigo-400" />
               <span>Select Location</span>
             </CardTitle>
-            <CardDescription>Choose which building calendar you want to browse</CardDescription>
+            <CardDescription>Choose which room calendar to browse</CardDescription>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="p-0 space-y-3">
             <Select
               options={buildings.map((b) => ({ value: b.id, label: b.name }))}
               value={selectedBuildingId}
               onChange={handleBuildingChange}
               placeholder="Select Building..."
             />
+            {selectedBuildingId && (
+              <Select
+                options={rooms.map((r) => ({ value: r.id, label: `${r.name} (${r.status})` }))}
+                value={selectedRoomId}
+                onChange={handleRoomChange}
+                placeholder="Select Room..."
+              />
+            )}
           </CardContent>
         </Card>
 
         {/* Quick Room Stats Card */}
         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4">
-          {rooms.slice(0, 3).map((room) => (
-            <Card key={room.id} className="border border-slate-900 glass bg-slate-900/10">
-              <CardHeader className="p-0 flex items-center justify-between">
-                <CardTitle className="text-sm truncate pr-2">{room.name}</CardTitle>
-                <Badge variant={room.status === 'ACTIVE' ? 'success' : 'warning'}>
-                  {room.status}
-                </Badge>
-              </CardHeader>
-              <CardContent className="p-0 mt-3 flex items-center justify-between text-xs text-slate-400">
-                <span className="flex items-center gap-1">
-                  <Users className="w-3.5 h-3.5 text-indigo-400" />
-                  Max: {room.capacity} people
-                </span>
-                <span className="flex items-center gap-1 font-medium italic truncate max-w-[150px]">
-                  {room.description || 'General Meeting'}
-                </span>
-              </CardContent>
-            </Card>
-          ))}
-          {rooms.length === 0 && (
+          {selectedRoomId && rooms.find((r: Room) => r.id === selectedRoomId) ? (
+            (() => {
+              const room = rooms.find((r: Room) => r.id === selectedRoomId)!;
+              return (
+                <Card key={room.id} className="border border-indigo-500/30 bg-indigo-500/5 glass">
+                  <CardHeader className="p-0 flex items-center justify-between">
+                    <CardTitle className="text-sm truncate pr-2">{room.name}</CardTitle>
+                    <Badge variant={room.status === 'ACTIVE' ? 'success' : 'warning'}>
+                      {room.status}
+                    </Badge>
+                  </CardHeader>
+                  <CardContent className="p-0 mt-3 flex items-center justify-between text-xs text-slate-400">
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5 text-indigo-400" />
+                      Max: {room.capacity} people
+                    </span>
+                    <span className="flex items-center gap-1 font-medium italic truncate max-w-[150px]">
+                      {room.description || 'General Meeting'}
+                    </span>
+                  </CardContent>
+                </Card>
+              );
+            })()
+          ) : (
             <div className="col-span-3 flex items-center justify-center p-8 border border-slate-900/60 rounded-xl glass text-slate-500 text-sm font-medium">
-              No rooms configured in this building yet.
+              Select a room to view its calendar.
             </div>
           )}
         </div>
@@ -261,6 +298,17 @@ export default function EmployeeDashboard() {
           onDateSelect={handleDateSelect}
           onEventClick={handleEventClick}
         />
+        {/* Color Legend */}
+        <div className="flex items-center gap-6 px-2 text-xs text-slate-400">
+          <span className="flex items-center gap-2">
+            <span className="inline-block w-3 h-3 rounded bg-blue-500 border border-blue-400"></span>
+            Employee Booking
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="inline-block w-3 h-3 rounded bg-red-500 border border-red-400"></span>
+            Rental Booking
+          </span>
+        </div>
       </div>
 
       {/* Interactive Booking Creation Modal */}

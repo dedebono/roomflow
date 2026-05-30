@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
-import { BookingStatus, Role } from '@prisma/client';
+import { BookingStatus, Role, BookingHoldStatus } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 
 @Injectable()
@@ -18,7 +18,7 @@ export class BookingsService {
     excludeBookingId?: string,
   ) {
     // Conflict logic: (Requested_Start < Existing_End) AND (Requested_End > Existing_Start)
-    const conflicts = await this.prisma.booking.findMany({
+    const bookingConflicts = await this.prisma.booking.findMany({
       where: {
         roomId,
         status: BookingStatus.BOOKED,
@@ -30,7 +30,19 @@ export class BookingsService {
       },
     });
 
-    return conflicts.length > 0;
+    // Also check for active rental holds (renter has a temporary hold on the room)
+    const holdConflicts = await this.prisma.bookingHold.findMany({
+      where: {
+        roomId,
+        status: BookingHoldStatus.ACTIVE,
+        AND: [
+          { startTime: { lt: endTime } },
+          { endTime: { gt: startTime } },
+        ],
+      },
+    });
+
+    return bookingConflicts.length > 0 || holdConflicts.length > 0;
   }
 
   async create(userId: string, createBookingDto: CreateBookingDto) {
@@ -52,7 +64,7 @@ export class BookingsService {
     );
 
     if (hasConflict) {
-      throw new BadRequestException('Room is already booked for this time period');
+      throw new BadRequestException('Room is already booked or has a pending rental hold for this time period');
     }
 
     const booking = await this.prisma.booking.create({
@@ -87,7 +99,9 @@ export class BookingsService {
       where: {
         roomId,
         userId,
-        status: BookingStatus.BOOKED,
+        status: {
+          in: [BookingStatus.BOOKED], // Only show confirmed bookings
+        },
       },
       include: {
         room: { include: { building: true } },
@@ -147,7 +161,7 @@ export class BookingsService {
     );
 
     if (hasConflict) {
-      throw new BadRequestException('Room is already booked for this time period');
+      throw new BadRequestException('Room is already booked or has a pending rental hold for this time period');
     }
 
     return this.prisma.booking.update({

@@ -45,11 +45,11 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: /api
+        NEXT_PUBLIC_API_URL: https://room.ytcb.org/api
     container_name: roomflow-frontend
     restart: always
     environment:
-      NEXT_PUBLIC_API_URL: /api
+      NEXT_PUBLIC_API_URL: https://room.ytcb.org/api
     depends_on:
       - backend
     ports:

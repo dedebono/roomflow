@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
-import api from '@/lib/api';
+import api, { getImageUrl } from '@/lib/api';
 import { Room, RentalSlot, BookingHold } from '@/types';
 import toast from 'react-hot-toast';
 import { Calendar, Clock, Users, MapPin, Wifi, Monitor, Coffee, ArrowLeft, Upload, CheckCircle, XCircle, Timer } from 'lucide-react';
@@ -42,7 +42,6 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
     try {
       const res = await api.get(`/rooms/${roomId}`);
       const data = res.data;
-      // Normalise amenities (may be JSON string or array) and imageUrl (may need origin prefix)
       const normalized = {
         ...data,
         amenities: Array.isArray(data.amenities)
@@ -51,7 +50,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
             ? data.amenities.split(',').map((s: string) => s.trim()).filter(Boolean)
             : [],
         imageUrl: data.imageUrl
-          ? (data.imageUrl.startsWith('http') ? data.imageUrl : `${window.location.origin}${data.imageUrl}`)
+          ? getImageUrl(data.imageUrl)
           : undefined,
       };
       setRoom(normalized);
@@ -85,7 +84,6 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
       });
       setActiveHold(res.data);
     } catch {
-      // No active hold
       setActiveHold(null);
     }
   }, [roomId]);
@@ -100,12 +98,12 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
     init();
   }, [fetchRoom, fetchActiveHold]);
 
-  // Attach native event listener to date input (React synthetic events don't always fire for date inputs)
+  // Attach native event listener to date input
   useEffect(() => {
     const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
     if (!dateInput) return;
 
-    const handleNativeDateChange = () => {
+    const handleDateChange = () => {
       const date = dateInput.value;
       console.log('[native date listener] date changed to:', date);
       setSelectedDate(date);
@@ -117,150 +115,13 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
       }
     };
 
-    dateInput.addEventListener('change', handleNativeDateChange);
-    dateInput.addEventListener('input', handleNativeDateChange);
+    dateInput.addEventListener('change', handleDateChange);
+    dateInput.addEventListener('input', handleDateChange);
     return () => {
-      dateInput.removeEventListener('change', handleNativeDateChange);
-      dateInput.removeEventListener('input', handleNativeDateChange);
+      dateInput.removeEventListener('change', handleDateChange);
+      dateInput.removeEventListener('input', handleDateChange);
     };
   }, [fetchTimeSlots]);
-
-  useEffect(() => {
-    const init = async () => {
-      setLoading(true);
-      await fetchRoom();
-      await fetchActiveHold();
-      setLoading(false);
-    };
-    init();
-  }, [fetchRoom, fetchActiveHold]);
-
-  const fetchTimeSlotsRef = useRef<(date: string) => Promise<void>>();
-
-  useEffect(() => {
-    fetchTimeSlotsRef.current = fetchTimeSlots;
-  }, [fetchTimeSlots]);
-
-  // Attach native event listener to date input (React synthetic events don't always fire for date inputs)
-  useEffect(() => {
-    const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
-    if (!dateInput) return;
-
-    const handleDateChange = () => {
-      const date = dateInput.value;
-      console.log('[native listener] date:', date);
-      setSelectedDate(date);
-      setSelectedSlot(null);
-      if (date && fetchTimeSlotsRef.current) {
-        useEffect(() => {
-          const init = async () => {
-            setLoading(true);
-            await fetchRoom();
-            await fetchActiveHold();
-            setLoading(false);
-          };
-          init();
-        }, [fetchRoom, fetchActiveHold]);
-
-        const fetchTimeSlotsRef = useRef<(date: string) => Promise<void>>();
-
-        useEffect(() => {
-          fetchTimeSlotsRef.current = fetchTimeSlots;
-        }, [fetchTimeSlots]);
-
-        // Attach native event listener to date input
-        useEffect(() => {
-          const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
-          if (!dateInput) {
-            console.error('[useEffect] Date input not found!');
-            return;
-          }
-
-          const handleNativeChange = () => {
-            const date = dateInput.value;
-            console.log('[native listener] date changed:', date);
-            setSelectedDate(date);
-            setSelectedSlot(null);
-            if (date && fetchTimeSlotsRef.current) {
-              fetchTimeSlotsRef.current(date);
-            } else {
-              setTimeSlots([]);
-            }
-          };
-
-          dateInput.addEventListener('change', handleNativeChange);
-          dateInput.addEventListener('input', handleNativeDateChange); // Trigger on input as well
-
-          // Cleanup listener on unmount
-          return () => {
-            dateInput.removeEventListener('change', handleNativeChange);
-            dateInput.removeEventListener('input', handleNativeDateChange);
-          };
-        }, []); // Empty dependency array: run once on mount
-
-        useEffect(() => {
-          const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
-          if (!dateInput) {
-            console.error('[useEffect] Date input not found!');
-            return;
-          }
-
-          const handleNativeChange = () => {
-            const date = dateInput.value;
-            console.log('[native listener] date changed:', date);
-            setSelectedDate(date);
-            setSelectedSlot(null);
-            if (date && fetchTimeSlots) {
-              fetchTimeSlots(date);
-            } else {
-              setTimeSlots([]);
-            }
-          };
-
-          useEffect(() => {
-            const init = async () => {
-              setLoading(true);
-              await fetchRoom();
-              await fetchActiveHold();
-              setLoading(false);
-            };
-            init();
-          }, [fetchRoom, fetchActiveHold]);
-
-          // Attach native event listener to date input
-          useEffect(() => {
-            const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
-            if (!dateInput) {
-              console.error('[useEffect] Date input not found!');
-              return;
-            }
-
-            const handleNativeChange = () => {
-              const date = dateInput.value;
-              console.log('[native listener] date changed:', date);
-              setSelectedDate(date);
-              setSelectedSlot(null);
-              if (date && fetchTimeSlots) {
-                fetchTimeSlots(date);
-              } else {
-                setTimeSlots([]);
-              }
-            };
-
-            useEffect(() => {
-              // Handle date change
-              const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-                const date = e.target.value;
-                console.log('[React onChange] date changed to:', date);
-                setSelectedDate(date);
-                setSelectedSlot(null);
-                if (date) {
-                  fetchTimeSlots(date);
-                } else {
-                  setTimeSlots([]);
-                }
-              };
-  };
 
   // Create booking hold
   const handleCreateHold = async () => {
@@ -271,7 +132,6 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
 
     setIsSubmitting(true);
     try {
-      // Extract HH:MM from ISO string (e.g., "2026-05-29T09:00:00.000Z" -> "09:00")
       const extractTime = (isoString: string) => isoString.split('T')[1].substring(0, 5);
       
       const res = await api.post('/rentals/create-hold', {
@@ -486,10 +346,19 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
               <div className="w-full flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-slate-300 tracking-wide uppercase">
                   Rental Date
+                </label>
                 <input
                   type="date"
                   value={selectedDate}
-                  onChange={handleDateChange}
+                  onChange={(e) => {
+                    setSelectedDate(e.target.value);
+                    setSelectedSlot(null);
+                    if (e.target.value) {
+                      fetchTimeSlots(e.target.value);
+                    } else {
+                      setTimeSlots([]);
+                    }
+                  }}
                   min={new Date().toISOString().split('T')[0]}
                   style={{ colorScheme: 'dark' }}
                   className="w-full bg-slate-900/60 hover:bg-slate-900/80 focus:bg-slate-950 text-slate-100 text-sm rounded-lg border border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/20 px-3.5 py-2.5 transition-all duration-200 focus:ring-4 outline-none"
@@ -499,218 +368,167 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
               {selectedDate && (
                 <>
                   {timeSlots.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2">
-                      {timeSlots.map((slot, idx) => (
-                        <button
-                          key={idx}
-                          disabled={!slot.available}
-                          onClick={() => setSelectedSlot(slot)}
-                          className={`p-3 rounded-lg border text-sm font-medium transition-all ${
-                            selectedSlot === slot
-                              ? 'border-indigo-500 bg-indigo-500/20 text-indigo-300'
-                              : slot.available
-                              ? 'border-slate-700 hover:border-indigo-500/50 text-slate-300 hover:text-white'
-                              : 'border-slate-800 text-slate-600 cursor-not-allowed'
-                          }`}
-                        >
-                          <div className="flex flex-col items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            <span>{slot.startTime} - {slot.endTime}</span>
-                            <span className="text-xs opacity-70">${slot.price}/hr</span>
-                          </div>
-                        </button>
-                      ))}
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-slate-300 tracking-wide uppercase">Available Time Slots</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {timeSlots.map((slot, idx) => {
+                          const isDisabled = !slot.available;
+                          return (
+                          <button
+                            key={idx}
+                            onClick={() => !isDisabled && setSelectedSlot(slot)}
+                            disabled={isDisabled}
+                            className={`p-2 rounded-lg text-xs font-semibold transition-all ${
+                              selectedSlot === slot
+                                ? 'bg-indigo-500 text-white'
+                                : isDisabled
+                                  ? 'bg-slate-800/30 text-slate-600 cursor-not-allowed line-through'
+                                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800'
+                            }`}
+                          >
+                            <Clock className="w-3 h-3 inline mr-1" />
+                            {slot.startTime} - {slot.endTime}
+                            <div className="text-xs mt-1">${slot.price}</div>
+                            {isDisabled && <div className="text-xs text-rose-500/60 mt-0.5">Booked</div>}
+                          </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   ) : (
-                    <p className="text-slate-500 text-sm text-center py-4">No time slots available for this date</p>
+                    <p className="text-sm text-slate-400">No available time slots for this date.</p>
                   )}
                 </>
               )}
 
               {selectedSlot && (
-                <div className="flex items-center gap-3 pt-4 border-t border-slate-800/40">
-                  <div className="flex-1 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
-                    <p className="text-sm text-indigo-300 font-semibold">
-                      Selected: {selectedSlot.startTime} - {selectedSlot.endTime}
-                    </p>
-                    <p className="text-xs text-slate-400">Total: ${selectedSlot.price}</p>
-                  </div>
-                  <Button
-                    variant="primary"
-                    onClick={handleCreateHold}
-                    isLoading={isSubmitting}
-                  >
-                    Book Now
-                  </Button>
+                <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
+                  <p className="text-sm text-indigo-300">
+                    <CheckCircle className="w-4 h-4 inline mr-2" />
+                    Selected: {selectedSlot.startTime} - {selectedSlot.endTime} (${selectedSlot.price})
+                  </p>
                 </div>
               )}
+
+              <Button
+                variant="primary"
+                onClick={handleCreateHold}
+                disabled={!selectedSlot || isSubmitting}
+                className="w-full"
+              >
+                {isSubmitting ? 'Creating Hold...' : 'Create Booking Hold'}
+              </Button>
             </CardContent>
           </Card>
         </div>
 
         {/* Booking Status Sidebar */}
         <div className="space-y-6">
-          {/* Active Hold Status */}
-          {activeHold && (
-            <Card className={`border ${
-              activeHold.status === 'ACTIVE' ? 'border-amber-500/30 bg-amber-500/5' :
-              activeHold.status === 'CONVERTED' ? 'border-emerald-500/30 bg-emerald-500/5' :
-              'border-slate-700/50 bg-slate-800/30'
-            } glass`}>
+          {activeHold ? (
+            <Card className="border border-emerald-500/20 bg-emerald-500/5">
               <CardHeader className="p-0 mb-4">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  {activeHold.status === 'ACTIVE' && <Timer className="w-5 h-5 text-amber-400" />}
-                  {activeHold.status === 'CONVERTED' && <CheckCircle className="w-5 h-5 text-emerald-400" />}
-                  {activeHold.status === 'EXPIRED' && <XCircle className="w-5 h-5 text-slate-400" />}
-                  Booking Status
+                <CardTitle className="flex items-center gap-2 text-emerald-400">
+                  <CheckCircle className="w-5 h-5" />
+                  Booking Hold Active
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Badge
-                  variant={
-                    activeHold.status === 'ACTIVE' ? 'warning' :
-                    activeHold.status === 'CONVERTED' ? 'success' : 'neutral'
-                  }
-                >
-                  {activeHold.status === 'ACTIVE' ? 'Waiting for Payment' :
-                   activeHold.status === 'CONVERTED' ? 'Confirmed' :
-                   activeHold.status}
-                </Badge>
-
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Room:</span>
-                    <span className="text-slate-200 font-medium">{room.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Date:</span>
-                    <span className="text-slate-200 font-medium">{new Date(activeHold.holdDate).toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Time:</span>
-                    <span className="text-slate-200 font-medium">{activeHold.startTime} - {activeHold.endTime}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Price:</span>
-                    <span className="text-slate-200 font-medium">${activeHold.price}</span>
-                  </div>
+                  <p className="text-slate-400">
+                    <span className="font-semibold text-slate-300">Date:</span> {activeHold.holdDate}
+                  </p>
+                  <p className="text-slate-400">
+                    <span className="font-semibold text-slate-300">Time:</span> {activeHold.startTime} - {activeHold.endTime}
+                  </p>
+                  <p className="text-slate-400">
+                    <span className="font-semibold text-slate-300">Amount:</span> ${activeHold.price}
+                  </p>
+                  <p className="text-slate-400">
+                    <span className="font-semibold text-slate-300">Status:</span> {activeHold.status}
+                  </p>
+                  {countdown && (
+                    <p className="text-amber-400 flex items-center gap-1">
+                      <Timer className="w-4 h-4" />
+                      Expires in: {countdown}
+                    </p>
+                  )}
                 </div>
 
                 {activeHold.status === 'ACTIVE' && (
                   <>
-                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                      <p className="text-xs text-amber-400 font-semibold text-center">
-                        Time Remaining: {countdown}
-                      </p>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        variant="primary"
-                        className="flex-1"
-                        onClick={() => setIsPaymentModalOpen(true)}
-                      >
-                        <Upload className="w-4 h-4" />
-                        Upload Payment
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={handleCancelHold}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
+                    <Button
+                      variant="primary"
+                      onClick={() => setIsPaymentModalOpen(true)}
+                      className="w-full"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      Upload Payment Proof
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={handleCancelHold}
+                      className="w-full"
+                    >
+                      Cancel Hold
+                    </Button>
                   </>
                 )}
 
                 {activeHold.status === 'CONVERTED' && (
-                  <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-center">
-                    <CheckCircle className="w-6 h-6 text-emerald-400 mx-auto mb-2" />
-                    <p className="text-sm text-emerald-300 font-semibold">Booking Confirmed!</p>
-                    <p className="text-xs text-emerald-400/70 mt-1">Your booking has been approved</p>
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                    <p className="text-sm text-emerald-300">Booking confirmed!</p>
+                  </div>
+                )}
+
+                {activeHold.status === 'EXPIRED' && (
+                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg">
+                    <p className="text-sm text-rose-300">Booking hold expired.</p>
+                  </div>
+                )}
+
+                {activeHold.status === 'CANCELLED' && (
+                  <div className="p-3 bg-slate-500/10 border border-slate-500/20 rounded-lg">
+                    <p className="text-sm text-slate-300">Booking hold cancelled.</p>
                   </div>
                 )}
               </CardContent>
             </Card>
+          ) : (
+            <Card className="border border-slate-900 glass">
+              <CardContent className="pt-6">
+                <p className="text-slate-400 text-sm">No active booking hold. Select a date and time slot to create one.</p>
+              </CardContent>
+            </Card>
           )}
-
-          {/* Quick Info Card */}
-          <Card className="border border-slate-900 glass">
-            <CardHeader className="p-0 mb-4">
-              <CardTitle className="text-sm text-slate-400">Rental Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex items-start gap-2">
-                <Clock className="w-4 h-4 text-indigo-400 mt-0.5" />
-                <div>
-                  <p className="text-slate-300 font-medium">Hourly Rentals</p>
-                  <p className="text-slate-500 text-xs">Book by the hour with flexible scheduling</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <Timer className="w-4 h-4 text-indigo-400 mt-0.5" />
-                <div>
-                  <p className="text-slate-300 font-medium">1-Hour Hold</p>
-                  <p className="text-slate-500 text-xs">Complete payment within 1 hour to confirm</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
 
-      {/* Payment Upload Modal */}
-      <Modal
-        isOpen={isPaymentModalOpen}
-        onClose={() => setIsPaymentModalOpen(false)}
-        title="Upload Payment Proof"
-        size="md"
-      >
+      {/* Payment Modal */}
+      <Modal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} title="Upload Payment Proof">
         <div className="space-y-4">
-          <p className="text-sm text-slate-400">
-            Please transfer the payment of <span className="text-white font-semibold">${activeHold?.price}</span> to the designated account and upload the receipt below.
-          </p>
-
-          <div className="p-3 rounded-lg border border-indigo-500/20 bg-indigo-500/5">
-            <p className="text-xs text-indigo-300">
-              <strong>Payment Instructions:</strong><br />
-              Bank: Demo Bank<br />
-              Account: 1234-5678-9012<br />
-              Name: RoomFlow Rentals
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-300 tracking-wide uppercase">
-              Payment Receipt / Screenshot
-            </label>
+          <div>
+            <label className="block text-sm font-semibold text-slate-300 mb-2">Payment Proof File</label>
             <input
               type="file"
-              accept="image/*,.pdf"
               onChange={(e) => setPaymentFile(e.target.files?.[0] || null)}
-              className="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-500/20 file:text-indigo-300 hover:file:bg-indigo-500/30 cursor-pointer"
+              className="w-full px-3 py-2 bg-slate-900/60 border border-slate-800 rounded-lg text-slate-300"
             />
           </div>
-
-          {paymentFile && (
-            <div className="p-3 rounded-lg bg-slate-800/50">
-              <p className="text-sm text-slate-300">Selected: {paymentFile.name}</p>
-            </div>
-          )}
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/40">
-            <Button type="button" variant="secondary" onClick={() => setIsPaymentModalOpen(false)}>
-              Cancel
-            </Button>
+          <div className="flex gap-2">
             <Button
               variant="primary"
               onClick={handlePaymentUpload}
-              isLoading={isUploading}
-              disabled={!paymentFile}
+              disabled={!paymentFile || isUploading}
+              className="flex-1"
             >
-              <Upload className="w-4 h-4" />
-              Submit Payment
+              {isUploading ? 'Uploading...' : 'Upload'}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setIsPaymentModalOpen(false)}
+              className="flex-1"
+            >
+              Cancel
             </Button>
           </div>
         </div>

@@ -156,6 +156,8 @@ export default function RenterPaymentsPage() {
     switch (status) {
       case 'PENDING':
         return <Badge variant="warning">Pending</Badge>;
+      case 'PAYMENT_PROOF_UPLOADED':
+        return <Badge variant="info">Waiting</Badge>;
       case 'APPROVED':
         return <Badge variant="success">Approved</Badge>;
       case 'REJECTED':
@@ -211,7 +213,7 @@ export default function RenterPaymentsPage() {
                 const countdown = countdowns[hold.id] ?? '';
                 const pct = getCountdownPercent(hold.expiresAt ?? new Date().toISOString());
                 const isExpired = countdown === 'Expired';
-                const latestPayment = hold.payments?.[0];
+                const latestPayment = (hold.payments?.[0] as any) || null;
                 const paymentStatus = latestPayment?.status ?? 'PENDING';
                 const amount = latestPayment?.amount ?? 0;
 
@@ -285,11 +287,21 @@ export default function RenterPaymentsPage() {
                             Upload Proof
                           </Button>
                         )}
+                        {latestPayment && paymentStatus !== 'PENDING' && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => window.open(latestPayment.fileUrl, '_blank')}
+                          >
+                            <FileText className="w-4 h-4" />
+                            View Proof
+                          </Button>
+                        )}
                       </div>
-                    </div>
-                  </div>
-                );
-              })}
+                      </div>
+                      </div>
+                      );
+                      })}
             </div>
           )}
         </CardContent>
@@ -346,7 +358,19 @@ export default function RenterPaymentsPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="font-bold text-slate-100">${payment.amount}</span>
-                    {getStatusBadge(payment.status)}
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(payment.status)}
+                      {(payment as any).fileUrl && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => window.open((payment as any).fileUrl, '_blank')}
+                        >
+                          <FileText className="w-4 h-4" />
+                          View Proof
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

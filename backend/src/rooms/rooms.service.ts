@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { StorageService } from '../storage/storage.service';
+import { ImageService } from '../storage/image.service';
 import { RoomStatus } from '@prisma/client';
 
 @Injectable()
@@ -10,12 +11,13 @@ export class RoomsService {
   constructor(
     private prisma: PrismaService,
     private storageService: StorageService,
+    private imageService: ImageService,
   ) {}
 
   async create(createRoomDto: CreateRoomDto, imageFile?: Express.Multer.File) {
     let imageUrl: string | undefined;
     if (imageFile) {
-      imageUrl = await this.storageService.upload(imageFile);
+      imageUrl = await this.imageService.compressAndSave(imageFile);
     }
 
     return this.prisma.room.create({
@@ -53,9 +55,9 @@ export class RoomsService {
     let imageUrl = room.imageUrl;
     if (imageFile) {
       if (room.imageUrl) {
-        await this.storageService.delete(room.imageUrl);
+        await this.imageService.delete(room.imageUrl);
       }
-      imageUrl = await this.storageService.upload(imageFile);
+      imageUrl = await this.imageService.compressAndSave(imageFile);
     }
 
     return this.prisma.room.update({
@@ -70,7 +72,7 @@ export class RoomsService {
   async remove(id: string) {
     const room = await this.findOne(id);
     if (room.imageUrl) {
-      await this.storageService.delete(room.imageUrl);
+      await this.imageService.delete(room.imageUrl);
     }
     return this.prisma.room.delete({
       where: { id },

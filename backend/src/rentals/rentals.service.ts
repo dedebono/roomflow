@@ -55,7 +55,8 @@ export class RentalsService implements OnModuleInit {
   }
 
   async getAvailableRooms(date: string) {
-    const dateObj = date ? new Date(date) : new Date();
+    const dateObj = date ? new Date(date + 'T00:00:00') : new Date();
+    const dayOfWeek = dateObj.getDay(); // local getDay() — matches how rentalSlots.dayOfWeek was stored
 
     // Get all rooms that are rentable
     const rentableRooms = await this.prisma.room.findMany({
@@ -142,13 +143,13 @@ export class RentalsService implements OnModuleInit {
       throw new NotFoundException('Room not found or not rentable');
     }
 
-    // Check for regular bookings
+    // Check for regular booking conflicts
     const bookingConflict = await this.prisma.booking.findFirst({
       where: {
         roomId,
         status: BookingStatus.BOOKED,
-        startTime: { lte: endTimeDate },
-        endTime: { gte: startTimeDate },
+        startTime: { lt: endTimeDate },
+        endTime: { gt: startTimeDate },
       },
     });
 
@@ -161,8 +162,8 @@ export class RentalsService implements OnModuleInit {
       where: {
         roomId,
         status: BookingHoldStatus.ACTIVE,
-        startTime: { lte: endTimeDate },
-        endTime: { gte: startTimeDate },
+        startTime: { lt: endTimeDate },
+        endTime: { gt: startTimeDate },
       },
     });
 
@@ -367,6 +368,7 @@ export class RentalsService implements OnModuleInit {
         },
         payment: {
           select: {
+            fileUrl: true,
             id: true,
             status: true,
             amount: true,
@@ -390,6 +392,7 @@ export class RentalsService implements OnModuleInit {
         },
         payments: {
           select: {
+            fileUrl: true,
             id: true,
             status: true,
             amount: true,
@@ -448,9 +451,9 @@ export class RentalsService implements OnModuleInit {
 
   // Get available time slots for a room on a given date
   async getAvailableSlots(roomId: string, date: string) {
-    // Parse date string (YYYY-MM-DD) as UTC to avoid timezone issues
-    const dateObj = new Date(date + 'T00:00:00Z');
-    const dayOfWeek = dateObj.getUTCDay();
+    // Parse date as local time — rentalSlots.dayOfWeek was stored with local getDay()
+    const dateObj = new Date(date + 'T00:00:00');
+    const dayOfWeek = dateObj.getDay(); // local getDay() — matches how rentalSlots.dayOfWeek was stored
     console.log(`[getAvailableSlots] roomId=${roomId}, date=${date}, dayOfWeek=${dayOfWeek}`);
 
     // Get all active rental slots for this room on this day

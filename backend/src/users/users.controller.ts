@@ -14,31 +14,40 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 
 @Controller('users')
-@Roles(Role.ADMIN_IT)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Get('managers')
+  getManagers() {
+    return this.usersService.getManagers();
+  }
+
   @Post()
+  @Roles(Role.ADMIN_IT)
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
   }
 
   @Get()
+  @Roles(Role.ADMIN_IT)
   findAll() {
     return this.usersService.findAll();
   }
 
   @Get(':id')
+  @Roles(Role.ADMIN_IT)
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(id);
   }
 
   @Patch(':id')
+  @Roles(Role.ADMIN_IT)
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.usersService.update(id, updateUserDto);
   }
 
   @Delete(':id')
+  @Roles(Role.ADMIN_IT)
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);
   }

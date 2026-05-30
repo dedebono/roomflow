@@ -1,11 +1,24 @@
 import axios from 'axios';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://room.ytcb.org';
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || '/api',
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Helper to construct full image URLs
+export function getImageUrl(path: string): string {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/uploads/')) {
+    return `${BASE_URL}${path}`;
+  }
+  return path;
+}
 
 // Storage helper — mirrors auth.tsx getStorage() so api interceptor finds the same token
 function getStorage() {

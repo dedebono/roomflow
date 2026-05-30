@@ -70,9 +70,11 @@ export default function RentalsDashboardPage() {
   }, [fetchHolds, fetchRooms, fetchRentalSlots]);
 
   const handleApprove = async (hold: RentalHold) => {
+    const paymentId = (hold.payments as any)?.[0]?.id;
+    if (!paymentId) return;
     setActionLoading(hold.id);
     try {
-      await api.patch(`/payments/${hold.paymentId}/approve`);
+      await api.patch(`/payments/${paymentId}/approve`);
       toast.success('Payment approved! Booking confirmed.');
       await fetchHolds();
     } catch (err: any) {
@@ -83,9 +85,11 @@ export default function RentalsDashboardPage() {
   };
 
   const handleReject = async (hold: RentalHold) => {
+    const paymentId = (hold.payments as any)?.[0]?.id;
+    if (!paymentId) return;
     setActionLoading(hold.id);
     try {
-      await api.patch(`/payments/${hold.paymentId}/reject`);
+      await api.patch(`/payments/${paymentId}/reject`);
       toast.success('Payment rejected.');
       await fetchHolds();
     } catch (err: any) {
@@ -153,21 +157,48 @@ export default function RentalsDashboardPage() {
     },
     {
       header: 'Status',
-      cell: (h: RentalHold) => getStatusBadge(h.status),
+      cell: (h: RentalHold) => {
+        const p = h.payments?.[0] as any;
+        if (!p) return <Badge variant="neutral">—</Badge>;
+        switch (p.status) {
+          case 'PAYMENT_PROOF_UPLOADED':
+            return <Badge variant="info">Proof Uploaded</Badge>;
+          case 'PENDING':
+            return <Badge variant="warning">Awaiting Payment</Badge>;
+          case 'APPROVED':
+            return <Badge variant="success">Confirmed</Badge>;
+          case 'REJECTED':
+            return <Badge variant="danger">Rejected</Badge>;
+          default:
+            return <Badge variant="neutral">{p.status}</Badge>;
+        }
+      },
     },
     {
       header: 'Payment',
-      cell: (h: RentalHold) => h.paymentId ? (
-        <Badge variant="info">Uploaded</Badge>
-      ) : (
-        <Badge variant="neutral">No Receipt</Badge>
-      ),
+      cell: (h: RentalHold) => {
+        const p = h.payments?.[0] as any;
+        if (!p) return <Badge variant="neutral">No Receipt</Badge>;
+        return (
+          <div className="flex items-center gap-2">
+            <Badge variant="info">Uploaded</Badge>
+            {p.fileUrl && (
+              <button
+                onClick={() => window.open(p.fileUrl, '_blank')}
+                className="text-xs text-indigo-400 hover:text-indigo-300 underline"
+              >
+                View
+              </button>
+            )}
+          </div>
+        );
+      },
     },
     {
       header: 'Actions',
       cell: (h: RentalHold) => (
         <div className="flex gap-2">
-          {h.status === 'ACTIVE' && h.paymentId && (
+          {h.status === 'ACTIVE' && (h.payments as any)?.[0]?.status === 'PAYMENT_PROOF_UPLOADED' && (
             <>
               <Button
                 size="sm"
@@ -328,10 +359,33 @@ export default function RentalsDashboardPage() {
               </div>
               <div>
                 <p className="text-xs text-slate-400">Status</p>
-                {getStatusBadge(selectedHold.status)}
+                <p className="text-slate-200 font-medium">
+                  {(() => {
+                    const p = selectedHold.payments?.[0] as any;
+                    if (!p) return <Badge variant="neutral">—</Badge>;
+                    switch (p.status) {
+                      case 'PAYMENT_PROOF_UPLOADED': return <Badge variant="info">Proof Uploaded</Badge>;
+                      case 'PENDING': return <Badge variant="warning">Awaiting Payment</Badge>;
+                      case 'APPROVED': return <Badge variant="success">Confirmed</Badge>;
+                      case 'REJECTED': return <Badge variant="danger">Rejected</Badge>;
+                      default: return <Badge variant="neutral">{p.status}</Badge>;
+                    }
+                  })()}
+                </p>
               </div>
             </div>
-            {selectedHold.status === 'ACTIVE' && selectedHold.paymentId && (
+            {selectedHold.payments?.[0]?.fileUrl && (
+              <div>
+                <p className="text-xs text-slate-400">Payment Proof</p>
+                <button
+                  onClick={() => window.open((selectedHold.payments as any)?.[0]?.fileUrl, '_blank')}
+                  className="text-indigo-400 hover:text-indigo-300 underline text-sm"
+                >
+                  View Payment Proof
+                </button>
+              </div>
+            )}
+            {(selectedHold as any).status === 'ACTIVE' && ((selectedHold.payments as any)?.[0]?.status as string) === 'PAYMENT_PROOF_UPLOADED' && (
               <div className="flex gap-2 pt-4 border-t border-slate-800">
                 <Button
                   variant="success"

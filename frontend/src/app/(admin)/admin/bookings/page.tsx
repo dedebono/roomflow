@@ -20,16 +20,14 @@ const BookingCalendar = dynamic(() => import('@/components/calendar/BookingCalen
 });
 
 export default function AdminBookingsPage() {
-  const [buildings, setBuildings] = useState<Building[]>([]);
-  const [selectedBuildingId, setSelectedBuildingId] = useState<string>('');
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [selectedRoomId, setSelectedRoomId] = useState<string>('');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
 
   // Dialog Modals State
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedRoomId, setSelectedRoomId] = useState('');
   const [bookingTitle, setBookingTitle] = useState('');
   const [bookingNotes, setBookingNotes] = useState('');
   const [bookingStart, setBookingStart] = useState('');
@@ -38,52 +36,54 @@ export default function AdminBookingsPage() {
 
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
-  // Fetch initial building details
+  // Fetch all rooms directly (no building filter needed)
   useEffect(() => {
-    const fetchBuildings = async () => {
+    const fetchRooms = async () => {
       try {
-        const res = await api.get('/buildings');
-        setBuildings(res.data);
-        if (res.data.length > 0) {
-          setSelectedBuildingId(res.data[0].id);
+        const res = await api.get('/rooms');
+        setRooms(res.data);
+        if (res.data.length > 0 && !selectedRoomId) {
+          setSelectedRoomId(res.data[0].id);
         }
       } catch (err: any) {
-        toast.error('Failed to load buildings');
+        toast.error('Failed to load rooms');
       }
     };
-    fetchBuildings();
+    fetchRooms();
   }, []);
 
-  // Fetch rooms & bookings when selectedBuildingId changes
-  const loadBuildingData = useCallback(async () => {
-    if (!selectedBuildingId) return;
-
+  // Fetch bookings when selectedRoomId changes
+  const loadRoomBookings = useCallback(async () => {
+    if (!selectedRoomId) {
+      setCalendarEvents([]);
+      return;
+    }
     try {
-      // 1. Fetch Rooms in Building
-      const roomsRes = await api.get(`/rooms?buildingId=${selectedBuildingId}`);
-      setRooms(roomsRes.data);
+      // Fetch bookings for this room only
+      const bookingsRes = await api.get(`/bookings?roomId=${selectedRoomId}`);
+      const roomBookings: Booking[] = bookingsRes.data;
 
-      // 2. Fetch all bookings
-      const bookingsRes = await api.get('/bookings');
-      const allBookings: Booking[] = bookingsRes.data;
+      setBookings(roomBookings);
 
-      // Filter bookings that belong to the active building's rooms
-      const activeRoomsIds = roomsRes.data.map((r: Room) => r.id);
-      const buildingBookings = allBookings.filter((b) => activeRoomsIds.includes(b.roomId));
-      setBookings(buildingBookings);
+      // Map bookings to FullCalendar events
+      const room = rooms.find((r: Room) => r.id === selectedRoomId);
+      const roomName = room?.name || 'Room';
 
-      // 3. Map bookings to FullCalendar events
-      const events = buildingBookings.map((b) => {
-        const roomName = roomsRes.data.find((r: Room) => r.id === b.roomId)?.name || 'Room';
-        const isBlock = b.title.startsWith('ADMIN BLOCK:') || b.title.includes('Closed for Maintenance');
-        
+      const events = roomBookings.map((b) => {
+        const isAdminBlock = b.title.startsWith('ADMIN BLOCK:') || b.title.includes('Closed for Maintenance');
+        const bgColor = isAdminBlock ? '#b91c1c' : (b.isRental ? '#ef4444' : '#3b82f6');
+        const borderColor = isAdminBlock ? '#ef4444' : (b.isRental ? '#f87171' : '#60a5fa');
+
+        const startStr = typeof b.startTime === 'string' ? b.startTime : new Date(b.startTime).toISOString();
+        const endStr = typeof b.endTime === 'string' ? b.endTime : new Date(b.endTime).toISOString();
+
         return {
           id: b.id,
-          title: `[${roomName}] ${b.title}`,
-          start: b.startTime,
-          end: b.endTime,
-          backgroundColor: isBlock ? '#b91c1c' : '#4f46e5',
-          borderColor: isBlock ? '#ef4444' : '#6366f1',
+          title: b.title,
+          start: startStr,
+          end: endStr,
+          backgroundColor: bgColor,
+          borderColor: borderColor,
           textColor: '#f8fafc',
           extendedProps: {
             booking: b,
@@ -92,18 +92,20 @@ export default function AdminBookingsPage() {
         };
       });
       setCalendarEvents(events);
-    } catch (err: any) {
-      toast.error('Failed to fetch rooms and bookings data');
+    } catch {
+      toast.error('Failed to fetch bookings');
     }
-  }, [selectedBuildingId]);
+  }, [selectedRoomId, rooms]);
 
   useEffect(() => {
-    loadBuildingData();
-  }, [loadBuildingData]);
+    if (selectedRoomId) {
+      loadRoomBookings();
+    }
+  }, [loadRoomBookings]);
 
-  // Handle building dropdown change
-  const handleBuildingChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedBuildingId(e.target.value);
+  // Handle room dropdown change
+  const handleRoomChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedRoomId(e.target.value);
   };
 
   // Helper format datetime-local
@@ -125,13 +127,8 @@ export default function AdminBookingsPage() {
     setBookingEnd(format(end));
     setBookingTitle('ADMIN BLOCK: Maintenance');
     setBookingNotes('Administrative override booking');
-
-    // Default to the first active room
-    if (rooms.length > 0) {
-      setSelectedRoomId(rooms[0].id);
-    } else {
-      setSelectedRoomId('');
-    }
+    // Use the currently selected calendar room
+    setSelectedRoomId(selectedRoomId);
 
     setIsBookModalOpen(true);
   };
@@ -160,7 +157,7 @@ export default function AdminBookingsPage() {
         endTime: new Date(newEnd).toISOString(),
       });
       toast.success('Reservation rescheduled successfully!');
-      loadBuildingData();
+      loadRoomBookings();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Conflict detected! Reschedule reverted.');
       dropInfo.revert();
@@ -187,7 +184,7 @@ export default function AdminBookingsPage() {
 
       toast.success('Booking / administrative block created successfully!');
       setIsBookModalOpen(false);
-      loadBuildingData();
+      loadRoomBookings();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to save booking');
     } finally {
@@ -212,7 +209,7 @@ export default function AdminBookingsPage() {
 
       toast.success('Reservation successfully modified');
       setIsEditModalOpen(false);
-      loadBuildingData();
+      loadRoomBookings();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Reschedule conflict detected!');
     } finally {
@@ -229,7 +226,7 @@ export default function AdminBookingsPage() {
       await api.patch(`/bookings/${selectedBooking.id}/cancel`);
       toast.success('Booking successfully cancelled');
       setIsEditModalOpen(false);
-      loadBuildingData();
+      loadRoomBookings();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Cancellation failed');
     }
@@ -238,21 +235,21 @@ export default function AdminBookingsPage() {
   return (
     <DashboardLayout title="Master Operations Calendar" description="Drag-and-drop slots, create room maintenance blocks, or edit schedules directly." allowedRoles={['ROOM_ADMIN']}>
       {/* Filters Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <Card className="lg:col-span-1 border border-slate-900 glass">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="border border-slate-900 glass">
           <CardHeader className="p-0 mb-4">
             <CardTitle className="flex items-center gap-2">
               <Building2 className="w-5 h-5 text-indigo-400" />
-              <span>Location Context</span>
+              <span>Select Room</span>
             </CardTitle>
-            <CardDescription>Filter the master board by building</CardDescription>
+            <CardDescription>Calendar shows bookings for the selected room</CardDescription>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="p-0 space-y-3">
             <Select
-              options={buildings.map((b) => ({ value: b.id, label: b.name }))}
-              value={selectedBuildingId}
-              onChange={handleBuildingChange}
-              placeholder="Select Building..."
+              options={rooms.map((r) => ({ value: r.id, label: `${r.name} (${r.status})` }))}
+              value={selectedRoomId}
+              onChange={handleRoomChange}
+              placeholder="Select Room..."
             />
           </CardContent>
         </Card>
@@ -277,6 +274,21 @@ export default function AdminBookingsPage() {
           onEventDrop={handleEventDrop}
           editable={true}
         />
+        {/* Color Legend */}
+        <div className="flex items-center gap-6 px-2 text-xs text-slate-400">
+          <span className="flex items-center gap-2">
+            <span className="inline-block w-3 h-3 rounded bg-blue-500 border border-blue-400"></span>
+            Employee Booking
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="inline-block w-3 h-3 rounded bg-red-500 border border-red-400"></span>
+            Rental Booking
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="inline-block w-3 h-3 rounded bg-red-700 border border-red-600"></span>
+            Admin Block
+          </span>
+        </div>
       </div>
 
       {/* Administrative Create Block Modal */}

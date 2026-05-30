@@ -7,7 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { PaymentStatus, BookingHoldStatus, Role } from '@prisma/client';
+import { PaymentStatus, BookingHoldStatus, Role, BookingStatus } from '@prisma/client';
 
 @Injectable()
 export class PaymentsService {
@@ -88,59 +88,111 @@ export class PaymentsService {
     // So I need to create the booking first, then the payment.
     // Let me create the booking here (isRental=true) and link the payment to it.
 
-    // Create the booking from the hold
-    const booking = await this.prisma.booking.create({
-      data: {
-        roomId: hold.roomId,
-        userId: hold.userId,
-        title: `Rental: ${hold.room.name}`,
-        notes: description || `Rental booking from hold ${bookingHoldId}`,
-        startTime: hold.startTime,
-        endTime: hold.endTime,
-        isRental: true,
-      },
+    // Check if payment already exists for this hold
+    const existingPayment = await this.prisma.payment.findFirst({
+      where: { bookingHoldId },
     });
 
-    // Create payment record
-    const payment = await this.prisma.payment.create({
-      data: {
-        bookingId: booking.id,
-        bookingHoldId,
-        userId,
-        fileUrl,
-        amount,
-        description,
-        status: PaymentStatus.PENDING,
-      },
-      include: {
-        booking: {
-          include: {
-            room: true,
-          },
+    let payment;
+    if (existingPayment) {
+      // Update existing payment with new file
+      payment = await this.prisma.payment.update({
+        where: { id: existingPayment.id },
+        data: {
+          fileUrl,
+          amount,
+          description,
+          status: PaymentStatus.PAYMENT_PROOF_UPLOADED,
         },
-        bookingHold: true,
-      },
-    });
+        include: {
+          booking: {
+            include: {
+              room: true,
+            },
+          },
+          bookingHold: true,
+        },
+      });
+    } else {
+      // Create the booking from the hold
+      const booking = await this.prisma.booking.create({
+        data: {
+          roomId: hold.roomId,
+          userId: hold.userId,
+          title: `Rental: ${hold.room.name}`,
+          notes: description || `Rental booking from hold ${bookingHoldId}`,
+          startTime: hold.startTime,
+          endTime: hold.endTime,
+          isRental: true,
+          status: BookingStatus.CANCELLED, // Default to cancelled until paid/approved
+        },
+      });
 
-    // Create notification
+      // Create payment record
+      payment = await this.prisma.payment.create({
+        data: {
+          bookingId: booking.id,
+          bookingHoldId,
+          userId,
+          fileUrl,
+          amount,
+          description,
+          status: PaymentStatus.PAYMENT_PROOF_UPLOADED,
+        },
+        include: {
+          booking: {
+            include: {
+              room: true,
+            },
+          },
+          bookingHold: true,
+        },
+      });
+    }
+
+    // Create notification for renter
     await this.notificationsService.create(
       userId,
-      'PAYMENT_UPLOADED',
-      'Payment Uploaded',
-      `Your payment of $${amount} for ${payment.booking.room.name} has been submitted for review.`,
+      'PAYMENT_PROOF_UPLOADED',
+      'Payment Proof Uploaded',
+      `Your payment proof of $${amount} for ${payment.booking.room.name} has been submitted for review.`,
       JSON.stringify({
         paymentId: payment.id,
-        bookingId: booking.id,
+        bookingId: payment.bookingId,
         amount,
       }),
     );
+
+    // Also notify all ROOM_ADMIN users
+    const managers = await this.prisma.user.findMany({
+      where: { role: 'ROOM_ADMIN' as any },
+      select: { id: true },
+    });
+
+    for (const manager of managers) {
+      await this.notificationsService.create(
+        manager.id,
+        'PAYMENT_PROOF_UPLOADED',
+        'New Payment Proof Submitted',
+        `${payment.booking.room.name}: $${amount} payment proof uploaded. Review it now.`,
+        JSON.stringify({
+          paymentId: payment.id,
+          bookingId: payment.bookingId,
+          amount,
+        }),
+      );
+    }
 
     return payment;
   }
 
   async getPending() {
     return this.prisma.payment.findMany({
-      where: { status: PaymentStatus.PENDING },
+      where: {
+        status: {
+          in: [PaymentStatus.PENDING, PaymentStatus.PAYMENT_PROOF_UPLOADED],
+        },
+      },
       include: {
         user: {
           select: { id: true, name: true, email: true },
@@ -172,8 +224,11 @@ export class PaymentsService {
       throw new NotFoundException('Payment not found');
     }
 
-    if (payment.status !== PaymentStatus.PENDING) {
-      throw new BadRequestException('Payment is not in PENDING status');
+    if (
+      payment.status !== PaymentStatus.PENDING &&
+      payment.status !== PaymentStatus.PAYMENT_PROOF_UPLOADED
+    ) {
+      throw new BadRequestException('Payment is not in PENDING or PROOF_UPLOADED status');
     }
 
     // Update payment status
@@ -184,6 +239,14 @@ export class PaymentsService {
         managerId,
       },
     });
+
+    // Update rental booking status to BOOKED so it shows in calendar
+    if (payment.booking.isRental) {
+      await this.prisma.booking.update({
+        where: { id: payment.booking.id },
+        data: { status: BookingStatus.BOOKED },
+      });
+    }
 
     // Convert the associated booking hold if present
     if (payment.bookingHold && payment.bookingHold.status === BookingHoldStatus.ACTIVE) {
@@ -223,8 +286,11 @@ export class PaymentsService {
       throw new NotFoundException('Payment not found');
     }
 
-    if (payment.status !== PaymentStatus.PENDING) {
-      throw new BadRequestException('Payment is not in PENDING status');
+    if (
+      payment.status !== PaymentStatus.PENDING &&
+      payment.status !== PaymentStatus.PAYMENT_PROOF_UPLOADED
+    ) {
+      throw new BadRequestException('Payment is not in PENDING or PROOF_UPLOADED status');
     }
 
     // Update payment status
