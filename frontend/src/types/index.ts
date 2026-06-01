@@ -1,6 +1,7 @@
 export type Role = 'ADMIN_IT' | 'ROOM_ADMIN' | 'RENTER' | 'USER';
 
 export type RoomStatus = 'ACTIVE' | 'MAINTENANCE';
+export type RoomCategory = 'EVENT' | 'SPORT';
 
 export type BookingStatus = 'BOOKED' | 'CANCELLED';
 
@@ -36,6 +37,9 @@ export interface Room {
   isRentable?: boolean;
   maxBookingHours?: number;
   status: RoomStatus;
+  category?: RoomCategory;
+  price?: number; // derived from rentalSlots in getAvailableRooms
+  rentalSlots?: RentalSlot[]; // included from backend
   createdAt: string;
   updatedAt: string;
 }

@@ -1,5 +1,5 @@
 import { IsNotEmpty, IsString, IsInt, IsOptional, IsUUID, IsEnum, IsBoolean } from 'class-validator';
-import { RoomStatus } from '@prisma/client';
+import { RoomStatus, RoomCategory } from '@prisma/client';
 import { Type, Transform } from 'class-transformer';
 
 export class CreateRoomDto {
@@ -37,4 +37,8 @@ export class CreateRoomDto {
   @IsInt()
   @IsOptional()
   maxBookingHours?: number;
+
+  @IsEnum(RoomCategory)
+  @IsOptional()
+  category?: RoomCategory;
 }

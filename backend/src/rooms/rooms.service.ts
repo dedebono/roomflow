@@ -34,7 +34,24 @@ export class RoomsService {
         buildingId,
         status,
       },
-      include: { building: true },
+      select: {
+        id: true,
+        buildingId: true,
+        name: true,
+        capacity: true,
+        description: true,
+        imageUrl: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        amenities: true,
+        isRentable: true,
+        maxBookingHours: true,
+        category: true,
+        building: {
+          select: { id: true, name: true },
+        },
+      },
     });
   }
 

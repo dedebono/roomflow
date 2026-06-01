@@ -20,6 +20,11 @@ enum RoomStatus {
   MAINTENANCE
 }
 
+enum RoomCategory {
+  EVENT
+  SPORT
+}
+
 enum BookingStatus {
   BOOKED
   CANCELLED
@@ -102,6 +107,7 @@ model Room {
   amenities       String?
   isRentable      Boolean    @default(false)
   maxBookingHours Int?
+  category        RoomCategory?
 
   bookings     Booking[]
   rentalSlots  RentalSlot[]

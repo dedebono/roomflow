@@ -14,6 +14,7 @@ import { Calendar, Clock, Users, MapPin, Wifi, Monitor, Coffee, ArrowLeft, Uploa
 import Link from 'next/link';
 
 interface TimeSlot {
+  id: string;
   startTime: string;
   endTime: string;
   price: number;
@@ -122,6 +123,11 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
       dateInput.removeEventListener('input', handleDateChange);
     };
   }, [fetchTimeSlots]);
+
+  const formatTime = (isoString: string) => {
+    const date = new Date(isoString);
+    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }).replace(':', '.');
+  };
 
   // Create booking hold
   const handleCreateHold = async () => {
@@ -373,23 +379,30 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {timeSlots.map((slot, idx) => {
                           const isDisabled = !slot.available;
+                          const isSelected = selectedSlot?.id === slot.id;
                           return (
                           <button
                             key={idx}
                             onClick={() => !isDisabled && setSelectedSlot(slot)}
                             disabled={isDisabled}
-                            className={`p-2 rounded-lg text-xs font-semibold transition-all ${
-                              selectedSlot === slot
-                                ? 'bg-indigo-500 text-white'
+                            className={`p-3 rounded-xl text-sm font-bold transition-all border-2 flex flex-col items-center justify-center gap-1 ${
+                              isSelected
+                                ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-500/30 scale-105'
                                 : isDisabled
-                                  ? 'bg-slate-800/30 text-slate-600 cursor-not-allowed line-through'
-                                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800'
+                                  ? 'bg-slate-900/40 border-slate-800 text-slate-600 cursor-not-allowed opacity-60 line-through'
+                                  : 'bg-slate-800/40 border-slate-700/50 text-slate-200 hover:border-indigo-500/50 hover:bg-slate-800 hover:scale-[1.02]'
                             }`}
                           >
-                            <Clock className="w-3 h-3 inline mr-1" />
-                            {slot.startTime} - {slot.endTime}
-                            <div className="text-xs mt-1">${slot.price}</div>
-                            {isDisabled && <div className="text-xs text-rose-500/60 mt-0.5">Booked</div>}
+                            <div className="flex items-center gap-1.5">
+                              <Clock className={`w-3.5 h-3.5 ${isSelected ? 'text-indigo-200' : 'text-indigo-400'}`} />
+                              <span>{formatTime(slot.startTime)} - {formatTime(slot.endTime)}</span>
+                            </div>
+                            <div className={`text-xs font-medium ${isSelected ? 'text-indigo-100' : 'text-slate-400'}`}>
+                              ${slot.price}
+                            </div>
+                            {isDisabled && (
+                              <div className="mt-1 text-[10px] uppercase font-bold text-rose-500/80">Booked</div>
+                            )}
                           </button>
                           );
                         })}
@@ -405,7 +418,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                 <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
                   <p className="text-sm text-indigo-300">
                     <CheckCircle className="w-4 h-4 inline mr-2" />
-                    Selected: {selectedSlot.startTime} - {selectedSlot.endTime} (${selectedSlot.price})
+                    Selected: {formatTime(selectedSlot.startTime)} - {formatTime(selectedSlot.endTime)} (${selectedSlot.price})
                   </p>
                 </div>
               )}

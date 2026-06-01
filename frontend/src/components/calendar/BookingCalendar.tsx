@@ -86,9 +86,9 @@ export default function BookingCalendar({
           right: 'dayGridMonth,timeGridWeek,timeGridDay',
         }}
         allDaySlot={false}
-        slotMinTime="07:00:00"
-        slotMaxTime="22:00:00"
-        height="auto"
+        slotMinTime="00:00:00" // Show all hours so early/late bookings visible
+        slotMaxTime="24:00:00"
+        timeZone='UTC' // Ensure FullCalendar interprets times as UTC from backend
         contentHeight={600}
         handleWindowResize={true}
         expandRows={true}
@@ -98,6 +98,7 @@ export default function BookingCalendar({
         dayMaxEvents={true}
         weekends={true}
         events={events}
+        displayEventEnd={true} // Always show event end times for clarity
         select={onDateSelect}
         eventClick={onEventClick}
         eventDrop={onEventDrop}

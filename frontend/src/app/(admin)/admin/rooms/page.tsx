@@ -10,9 +10,9 @@ import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import api from '@/lib/api';
-import { Building, Room, RoomStatus, RentalSlot } from '@/types';
+import { Building, Room, RoomStatus, RentalSlot, RoomCategory } from '@/types';
 import toast from 'react-hot-toast';
-import { Building2, Plus, Edit2, Trash2, Users, Compass, FileText, X, Settings, DollarSign, Clock } from 'lucide-react';
+import { Building2, Plus, Edit2, Trash2, Users, Compass, FileText, X, Settings, DollarSign, Clock, ListFilter } from 'lucide-react';
 
 export default function AdminRoomsPage() {
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -39,6 +39,7 @@ export default function AdminRoomsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [roomImageFile, setRoomImageFile] = useState<File | null>(null);
   const [roomImagePreview, setRoomImagePreview] = useState<string>('');
+  const [roomCategory, setRoomCategory] = useState<RoomCategory | undefined>(undefined);
 
   // Rental Slots Modal State
   const [isSlotsModalOpen, setIsSlotsModalOpen] = useState(false);
@@ -140,6 +141,7 @@ export default function AdminRoomsPage() {
         isRentable: roomIsRentable,
         maxBookingHours: roomMaxBookingHours,
         amenities: JSON.stringify(roomAmenities),
+        category: roomCategory || undefined,
       };
 
       if (editingRoomId) {
@@ -153,6 +155,7 @@ export default function AdminRoomsPage() {
           formData.append('isRentable', String(roomIsRentable));
           formData.append('maxBookingHours', String(roomMaxBookingHours || ''));
           formData.append('amenities', JSON.stringify(roomAmenities));
+          if (roomCategory) formData.append('category', roomCategory);
           formData.append('image', roomImageFile);
           response = await api.patch(`/rooms/${editingRoomId}`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
@@ -171,6 +174,7 @@ export default function AdminRoomsPage() {
           formData.append('status', roomStatus);
           formData.append('isRentable', String(roomIsRentable));
           formData.append('amenities', JSON.stringify(roomAmenities));
+          if (roomCategory) formData.append('category', roomCategory);
           formData.append('image', roomImageFile);
           response = await api.post('/rooms', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
@@ -212,6 +216,7 @@ export default function AdminRoomsPage() {
     setRoomAmenities(parseAmenities(r.amenities as any));
     setRoomImageFile(null);
     setRoomImagePreview(r.imageUrl || '');
+    setRoomCategory(r.category || undefined);
     setIsRoomModalOpen(true);
   };
 
@@ -232,6 +237,7 @@ export default function AdminRoomsPage() {
     setRoomAmenities([]);
     setRoomImageFile(null);
     setRoomImagePreview('');
+    setRoomCategory(undefined);
     setIsRoomModalOpen(true);
   };
 
@@ -660,6 +666,15 @@ export default function AdminRoomsPage() {
               value={roomStatus}
               onChange={(e) => setRoomStatus(e.target.value as RoomStatus)}
               required
+            />
+            <Select
+              label="Room Category"
+              options={[
+                { value: 'EVENT', label: 'EVENT' },
+                { value: 'SPORT', label: 'SPORT' },
+              ]}
+              value={roomCategory || ''}
+              onChange={(e) => setRoomCategory(e.target.value as RoomCategory || undefined)}
             />
           </div>
 

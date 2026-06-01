@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/Input';
 import api, { getImageUrl } from '@/lib/api';
 import { Room } from '@/types';
 import toast from 'react-hot-toast';
-import { Calendar, MapPin, Users } from 'lucide-react';
+import { Calendar, MapPin, Users, LayoutGrid } from 'lucide-react';
+import { RoomCategory } from '@/types';
 import Link from 'next/link';
 
 const Badge = ({ children, variant = 'neutral' }: { children: React.ReactNode; variant?: 'info' | 'success' | 'warning' | 'danger' | 'neutral' }) => {
@@ -32,19 +33,23 @@ export default function AvailableRoomsPage() {
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [debugInfo, setDebugInfo] = useState<string>('');
 
   useEffect(() => {
     fetchAvailableRooms();
   }, []);
 
-  const fetchAvailableRooms = async (date?: string) => {
+  const fetchAvailableRooms = async (date?: string, category?: string) => {
     setLoading(true);
     try {
       const params: any = {};
       const dateToUse = date !== undefined ? date : dateFilter;
       if (dateToUse) {
         params.date = dateToUse;
+      }
+      if (category) {
+        params.category = category;
       }
       const res = await api.get(`/rentals/available-rooms?_=${Date.now()}`, { params });
       setDebugInfo(`res.data type: ${typeof res.data}, isArray: ${Array.isArray(res.data)}, keys: ${res.data && typeof res.data === 'object' ? Object.keys(res.data).join(',') : 'N/A'}, length: ${Array.isArray(res.data) ? res.data.length : 'N/A'}`);
@@ -84,6 +89,8 @@ export default function AvailableRoomsPage() {
   const filteredRooms = rooms.filter((room) =>
     room.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (room.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+  ).filter((room) =>
+    !categoryFilter || (room.category as string) === categoryFilter
   );
 
   return (
@@ -115,6 +122,18 @@ export default function AvailableRoomsPage() {
                 leftIcon={<Calendar className="w-4 h-4" />}
               />
             </div>
+            <div className="w-full sm:w-44">
+              <label className="text-xs font-semibold text-slate-400 mb-1 block">Category</label>
+              <select
+                className="w-full h-10 px-3 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+              >
+                <option value="">All</option>
+                <option value="SPORT">Sport</option>
+                <option value="EVENT">Event</option>
+              </select>
+            </div>
             <Button variant="secondary" onClick={() => {
               setSearchTerm('');
               fetchAvailableRooms(dateFilter);
@@ -122,6 +141,14 @@ export default function AvailableRoomsPage() {
             }}>
               Refresh
             </Button>
+            {categoryFilter && (
+              <Button variant="secondary" onClick={() => {
+                setCategoryFilter('');
+                fetchAvailableRooms(dateFilter, '');
+              }}>
+                Clear
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -183,6 +210,12 @@ export default function AvailableRoomsPage() {
                     <MapPin className="w-3.5 h-3.5" />
                     {room.building?.name || 'Building'}
                   </span>
+                  {room.category && (
+                    <span className="flex items-center gap-1">
+                      <LayoutGrid className="w-3.5 h-3.5" />
+                      {room.category}
+                    </span>
+                  )}
                 </div>
 
                 {/* Amenities */}

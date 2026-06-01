@@ -22,8 +22,8 @@ export class RentalsController {
 
   @Get('available-rooms')
   @Public()
-  getAvailableRooms(@Query('date') date: string) {
-    return this.rentalsService.getAvailableRooms(date);
+  getAvailableRooms(@Query('date') date: string, @Query('category') category?: string) {
+    return this.rentalsService.getAvailableRooms(date, category as any);
   }
 
   @Post('check-availability')

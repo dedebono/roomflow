@@ -5,7 +5,7 @@ import { CheckAvailabilityDto } from './dto/check-availability.dto';
 import { CreateHoldDto } from './dto/create-hold.dto';
 import { CreateRentalSlotDto } from './dto/create-rental-slot.dto';
 import { UpdateRentalSlotDto } from './dto/update-rental-slot.dto';
-import { BookingHoldStatus, BookingStatus, PaymentStatus } from '@prisma/client';
+import { BookingHoldStatus, BookingStatus, PaymentStatus, RoomCategory } from '@prisma/client';
 
 @Injectable()
 export class RentalsService implements OnModuleInit {
@@ -54,15 +54,18 @@ export class RentalsService implements OnModuleInit {
     }
   }
 
-  async getAvailableRooms(date: string) {
-    const dateObj = date ? new Date(date + 'T00:00:00') : new Date();
+  async getAvailableRooms(date?: string, category?: RoomCategory) {
+    // Default to today if no date provided
+    const dateStr = date || new Date().toISOString().split('T')[0];
+    const dateObj = new Date(dateStr + 'T00:00:00');
     const dayOfWeek = dateObj.getDay(); // local getDay() — matches how rentalSlots.dayOfWeek was stored
 
-    // Get all rooms that are rentable
+    // Get all rooms that are rentable and match category (if provided)
     const rentableRooms = await this.prisma.room.findMany({
       where: {
         isRentable: true,
         status: 'ACTIVE',
+        category: category || undefined,
       },
       include: {
         building: true,
@@ -75,39 +78,35 @@ export class RentalsService implements OnModuleInit {
       },
     });
 
-    // For each room, check for conflicting bookings or holds on that date
+
     const availableRooms: any[] = [];
-
     for (const room of rentableRooms) {
-      // Calculate the start and end of the day
-      const dayStart = new Date(dateObj);
-      dayStart.setHours(0, 0, 0, 0);
+      // Check availability for each rental slot in the room for the given date
+      for (const slot of room.rentalSlots) {
+        const startTime = slot.startTime;
+        const endTime = slot.endTime;
 
-      const dayEnd = new Date(dateObj);
-      dayEnd.setHours(23, 59, 59, 999);
+        // Use the checkAvailability logic to see if the slot is free
+        const availability = await this.checkAvailability(
+          room.id,
+          dateStr,
+          startTime,
+          endTime,
+        );
 
-      // Check for regular bookings
-      const hasBookingConflict = await this.prisma.booking.findFirst({
-        where: {
-          roomId: room.id,
-          status: BookingStatus.BOOKED,
-          startTime: { lte: dayEnd },
-          endTime: { gte: dayStart },
-        },
-      });
-
-      // Check for active booking holds
-      const hasHoldConflict = await this.prisma.bookingHold.findFirst({
-        where: {
-          roomId: room.id,
-          status: BookingHoldStatus.ACTIVE,
-          startTime: { lte: dayEnd },
-          endTime: { gte: dayStart },
-        },
-      });
-
-      if (!hasBookingConflict && !hasHoldConflict) {
-        availableRooms.push(room);
+        if (availability.available) {
+          // If at least one slot is available, add the room and break to avoid duplicates
+          const roomWithPrice = {
+            ...room,
+            category: room.category,
+            // Derive price from available rental slots (use minimum slot price)
+            price: room.rentalSlots.length > 0
+              ? Math.min(...room.rentalSlots.map(s => s.price))
+              : 0,
+          };
+          availableRooms.push(roomWithPrice);
+          break; // Move to the next room once one available slot is found
+        }
       }
     }
 
@@ -512,22 +511,45 @@ export class RentalsService implements OnModuleInit {
       });
     };
 
-    // For each rental slot, construct full datetime and check availability
-    const result = slots.map((slot) => {
+    // For each rental slot, expand into hourly sub-slots and check availability
+    const result: any[] = [];
+    for (const slot of slots) {
       const slotStartTime = new Date(dateObj);
-      const [startHour, startMin] = slot.startTime.split(':').map(Number);
-      slotStartTime.setHours(startHour, startMin, 0, 0);
+      const [slotStartH, slotStartM] = slot.startTime.split(':').map(Number);
+      slotStartTime.setHours(slotStartH, slotStartM, 0, 0);
+
       const slotEndTime = new Date(dateObj);
-      const [endHour, endMin] = slot.endTime.split(':').map(Number);
-      slotEndTime.setHours(endHour, endMin, 0, 0);
-      return {
-        ...slot,
-        startTime: slotStartTime.toISOString(),
-        endTime: slotEndTime.toISOString(),
-        available: slot.isActive && !isSlotBooked(slotStartTime.toISOString(), slotEndTime.toISOString()) && !isSlotHeld(slotStartTime.toISOString(), slotEndTime.toISOString()),
-      };
-    });
-    console.log(`[getAvailableSlots] returning ${result.length} slots`);
+      const [slotEndH, slotEndM] = slot.endTime.split(':').map(Number);
+      slotEndTime.setHours(slotEndH, slotEndM, 0, 0);
+
+      // Expand into hourly sub-slots
+      let currentHour = new Date(slotStartTime);
+      while (currentHour < slotEndTime) {
+        const subStart = new Date(currentHour);
+        const subEnd = new Date(currentHour);
+        subEnd.setHours(subEnd.getHours() + 1);
+
+        // Don't exceed the slot's end time
+        if (subEnd > slotEndTime) break;
+
+        const subStartISO = subStart.toISOString();
+        const subEndISO = subEnd.toISOString();
+
+        const booked = isSlotBooked(subStartISO, subEndISO);
+        const held = isSlotHeld(subStartISO, subEndISO);
+
+        result.push({
+          id: `${slot.id}_${currentHour.getHours()}`,
+          startTime: subStartISO,
+          endTime: subEndISO,
+          price: slot.price,
+          available: !booked && !held,
+        });
+
+        currentHour.setHours(currentHour.getHours() + 1);
+      }
+    }
+    console.log(`[getAvailableSlots] returning ${result.length} hourly slots`);
     return result;
   }
 

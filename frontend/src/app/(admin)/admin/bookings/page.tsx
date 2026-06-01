@@ -20,6 +20,8 @@ const BookingCalendar = dynamic(() => import('@/components/calendar/BookingCalen
 });
 
 export default function AdminBookingsPage() {
+  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string>('');
   const [rooms, setRooms] = useState<Room[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<string>('');
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -36,21 +38,40 @@ export default function AdminBookingsPage() {
 
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
-  // Fetch all rooms directly (no building filter needed)
+  // Fetch initial building details
+  useEffect(() => {
+    const fetchBuildings = async () => {
+      try {
+        const res = await api.get('/buildings');
+        setBuildings(res.data);
+        if (res.data.length > 0) {
+          setSelectedBuildingId(res.data[0].id);
+        }
+      } catch (err: any) {
+        toast.error('Failed to load buildings');
+      }
+    };
+    fetchBuildings();
+  }, []);
+
+  // Fetch rooms when buildingId changes
   useEffect(() => {
     const fetchRooms = async () => {
+      if (!selectedBuildingId) return;
       try {
-        const res = await api.get('/rooms');
+        const res = await api.get(`/rooms?buildingId=${selectedBuildingId}`);
         setRooms(res.data);
-        if (res.data.length > 0 && !selectedRoomId) {
+        if (res.data.length > 0) {
           setSelectedRoomId(res.data[0].id);
+        } else {
+          setSelectedRoomId('');
         }
       } catch (err: any) {
         toast.error('Failed to load rooms');
       }
     };
     fetchRooms();
-  }, []);
+  }, [selectedBuildingId]);
 
   // Fetch bookings when selectedRoomId changes
   const loadRoomBookings = useCallback(async () => {
@@ -240,17 +261,25 @@ export default function AdminBookingsPage() {
           <CardHeader className="p-0 mb-4">
             <CardTitle className="flex items-center gap-2">
               <Building2 className="w-5 h-5 text-indigo-400" />
-              <span>Select Room</span>
+              <span>Location Context</span>
             </CardTitle>
-            <CardDescription>Calendar shows bookings for the selected room</CardDescription>
+            <CardDescription>Select building first, then choose a room</CardDescription>
           </CardHeader>
           <CardContent className="p-0 space-y-3">
             <Select
-              options={rooms.map((r) => ({ value: r.id, label: `${r.name} (${r.status})` }))}
-              value={selectedRoomId}
-              onChange={handleRoomChange}
-              placeholder="Select Room..."
+              options={buildings.map((b) => ({ value: b.id, label: b.name }))}
+              value={selectedBuildingId}
+              onChange={(e) => setSelectedBuildingId(e.target.value)}
+              placeholder="Select Building..."
             />
+            {selectedBuildingId && (
+              <Select
+                options={rooms.map((r) => ({ value: r.id, label: `${r.name} (${r.status})` }))}
+                value={selectedRoomId}
+                onChange={handleRoomChange}
+                placeholder="Select Room..."
+              />
+            )}
           </CardContent>
         </Card>
 
