@@ -1,4 +1,4 @@
-# Dependency directories
+# Dependencies
 node_modules/
 backend/node_modules/
 frontend/node_modules/
@@ -8,13 +8,15 @@ backend/dist/
 frontend/.next/
 frontend/out/
 
-# Environment / Secret variables
+# Environment / Secrets
 .env
 .env.local
 .env.*.local
 backend/.env
 frontend/.env
 frontend/.env.local
+# BUT track the example
+!.env.example
 
 # Logs
 logs
@@ -24,15 +26,17 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Database / SQLite / Prisma temporary assets
+# Database
 backend/prisma/*.db
 backend/prisma/*.db-journal
 
-# OS files
+# Storage / Uploads (local volume)
+backend/uploads/
+frontend/public/uploads/
+
+# OS / IDEs
 .DS_Store
 Thumbs.db
-
-# IDEs and editors
 .idea/
 .vscode/
 *.suo
@@ -40,3 +44,7 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Docker
+.docker/
+*.tar.gz

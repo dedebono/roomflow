@@ -1,333 +1,511 @@
-# RoomFlow — Enterprise Room Booking & Rental Engine
+# ============================================================
+# RoomFlow — Production Deployment Guide
+# ============================================================
+# Tested on: Ubuntu 22.04+ / Debian 12+ | 2GB+ RAM | 20GB+ disk
+# Requirements: Docker 24+, Docker Compose v2+
+# ============================================================
 
-## Project Overview
-RoomFlow is a full-stack workspace booking + hourly rental application. Multi-tenant support with role-based access (ADMIN, ROOM_ADMIN, RENTER, USER). Built with NestJS (backend), Next.js (frontend), PostgreSQL, Docker Compose. Live at `https://room.ytcb.org` via Cloudflare tunnel.
+## Table of Contents
 
-## Current Status: ✅ PHASE 10+ — Full Renter Flow + Room Categories
-
----
-
-## Architecture
-
-### Tech Stack
-- **Backend**: NestJS 10, Prisma ORM, PostgreSQL 16, JWT auth
-- **Frontend**: Next.js 16, React 18, Tailwind CSS, TypeScript
-- **Deployment**: Docker Compose, Cloudflare Tunnel, Nginx
-- **Database**: PostgreSQL (schema in `/backend/prisma/schema.prisma`)
-
-### Key Models
-| Model | Purpose | Key Fields |
-|-------|---------|-----------|
-| `Room` | Bookable spaces | `name`, `capacity`, `isRentable`, `maxBookingHours`, `imageUrl`, `amenities`, `category` |
-| `RentalSlot` | Hourly availability | `roomId`, `dayOfWeek`, `startTime`, `endTime`, `price`, `isActive` |
-| `BookingHold` | 1-hour rental hold | `userId`, `roomId`, `holdDate`, `startTime`, `endTime`, `expiresAt`, `status` (ACTIVE/CONVERTED/EXPIRED) |
-| `Booking` | Confirmed rental | `userId`, `roomId`, `startTime`, `endTime`, `isRental`, `status` |
-| `Payment` | Receipt upload | `bookingHoldId`, `userId`, `amount`, `fileUrl`, `status` (PENDING/APPROVED/REJECTED) |
-| `Notification` | In-app alerts | `userId`, `type`, `title`, `message`, `data`, `isRead` |
-| `Building` | Physical location | `id`, `name` |
-
-### Room Categories
-Rooms are classified by type via the `RoomCategory` enum:
-- `EVENT` — Event halls, meeting rooms, conference spaces
-- `SPORT` — Sports facilities, courts, arenas
-
-Current room assignments:
-| Room | Category |
-|------|----------|
-| Lapangan basket | SPORT |
-| Meeting Room 102 | EVENT |
-| Workstation Area | EVENT |
-| Large Hall 201 | EVENT |
-| MLB CENTER | EVENT |
+1. [System Requirements](#system-requirements)
+2. [Quick Start](#quick-start)
+3. [Step-by-Step Setup](#step-by-step-setup)
+4. [Configuration Reference](#configuration-reference)
+5. [Custom Domain & HTTPS](#custom-domain--https)
+6. [Database Management](#database-management)
+7. [Troubleshooting](#troubleshooting)
+8. [Updating](#updating)
+9. [Project Structure](#project-structure)
 
 ---
 
-## Features Implemented ✅
+## System Requirements
 
-### Phase 1: Frontend Build Fixes ✅
-- Fixed JSX root elements in all `/renter/` pages
-- Resolved Badge component conflicts
-- Fixed type definitions for `BookingHold`, `RentalSlot`, `Room`
+### Minimum
+- **OS**: Ubuntu 22.04+ / Debian 12+ / macOS 13+
+- **RAM**: 2 GB
+- **Disk**: 20 GB
+- **Docker**: 24.x or newer
+- **Docker Compose**: v2.x (standalone or plugin)
 
-### Phase 2: Admin Rental Config ✅
-- `RentalSlot` CRUD endpoints (`GET/POST/PATCH/DELETE /rentals/slots`)
-- Admin UI: room edit modal with `maxBookingHours` input
-- Rentable column in admin rooms table
+### Recommended
+- **RAM**: 4 GB
+- **CPU**: 2 cores
+- **Disk**: 40 GB SSD
+- **Domain**: Registered domain with DNS access
 
-### Phase 3: Renter Booking Flow ✅
-- 1-hour countdown timer on payment page (live MM:SS display)
-- Auto-cancel expired holds (30s interval check)
-- Room photos on detail page
-- Seed data: rooms with rental slots across Mon-Fri
-
-### Phase 4: Manager Payment Dashboard ✅
-- `/dashboard/rentals` — list booking holds with approve/reject actions
-- Payment approve/reject flow with notifications
-- Chat dashboard with renter messaging
-- Notification bell with unread count
-
-### Phase 5: Modification Requests ✅
-- USER role cannot cancel/reschedule directly
-- "Request Cancellation" modal for USER role
-- Manager approval/rejection with notifications
-
-### Phase 6: End-to-End Testing ✅
-- Full rental flow tested (register → browse → book → pay → approve)
-- Notifications fire on booking events
-- Chat works between renter and manager
-
-### Phase 7: Room Image Compression ✅
-- Images compressed to WebP (1200×800px, 80% quality) via Sharp library
-- Graceful fallback to original if compression fails
-- Stored locally at `/app/dist/uploads/` with Docker volume persistence
-- Frontend uses `getImageUrl()` helper for full CDN URLs
-
-### Phase 8: Landing Page Live Availability ✅
-- Landing page fetches live data from `/api/rentals/available-rooms`
-- `SportsZone` shows SPORT rooms, `EventZone` shows EVENT rooms
-- `FeaturedSpaces` and `LiveAvailability` show all rooms
-- Price derived from minimum rental slot price
-- Availability checked against active bookings and holds per slot
-
-### Phase 9: Full Renter Flow End-to-End ✅
-- Login → Browse rooms → Select date → View time slots → Create hold → Upload payment → Manager approves → Booking confirmed
-- All workflows tested and verified:
-  - Login ✅
-  - Browse rooms ✅
-  - Create holds ✅
-  - View bookings ✅
-  - Payments (upload + re-upload on rejection) ✅
-  - Messages ✅
-  - Chat ✅
-
-### Phase 10: Room Categories ✅
-- Added `RoomCategory` enum (`EVENT`, `SPORT`) to Prisma schema
-- Added `category` field to `Room` model
-- Database migration applied; existing rooms force-categorized
-- Backend `getAvailableRooms` accepts `?category=SPORT|EVENT` query param
-- Backend `rentalSlots.findMany` corrected to use `include` (not `select`) for relation
-- Admin room creation modal includes category dropdown (EVENT/SPORT)
-- Renter rooms list displays category badge per room
-- Landing page fetches three room sets: SPORT, EVENT, all — for respective sections
-
----
-
-## Current Issues 🟡
-
-### Issue 1: Refresh Button Doesn't Clear Search Filter
-**Status**: RESOLVED (2026-06-01)
-- Refresh button now clears search term
-
-### Issue 2: Debug Console.log on Rooms List
-**Status**: RESOLVED (2026-06-01)
-- Debug log statements removed from rooms list page
-
-### Issue 3: RentalSlots Not Returning in findAll
-**Status**: RESOLVED (2026-06-01)
-- `rooms.service.ts` `findAll` changed from `select` to `include` for `rentalSlots`
-- Now returns full rental slot data with rooms
-
----
-
-## Renter Testing Checklist
-| Task | Status | Notes |
-|------|--------|-------|
-| Login (jack@mail.com / 12345678) | ✅ | Works |
-| Dashboard verification | ✅ | Stats, active holds display |
-| Browse rooms (search, filters) | ✅ | Category filter + search work |
-| View room details | ✅ | Image, amenities, description load |
-| Select date & view time slots | ✅ | API returns data, frontend renders |
-| Create booking hold | ✅ | Countdown timer starts |
-| Upload payment proof | ✅ | Image upload works |
-| View My Bookings | ✅ | Booking list displays |
-| View Payments history | ✅ | Payment history displays |
-| Test messaging | ✅ | Chat works |
-| Sign out | ✅ | Works |
-
----
-
-## Database Setup
-
-### Room Categories SQL
-```sql
--- Update room categories
-UPDATE "Room" SET category = 'SPORT' WHERE name ILIKE '%basket%';
-UPDATE "Room" SET category = 'EVENT' WHERE category IS NULL;
-
--- Verify
-SELECT name, category FROM "Room";
-```
-
-### Seed Rental Data
-```sql
--- Mark rooms as rentable
-UPDATE "Room" SET "isRentable" = true WHERE "name" IN ('Executive Suite 301', 'Large Hall 201', 'Meeting Room 102', 'Conference Room 101', 'MLB CENTER', 'Lapangan basket');
-```
-
-### Test Credentials
-| Role | Email | Password |
-|------|-------|----------|
-| Renter | jack@mail.com | 12345678 |
-| Manager | manager@roomflow.local | password123 |
-| Admin | admin@roomflow.local | password123 |
-
----
-
-## API Endpoints
-
-### Rentals
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/rentals/available-rooms` | Public | List rentable rooms (supports `?category=SPORT&EVENT&date=YYYY-MM-DD`) |
-| GET | `/api/rentals/available-slots` | Auth | Get hourly slots for room+date |
-| POST | `/api/rentals/create-hold` | Auth | Create 1-hour booking hold |
-| GET | `/api/rentals/my-bookings` | Auth | Renter's confirmed bookings |
-| GET | `/api/rentals/my-holds` | Auth | Renter's active holds |
-| GET | `/api/rentals/active-hold` | Auth | Get active hold for room |
-| GET | `/api/rentals/holds` | Auth | Manager: all holds |
-| POST | `/api/rentals/book-from-hold/:holdId` | Auth | Convert hold to booking |
-| POST | `/api/rentals/check-availability` | Public | Check room availability |
-
-### Rooms
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/rooms` | Public | List all rooms |
-| GET | `/api/rooms/:id` | Public | Get room by ID |
-| POST | `/api/rooms` | Auth | Create room |
-| PATCH | `/api/rooms/:id` | Auth | Update room |
-| DELETE | `/api/rooms/:id` | Auth | Delete room |
-
-### Payments
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/api/payments/upload` | Auth | Upload payment receipt (multipart) |
-| PATCH | `/api/payments/:id/approve` | Auth | Manager approves payment |
-| PATCH | `/api/payments/:id/reject` | Auth | Manager rejects payment |
-
-### Chat
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/chat/conversations` | Auth | List conversations |
-| POST | `/api/chat/conversations` | Auth | Create/get conversation |
-| POST | `/api/chat/send` | Auth | Send message |
-| POST | `/api/chat/mark-read/:participantId` | Auth | Mark conversation read |
-
-### Notifications
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/notifications` | Auth | List user notifications |
-| PATCH | `/api/notifications/:id/read` | Auth | Mark notification read |
-
----
-
-## File Structure
-
-```
-/home/ubuntu/roomflow/
-├── backend/
-│   ├── src/
-│   │   ├── rentals/          # Rental booking logic + rental slots
-│   │   ├── payments/         # Payment upload & approval
-│   │   ├── chat/             # Messaging
-│   │   ├── notifications/    # In-app alerts
-│   │   ├── rooms/            # Room CRUD + category
-│   │   ├── storage/          # Image upload + Sharp compression
-│   │   ├── auth/             # JWT auth
-│   │   └── common/           # Decorators, guards, pipes
-│   ├── prisma/
-│   │   └── schema.prisma     # Database schema (includes RoomCategory enum)
-│   └── Dockerfile
-├── frontend/
-│   ├── src/app/
-│   │   ├── renter/           # Renter pages (dashboard, rooms, bookings, payments, chat)
-│   │   ├── dashboard/        # Manager pages (rentals, chat, notifications)
-│   │   ├── admin/            # Admin pages (rooms, users, system)
-│   │   ├── auth/             # Login, register
-│   │   └── (public)/         # Landing page, public routes
-│   ├── src/components/
-│   │   ├── landing/          # Landing page sections (SportsZone, EventZone, etc.)
-│   │   ├── ui/              # Reusable UI components (Button, Card, Input, etc.)
-│   │   └── ...
-│   ├── src/lib/              # API client, utilities
-│   └── Dockerfile
-├── docker-compose.yml          # Services: postgres, backend, frontend, nginx
-└── README.md                 # This file
-```
-
----
-
-## Deployment
-
-### Local Development
+### Check Your Versions
 ```bash
-cd /home/ubuntu/roomflow
+docker --version           # Docker version 24.x or newer
+docker compose version     # Docker Compose version v2.x
+```
+
+Install Docker if needed:
+```bash
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+---
+
+## Quick Start
+
+### 1. Clone & Configure
+```bash
+# Clone the repository
+git clone https://github.com/dedebono/roomflow.git
+cd roomflow
+
+# Copy environment template
+cp .env.example .env
+
+# Edit .env with your values
+nano .env
+```
+
+### 2. Start Services
+```bash
+# Start all services (first run downloads images + builds)
 sudo docker compose up -d
-# Frontend: http://localhost:3001
-# Backend: http://localhost:3000
-# Nginx: http://localhost
-# Postgres: localhost:5432
+
+# Wait for database to be ready (~15 seconds)
+sleep 20
 ```
 
-### Production (Cloudflare Tunnel)
+### 3. Apply Database Migrations
 ```bash
-# Tunnel configured at https://room.ytcb.org
-# Nginx routes:
-#   /         → frontend:3000
-#   /api      → backend:3000
-#   /uploads/ → backend:3000
+# Run database migrations + seed data
+sudo docker compose exec backend npx prisma migrate deploy
+sudo docker compose exec backend npx prisma db seed 2>/dev/null || echo "Seed skipped"
 ```
 
-### Rebuild Services
+### 4. Verify
 ```bash
-# Rebuild backend (use --no-cache for schema changes)
-cd /home/ubuntu/roomflow
-sudo docker compose build --no-cache backend
-sudo docker compose up -d backend
+# Check service status
+sudo docker compose ps
 
-# Rebuild frontend (use --no-cache for frontend changes)
+# Visit the app
+curl -s http://localhost | head -5
+
+# View logs
+sudo docker compose logs --tail=20
+```
+
+**App running at:** `http://YOUR_SERVER_IP`
+
+---
+
+## Step-by-Step Setup
+
+### Step 1: Install Docker & Docker Compose
+
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install prerequisites
+sudo apt install -y curl git ca-certificates
+
+# Install Docker
+curl -fsSL https://get.docker.com | sh
+
+# Add user to docker group (avoid sudo)
+sudo usermod -aG docker $USER
+newgrp docker
+
+# Verify installation
+docker --version
+docker compose version
+```
+
+### Step 2: Configure Environment
+
+```bash
+cd roomflow
+
+# Copy the example env file
+cp .env.example .env
+
+# Required edits in .env:
+nano .env
+```
+
+**Minimum required changes:**
+```env
+POSTGRES_PASSWORD=your_secure_password_here
+JWT_SECRET=openssl_rand_-base64_32_output_here
+```
+
+**Optional (for WhatsApp integration):**
+```env
+WAHA_API_URL=http://your_waha_server:3000
+WAHA_API_KEY=your_waha_api_key
+NEXT_PUBLIC_API_URL=https://your-domain.com/api
+```
+
+### Step 3: Build & Start
+
+```bash
+# Build all services (first run only — takes 3-5 minutes)
+sudo docker compose build
+
+# Start in background
+sudo docker compose up -d
+
+# Check status
+sudo docker compose ps
+```
+
+Expected output:
+```
+NAME                STATUS
+roomflow-postgres   Up (healthy)
+roomflow-backend   Up
+roomflow-frontend  Up
+roomflow-nginx     Up
+```
+
+### Step 4: Initialize Database
+
+```bash
+# Run migrations
+sudo docker compose exec backend npx prisma migrate deploy
+
+# Seed test data
+sudo docker compose exec backend npx prisma db seed 2>/dev/null || true
+```
+
+### Step 5: Access the Application
+
+```
+Frontend:  http://YOUR_SERVER_IP
+API:       http://YOUR_SERVER_IP/api
+```
+
+---
+
+## Configuration Reference
+
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `POSTGRES_PASSWORD` | ✅ Yes | `roomflow` | PostgreSQL password |
+| `JWT_SECRET` | ✅ Yes | — | JWT signing secret (min 32 chars) |
+| `NEXT_PUBLIC_API_URL` | ✅ Yes | `/api` | Frontend API URL (must match domain) |
+| `WAHA_ENABLED` | No | `false` | Enable WhatsApp integration |
+| `WAHA_API_URL` | If WAHA enabled | — | WAHA server URL |
+| `WAHA_API_KEY` | If WAHA enabled | — | WAHA API key |
+| `STORAGE_TYPE` | No | `LOCAL` | Storage backend (LOCAL/S3) |
+| `EMAIL_ENABLED` | No | `false` | Enable email notifications |
+
+### Generate Secure Secrets
+
+```bash
+# Generate JWT_SECRET
+openssl rand -base64 32
+
+# Generate PostgreSQL password
+openssl rand -hex 16
+```
+
+### Ports
+
+| Service | Port | Description |
+|---------|------|-------------|
+| Nginx | 80 | HTTP (frontend + API) |
+| Backend | 3000 | REST API only |
+| Frontend | 3001 | Direct frontend access |
+| PostgreSQL | 5432 | Database (localhost only) |
+
+---
+
+## Custom Domain & HTTPS
+
+### Option 1: Cloudflare Tunnel (Recommended — Free)
+
+```bash
+# Install cloudflared
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+  -o /usr/local/bin/cloudflared
+chmod +x /usr/local/bin/cloudflared
+
+# Create tunnel
+cloudflared tunnel create roomflow
+
+# Get tunnel ID
+cloudflared tunnel list
+
+# Route domain
+cloudflared tunnel route dns <TUNNEL_ID> room.ytcb.org
+
+# Update nginx.conf server_name to match your domain
+nano nginx.conf
+# Change: server_name room.ytcb.org;
+# To:     server_name your.domain.com;
+
+# Restart nginx
+sudo docker compose restart nginx
+```
+
+### Option 2: Let's Encrypt HTTPS (Self-Hosted)
+
+```bash
+# Install certbot
+sudo apt install -y certbot python3-certbot-nginx
+
+# Stop nginx briefly
+sudo docker compose stop nginx
+
+# Get certificate
+sudo certbot --nginx -d your-domain.com --non-interactive --agree-tos -m admin@your-domain.com
+
+# Enable HTTPS in nginx.conf (add after getting certs)
+# Then restart
+sudo docker compose start nginx
+```
+
+### Option 3: Reverse Proxy (Nginx/Caddy on Host)
+
+If running RoomFlow behind a reverse proxy on the host machine,
+change nginx to expose a different port:
+
+```bash
+# In docker-compose.yml, change nginx ports:
+nginx:
+  ports:
+    - '8080:80'   # Instead of 80:80
+```
+
+Then configure your reverse proxy to forward HTTPS traffic.
+
+---
+
+## Database Management
+
+### Connect to PostgreSQL
+```bash
+# Interactive psql
+sudo docker compose exec postgres psql -U roomflow -d roomflow
+
+# Run SQL directly
+sudo docker compose exec postgres psql -U roomflow -d roomflow -c "SELECT COUNT(*) FROM \"Room\";"
+```
+
+### Create Migrations
+```bash
+# Development (creates migration files)
+sudo docker compose exec backend npx prisma migrate dev --name add_feature
+
+# Production (applies migrations only)
+sudo docker compose exec backend npx prisma migrate deploy
+```
+
+### Reset Database
+```bash
+# WARNING: Destroys all data
+sudo docker compose exec backend npx prisma migrate reset --force
+```
+
+### Backup Database
+```bash
+# Backup to file
+sudo docker compose exec postgres pg_dump -U roomflow roomflow > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Restore from backup
+cat backup_file.sql | sudo docker compose exec -T postgres psql -U roomflow -d roomflow
+```
+
+### View/Edit Data via Prisma Studio
+```bash
+sudo docker compose exec backend npx prisma studio
+# Opens at http://localhost:3000 (mapped from backend container port 5555 in compose)
+```
+
+---
+
+## Troubleshooting
+
+### Services Won't Start
+
+```bash
+# Check logs
+sudo docker compose logs
+
+# Check specific service
+sudo docker compose logs backend
+sudo docker compose logs postgres
+sudo docker compose logs nginx
+
+# Restart all
+sudo docker compose restart
+```
+
+### Database Connection Error
+
+```bash
+# Wait longer (first start can take 30s)
+sleep 30
+
+# Check postgres is healthy
+sudo docker compose ps postgres
+
+# Check DATABASE_URL in backend
+sudo docker compose exec backend env | grep DATABASE
+```
+
+### Frontend Build Fails
+
+```bash
+# Clean build (no cache)
 sudo docker compose build --no-cache frontend
 sudo docker compose up -d frontend
+```
 
-# Full rebuild
+### 502 Bad Gateway
+
+```bash
+# Restart nginx
+sudo docker compose restart nginx
+
+# Check backend is running
+sudo docker compose logs backend --tail=10
+
+# Check nginx logs
+sudo docker compose logs nginx --tail=10
+```
+
+### Prisma Migration Error
+
+```bash
+# Force reset (WARNING: deletes data)
+sudo docker compose exec backend npx prisma migrate reset --force
+
+# Or run migrate deploy
+sudo docker compose exec backend npx prisma migrate deploy
+```
+
+### WhatsApp Not Working
+
+```bash
+# Check WAHA status
+sudo docker compose logs backend | grep -i waha
+
+# Verify WAHA credentials in .env
+cat .env | grep WAHA
+
+# Test WAHA connection manually
+curl -X GET "${WAHA_API_URL}/api/sessions" \
+  -H "x-api-key: ${WAHA_API_KEY}"
+```
+
+### Reset Everything (Fresh Start)
+
+```bash
+# Stop all
+sudo docker compose down
+
+# Remove volumes (deletes ALL data)
+sudo docker compose down -v
+
+# Remove built images (rebuild from scratch)
+sudo docker image prune -a
+
+# Start fresh
+sudo docker compose up -d
+```
+
+---
+
+## Updating
+
+### Pull Latest Code
+```bash
+git pull origin main
+```
+
+### Rebuild & Restart
+```bash
 sudo docker compose build --no-cache
 sudo docker compose up -d
 ```
 
-### Database Migrations
+### Run Migrations
 ```bash
-cd /home/ubuntu/roomflow/backend
-npx prisma migrate dev --name <migration_name>
-npx prisma generate
+sudo docker compose exec backend npx prisma migrate deploy
 ```
 
 ---
 
-## Known Limitations
-1. **No Payment Gateway**: Payments are receipt uploads only (no Stripe/PayPal integration)
-2. **Single Timezone**: All times in UTC (no timezone conversion)
-3. **No Email Notifications**: Only in-app notifications (no email alerts)
-4. **No Recurring Bookings**: Each rental is a one-time slot
-5. **No Cancellation Fees**: Cancellations are free (no penalty logic)
+## Project Structure
+
+```
+roomflow/
+├── backend/                    # NestJS API server
+│   ├── src/
+│   │   ├── auth/              # JWT authentication
+│   │   ├── rooms/             # Room CRUD + categories
+│   │   ├── bookings/          # Booking management
+│   │   ├── rentals/           # Hourly rental slots + holds
+│   │   ├── payments/          # Payment upload + approval
+│   │   ├── chat/              # Real-time messaging
+│   │   ├── notifications/     # In-app alerts
+│   │   ├── storage/           # File upload + image compression
+│   │   ├── whatsapp/          # WhatsApp integration
+│   │   └── common/            # Guards, decorators, pipes
+│   ├── prisma/
+│   │   └── schema.prisma       # Database schema + relations
+│   └── Dockerfile
+├── frontend/                   # Next.js 16 app
+│   ├── src/app/
+│   │   ├── renter/            # Renter-facing pages
+│   │   ├── dashboard/         # Manager/Admin pages
+│   │   ├── admin/              # System administration
+│   │   └── (auth)/            # Login, register
+│   ├── src/components/
+│   │   ├── landing/           # Public landing page
+│   │   └── ui/                # Shared UI components
+│   └── Dockerfile
+├── scripts/
+│   ├── setup.sh               # First-time setup script
+│   └── migrate.sh             # Migration runner
+├── docker-compose.yml          # Service orchestration
+├── nginx.conf                  # Reverse proxy + routing
+├── .env.example               # Environment template
+├── .env                       # Your secrets (not in git)
+├── .gitignore                 # Ignored files
+└── README.md                  # This file
+```
 
 ---
 
-## Next Steps
-1. **Recurring Bookings**: Support weekly/monthly recurring rentals
-2. **Email Notifications**: Integrate SMTP for booking confirmations and reminders
-3. **Calendar View**: Visual calendar for room availability
-4. **Waitlist**: Notify users when a held slot becomes available
-5. **Analytics Dashboard**: Occupancy rates, revenue per room, peak hours
-6. **Recategorization**: Allow rooms to belong to both EVENT and SPORT categories
+## Test Credentials
+
+| Role | Email | Password |
+|------|-------|----------|
+| IT Admin | admin@roomflow.local | password123 |
+| Room Manager | manager@roomflow.local | password123 |
+| Renter | jack@mail.com | 12345678 |
 
 ---
 
 ## Support
-- **Tunnel Status**: `https://room.ytcb.org`
-- **Backend Logs**: `sudo docker compose logs backend -f`
-- **Frontend Logs**: `sudo docker compose logs frontend -f`
-- **Nginx Logs**: `sudo docker compose logs nginx -f`
-- **Database**: `sudo docker exec roomflow-postgres psql -U roomflow -d roomflow`
+
+```bash
+# View all logs
+sudo docker compose logs -f
+
+# View specific service
+sudo docker compose logs -f backend
+
+# Service health
+sudo docker compose ps
+
+# Resource usage
+sudo docker stats --no-stream
+```
 
 ---
 
-**Last Updated**: 2026-06-01 | **Phase**: 10+ (Full Renter Flow + Room Categories)
+**Last Updated**: 2026-06-18 | **Version**: 10+ | **License**: MIT
