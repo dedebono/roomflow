@@ -19,6 +19,7 @@ import {
   DollarSign,
   Bell,
   X,
+  LayoutDashboard,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -35,10 +36,10 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
   const isActive = (path: string) => pathname === path;
 
   const getLinkClass = (path: string) =>
-    `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold tracking-wide transition-all duration-200 ${
+    `flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
       isActive(path)
-        ? 'bg-gradient-to-r from-indigo-600/90 to-violet-600/90 text-white shadow-md shadow-indigo-500/10'
-        : 'text-slate-400 hover:bg-slate-900/50 hover:text-slate-200'
+        ? 'bg-white/15 text-white shadow-sm'
+        : 'text-white/60 hover:bg-white/8 hover:text-white/80'
     }`;
 
   const getRoleBadgeVariant = (role: string) => {
@@ -60,26 +61,25 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
   };
 
   const sidebarContent = (
-    <aside className="w-64 glass border-r border-slate-900 flex flex-col h-full">
+    <aside className="w-64 bg-[#143258] flex flex-col h-full">
       {/* Brand logo */}
-      <div className="p-6 border-b border-slate-900 flex flex-col gap-2">
+      <div className="p-5 border-b border-white/8 flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center font-bold text-white tracking-wider text-base shadow-lg shadow-indigo-500/20">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-white/15 flex items-center justify-center font-bold text-white tracking-wider text-base">
               RF
             </div>
-            <span className="font-extrabold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-200 via-slate-100 to-slate-200">
+            <span className="font-bold text-base tracking-tight text-white/90">
               RoomFlow
             </span>
           </div>
-          {/* Close button — mobile only */}
           {onClose && (
             <button
               onClick={onClose}
-              className="md:hidden p-2 rounded-lg hover:bg-slate-800/50 text-slate-400 hover:text-slate-200 transition-colors"
+              className="md:hidden p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
               aria-label="Close menu"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           )}
         </div>
@@ -90,17 +90,20 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
         </div>
       </div>
 
-      {/* Navigation section */}
-      <nav className="flex-1 px-4 py-6 flex flex-col gap-1.5 overflow-y-auto">
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
+        {/* Section heading */}
+        <div className="px-3 py-2 text-[10px] uppercase tracking-widest text-white/30 font-semibold">Main</div>
+
         {/* Regular USER Links */}
         {hasRole(['USER']) && (
           <>
             <Link href="/dashboard" className={getLinkClass('/dashboard')} onClick={handleLinkClick}>
-              <Calendar className="w-5 h-5" />
+              <Calendar className="w-4 h-4" />
               <span>Book a Room</span>
             </Link>
             <Link href="/dashboard/bookings" className={getLinkClass('/dashboard/bookings')} onClick={handleLinkClick}>
-              <BookOpen className="w-5 h-5" />
+              <BookOpen className="w-4 h-4" />
               <span>My Bookings</span>
             </Link>
           </>
@@ -110,67 +113,71 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
         {hasRole(['RENTER']) && (
           <>
             <Link href="/renter/dashboard" className={getLinkClass('/renter/dashboard')} onClick={handleLinkClick}>
-              <Home className="w-5 h-5" />
+              <LayoutDashboard className="w-4 h-4" />
               <span>Dashboard</span>
             </Link>
             <Link href="/renter/rooms" className={getLinkClass('/renter/rooms')} onClick={handleLinkClick}>
-              <Building2 className="w-5 h-5" />
+              <Building2 className="w-4 h-4" />
               <span>Available Rooms</span>
             </Link>
             <Link href="/renter/bookings" className={getLinkClass('/renter/bookings')} onClick={handleLinkClick}>
-              <Calendar className="w-5 h-5" />
+              <Calendar className="w-4 h-4" />
               <span>My Bookings</span>
             </Link>
             <Link href="/renter/payments" className={getLinkClass('/renter/payments')} onClick={handleLinkClick}>
-              <CreditCard className="w-5 h-5" />
+              <CreditCard className="w-4 h-4" />
               <span>Payments</span>
             </Link>
             <Link href="/renter/chat" className={getLinkClass('/renter/chat')} onClick={handleLinkClick}>
-              <MessageSquare className="w-5 h-5" />
+              <MessageSquare className="w-4 h-4" />
               <span>Messages</span>
             </Link>
           </>
         )}
 
+        {/* Admin section */}
+
         {/* ROOM_ADMIN Links */}
         {hasRole(['ROOM_ADMIN']) && (
           <>
+            <div className="px-3 py-2 mt-2 text-[10px] uppercase tracking-widest text-white/30 font-semibold">Projects</div>
             <Link href="/admin/bookings" className={getLinkClass('/admin/bookings')} onClick={handleLinkClick}>
-              <Calendar className="w-5 h-5" />
+              <Calendar className="w-4 h-4" />
               <span>Master Calendar</span>
             </Link>
             <Link href="/admin/rooms" className={getLinkClass('/admin/rooms')} onClick={handleLinkClick}>
-              <Building2 className="w-5 h-5" />
+              <Building2 className="w-4 h-4" />
               <span>Rooms & Buildings</span>
             </Link>
             <Link href="/rentals" className={getLinkClass('/rentals')} onClick={handleLinkClick}>
-              <DollarSign className="w-5 h-5" />
+              <DollarSign className="w-4 h-4" />
               <span>Rental Bookings</span>
             </Link>
             <Link href="/chat" className={getLinkClass('/chat')} onClick={handleLinkClick}>
-              <MessageSquare className="w-5 h-5" />
+              <MessageSquare className="w-4 h-4" />
               <span>Chat with Renters</span>
             </Link>
             <Link href="/notifications" className={getLinkClass('/notifications')} onClick={handleLinkClick}>
-              <Bell className="w-5 h-5" />
+              <Bell className="w-4 h-4" />
               <span>Notifications</span>
             </Link>
             <Link href="/admin/change-requests" className={getLinkClass('/admin/change-requests')} onClick={handleLinkClick}>
-              <BellRing className="w-5 h-5" />
+              <BellRing className="w-4 h-4" />
               <span>Change Requests</span>
             </Link>
           </>
         )}
 
-        {/* ADMIN_IT Links */}
+        {/* Members section */}
         {hasRole(['ADMIN_IT']) && (
           <>
+            <div className="px-3 py-2 mt-2 text-[10px] uppercase tracking-widest text-white/30 font-semibold">Members</div>
             <Link href="/system/users" className={getLinkClass('/system/users')} onClick={handleLinkClick}>
-              <Users className="w-5 h-5" />
+              <Users className="w-4 h-4" />
               <span>User Control</span>
             </Link>
             <Link href="/system/storage" className={getLinkClass('/system/storage')} onClick={handleLinkClick}>
-              <FolderLock className="w-5 h-5" />
+              <FolderLock className="w-4 h-4" />
               <span>Storage Systems</span>
             </Link>
           </>
@@ -178,19 +185,19 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
       </nav>
 
       {/* Footer / User Profile section */}
-      <div className="p-4 border-t border-slate-900 bg-slate-950/40">
-        <div className="flex items-center gap-3 mb-4 px-2">
-          <div className="h-9 w-9 rounded-full bg-slate-800 flex items-center justify-center font-bold text-slate-300 border border-slate-700/50 flex-shrink-0">
+      <div className="p-4 border-t border-white/8">
+        <div className="flex items-center gap-2.5 mb-3 px-1">
+          <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center font-bold text-white/70 text-sm flex-shrink-0">
             {user.name.charAt(0)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-200 truncate">{user.name}</p>
-            <p className="text-xs text-slate-500 truncate">{user.email}</p>
+            <p className="text-sm font-medium text-white/80 truncate">{user.name}</p>
+            <p className="text-xs text-white/40 truncate">{user.email}</p>
           </div>
         </div>
         <button
           onClick={logout}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-rose-400 hover:bg-rose-500/10 border border-rose-500/10 hover:border-rose-500/20 active:scale-95 transition-all cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white/50 hover:text-white/80 hover:bg-white/8 transition-all cursor-pointer"
         >
           <LogOut className="w-4 h-4" />
           <span>Sign Out</span>
@@ -201,8 +208,8 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
 
   return (
     <>
-      {/* Desktop sidebar — always visible on md+ */}
-      <div className="hidden lg:flex w-64 min-h-screen flex-shrink-0 border-r border-slate-900 glass">
+      {/* Desktop sidebar — always visible on lg+ */}
+      <div className="hidden lg:flex w-64 min-h-screen flex-shrink-0">
         {sidebarContent}
       </div>
 
@@ -212,12 +219,10 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
           open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       >
-          {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={onClose}
           />
-          {/* Drawer panel */}
           <div 
             className={`relative z-10 flex h-full w-64 flex-shrink-0 transition-transform duration-300 transform ${
               open ? 'translate-x-0' : '-translate-x-full'

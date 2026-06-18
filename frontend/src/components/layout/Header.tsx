@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
-import { Shield, Server, Bell, X, Menu } from 'lucide-react';
+import { Bell, X, Menu, Search, Plus } from 'lucide-react';
 import api from '@/lib/api';
 import { Notification } from '@/types';
 import toast from 'react-hot-toast';
@@ -71,53 +71,68 @@ export const Header = ({ title, description, onMenuClick }: HeaderProps) => {
 
   const getNotifIcon = (type: string) => {
     if (type.includes('PAYMENT_APPROVED') || type.includes('BOOKING_CONFIRMED') || type.includes('RENTAL_BOOKED')) {
-      return <span className="text-emerald-400">✓</span>;
+      return <span className="text-emerald-500">✓</span>;
     }
     if (type.includes('PAYMENT_REJECTED') || type.includes('BOOKING_CANCELLED')) {
-      return <span className="text-rose-400">✗</span>;
+      return <span className="text-rose-500">✗</span>;
     }
     if (type.includes('PAYMENT') || type.includes('UPLOAD')) {
-      return <span className="text-amber-400">$</span>;
+      return <span className="text-amber-500">$</span>;
     }
-    return <Bell className="w-3.5 h-3.5 text-indigo-400" />;
+    return <Bell className="w-3.5 h-3.5 text-[#143258]" />;
   };
 
   if (!user) return null;
 
   return (
-    <header className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-900 glass flex items-center justify-between gap-3 flex-shrink-0">
+    <header className="h-16 px-5 md:px-8 border-b border-gray-100 bg-[#fefefe] flex items-center justify-between gap-4 flex-shrink-0">
       {/* Left: hamburger (mobile) + title */}
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center gap-4 min-w-0">
         {/* Hamburger — mobile/tablet only */}
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-2 rounded-lg hover:bg-slate-800/50 text-slate-400 hover:text-slate-200 transition-colors flex-shrink-0"
+          className="lg:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
           aria-label="Open menu"
         >
           <Menu className="w-5 h-5" />
         </button>
         <div className="min-w-0">
-          <h1 className="text-sm md:text-base font-bold text-slate-100 tracking-tight truncate">{title}</h1>
-          {description && <p className="text-xs text-slate-400 font-medium hidden sm:block truncate">{description}</p>}
+          <h1 className="text-base font-bold text-black tracking-tight truncate">{title}</h1>
+          {description && <p className="text-xs text-gray-500 font-normal hidden sm:block truncate">{description}</p>}
         </div>
       </div>
 
-      {/* Right: status + bell + session badge */}
-      <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
-        {/* API connection status — desktop only */}
-        <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-400">
-          <Server className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
-          <span className="font-semibold text-slate-400">REST API connected</span>
+      {/* Center: Search bar */}
+      <div className="hidden md:flex flex-1 max-w-md mx-auto">
+        <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search rooms, bookings..."
+            className="w-full h-9 pl-9 pr-3 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#143258]/20 focus:border-[#143258]/30 transition-all"
+          />
         </div>
+      </div>
+
+      {/* Right: global filters + CTA + notifications */}
+      <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+        {/* CTA button */}
+        <button
+          onClick={() => router.push('/renter/rooms')}
+          className="hidden sm:flex items-center gap-1.5 h-9 px-4 bg-[#143258] text-white text-sm font-medium rounded-lg hover:bg-[#0f2744] transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          <span>New Booking</span>
+        </button>
 
         {/* Notification Bell */}
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setShowNotifs((v) => !v)}
-            className="relative p-2.5 rounded-lg hover:bg-slate-800/50 transition-colors"
+            className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
             aria-label="Notifications"
           >
-            <Bell className="w-5 h-5 text-slate-400" />
+            <Bell className="w-4 h-4 text-gray-500" />
             {unreadCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center bg-rose-500 text-white text-[10px] font-bold rounded-full">
                 {unreadCount > 9 ? '9+' : unreadCount}
@@ -127,31 +142,31 @@ export const Header = ({ title, description, onMenuClick }: HeaderProps) => {
 
           {/* Notification Dropdown */}
           {showNotifs && (
-            <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-sm bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden">
-              <div className="flex items-center justify-between p-3 border-b border-slate-800">
-                <span className="text-sm font-semibold text-slate-200">Notifications</span>
+            <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-sm bg-white border border-gray-100 rounded-xl shadow-lg z-50 overflow-hidden">
+              <div className="flex items-center justify-between p-3 border-b border-gray-100">
+                <span className="text-sm font-semibold text-gray-800">Notifications</span>
                 <div className="flex items-center gap-2">
                   {unreadCount > 0 && (
                     <button
                       onClick={markAllRead}
-                      className="text-xs text-indigo-400 hover:text-indigo-300 font-medium"
+                      className="text-xs text-[#143258] hover:text-[#0f2744] font-medium"
                     >
                       Mark all read
                     </button>
                   )}
                   <button
                     onClick={() => setShowNotifs(false)}
-                    className="p-1.5 rounded hover:bg-slate-800"
+                    className="p-1.5 rounded hover:bg-gray-50"
                     aria-label="Close notifications"
                   >
-                    <X className="w-4 h-4 text-slate-400" />
+                    <X className="w-4 h-4 text-gray-400" />
                   </button>
                 </div>
               </div>
 
               <div className="max-h-80 overflow-y-auto">
                 {notifications.length === 0 ? (
-                  <div className="p-6 text-center text-slate-500 text-sm">
+                  <div className="p-6 text-center text-gray-400 text-sm">
                     No notifications yet
                   </div>
                 ) : (
@@ -159,27 +174,27 @@ export const Header = ({ title, description, onMenuClick }: HeaderProps) => {
                     <button
                       key={notif.id}
                       onClick={() => handleNotificationClick(notif)}
-                      className={`w-full text-left p-3 border-b border-slate-800/50 hover:bg-slate-800/40 transition-colors ${
-                        !notif.read ? 'bg-indigo-500/5' : ''
+                      className={`w-full text-left p-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
+                        !notif.read ? 'bg-[#143258]/3' : ''
                       }`}
                     >
-                      <div className="flex items-start gap-2">
+                      <div className="flex items-start gap-2.5">
                         <div className="mt-0.5">{getNotifIcon(notif.type)}</div>
                         <div className="flex-1 min-w-0">
                           <p className={`text-xs font-semibold truncate ${
-                            !notif.read ? 'text-slate-100' : 'text-slate-400'
+                            !notif.read ? 'text-gray-900' : 'text-gray-500'
                           }`}>
                             {notif.title}
                           </p>
-                          <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
+                          <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
                             {notif.message}
                           </p>
-                          <p className="text-[10px] text-slate-600 mt-1">
+                          <p className="text-[10px] text-gray-400 mt-1">
                             {new Date(notif.createdAt).toLocaleString()}
                           </p>
                         </div>
                         {!notif.read && (
-                          <div className="h-2 w-2 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0" />
+                          <div className="h-2 w-2 rounded-full bg-[#143258] mt-1.5 flex-shrink-0" />
                         )}
                       </div>
                     </button>
@@ -190,10 +205,9 @@ export const Header = ({ title, description, onMenuClick }: HeaderProps) => {
           )}
         </div>
 
-        {/* User security status — hidden on very small screens */}
-        <div className="hidden sm:flex items-center gap-2 p-1.5 pl-3 rounded-lg bg-slate-900/60 border border-slate-800/40">
-          <Shield className="w-3.5 h-3.5 text-indigo-400" />
-          <span className="text-xs font-semibold text-slate-300">Protected session</span>
+        {/* User avatar */}
+        <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center font-semibold text-gray-500 text-xs flex-shrink-0">
+          {user.name.charAt(0)}
         </div>
       </div>
     </header>
