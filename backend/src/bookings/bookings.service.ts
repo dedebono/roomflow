@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException, ForbiddenException 
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { BookingStatus, Role, BookingHoldStatus } from '@prisma/client';
+import { getPrismaPagination } from '../common/dto/pagination.dto';
 import { EmailService } from '../email/email.service';
 
 @Injectable()
@@ -94,7 +95,8 @@ export class BookingsService {
     return booking;
   }
 
-  async findAll(roomId?: string, userId?: string) {
+  async findAll(roomId?: string, userId?: string, page?: number, limit?: number) {
+    const { skip, take } = getPrismaPagination(page, limit);
     return this.prisma.booking.findMany({
       where: {
         roomId,
@@ -103,6 +105,8 @@ export class BookingsService {
           in: [BookingStatus.BOOKED], // Only show confirmed bookings
         },
       },
+      skip,
+      take,
       include: {
         room: { include: { building: true } },
         user: { select: { id: true, name: true, email: true } },

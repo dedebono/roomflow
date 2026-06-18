@@ -82,17 +82,17 @@ export default function AdminChangeRequestsPage() {
       header: 'Filed By',
       cell: (r: BookingChangeRequest) => (
         <div>
-          <p className="font-bold text-slate-100">{r.requestedBy?.name || 'User'}</p>
-          <p className="text-xs text-slate-400">{r.requestedBy?.email}</p>
+          <p className="font-bold text-slate-900">{r.requestedBy?.name || 'User'}</p>
+          <p className="text-xs text-slate-500">{r.requestedBy?.email}</p>
         </div>
       ),
     },
     {
       header: 'Current Schedule',
       cell: (r: BookingChangeRequest) => (
-        <div className="flex flex-col gap-0.5 text-xs text-slate-400">
-          <p className="font-bold text-slate-300 truncate max-w-[150px]">{r.booking?.title}</p>
-          <p>🚪 Room: <span className="font-semibold text-slate-400">{r.booking?.room?.name}</span></p>
+        <div className="flex flex-col gap-0.5 text-xs text-slate-500">
+          <p className="font-bold text-slate-600 truncate max-w-[150px]">{r.booking?.title}</p>
+          <p>🚪 Room: <span className="font-semibold text-slate-500">{r.booking?.room?.name}</span></p>
           <p>⏰ Time: <span>{displayDateTime(r.booking?.startTime || '')} - {displayDateTime(r.booking?.endTime || '')}</span></p>
         </div>
       ),
@@ -102,7 +102,7 @@ export default function AdminChangeRequestsPage() {
       cell: (r: BookingChangeRequest) => {
         const roomName = rooms.find((rm) => rm.id === r.requestedRoomId)?.name || r.booking?.room?.name;
         return (
-          <div className="flex flex-col gap-0.5 text-xs text-slate-200 bg-indigo-500/5 border border-indigo-500/10 rounded-lg p-2.5 max-w-[260px]">
+          <div className="flex flex-col gap-0.5 text-xs text-slate-800 bg-indigo-500/5 border border-indigo-500/10 rounded-lg p-2.5 max-w-[260px]">
             <p>
               🚪 Room: <span className="font-bold text-indigo-400">{roomName}</span>
             </p>
@@ -112,7 +112,7 @@ export default function AdminChangeRequestsPage() {
             <p>
               ⏰ End: <span className="font-semibold text-indigo-400">{displayDateTime(r.requestedEnd || '')}</span>
             </p>
-            {r.reason && <p className="italic text-slate-400 border-t border-slate-800/40 pt-1 mt-1">&ldquo;{r.reason}&rdquo;</p>}
+            {r.reason && <p className="italic text-slate-500 border-t border-slate-200/40 pt-1 mt-1">&ldquo;{r.reason}&rdquo;</p>}
           </div>
         );
       },
@@ -149,19 +149,19 @@ export default function AdminChangeRequestsPage() {
     {
       header: 'Employee Name',
       cell: (r: BookingChangeRequest) => (
-        <span className="font-bold text-slate-100">{r.requestedBy?.name || 'User'}</span>
+        <span className="font-bold text-slate-900">{r.requestedBy?.name || 'User'}</span>
       ),
     },
     {
       header: 'Original Event',
       cell: (r: BookingChangeRequest) => (
-        <span className="text-slate-400 font-semibold">{r.booking?.title}</span>
+        <span className="text-slate-500 font-semibold">{r.booking?.title}</span>
       ),
     },
     {
       header: 'Action Time',
       cell: (r: BookingChangeRequest) => (
-        <span className="text-xs text-slate-400">{new Date(r.updatedAt).toLocaleDateString()}</span>
+        <span className="text-xs text-slate-500">{new Date(r.updatedAt).toLocaleDateString()}</span>
       ),
     },
     {

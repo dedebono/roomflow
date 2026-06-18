@@ -1,0 +1,9 @@
+{
+  "version": "6.0.0",
+  "steps": [
+    {
+      "tag": "CreateMigration",
+      "migration_name": "20260604000000_add_whatsapp_number"
+    }
+  ]
+}

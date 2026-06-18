@@ -378,7 +378,7 @@ export default function AdminRoomsPage() {
       accessor: 'name' as const,
       mobileTitle: true,
       cell: (b: Building) => (
-        <span className="font-bold text-slate-100 flex items-center gap-2">
+        <span className="font-bold text-slate-900 flex items-center gap-2">
           <Building2 className="w-4 h-4 text-indigo-400" />
           {b.name}
         </span>
@@ -388,7 +388,7 @@ export default function AdminRoomsPage() {
       header: 'Total Rooms',
       cell: (b: Building) => {
         const count = rooms.filter((r) => r.buildingId === b.id).length;
-        return <span className="font-semibold text-slate-300">{count} rooms</span>;
+        return <span className="font-semibold text-slate-600">{count} rooms</span>;
       },
     },
     {
@@ -398,7 +398,7 @@ export default function AdminRoomsPage() {
         <div className="flex items-center justify-end gap-1.5">
           <button
             onClick={() => handleOpenEditBuilding(b)}
-            className="text-slate-400 hover:text-white hover:bg-slate-800/60 p-1.5 rounded-lg transition-colors cursor-pointer"
+            className="text-slate-500 hover:text-slate-900 hover:bg-slate-100/60 p-1.5 rounded-lg transition-colors cursor-pointer"
           >
             <Edit2 className="w-4 h-4" />
           </button>
@@ -420,8 +420,8 @@ export default function AdminRoomsPage() {
       mobileTitle: true,
       cell: (r: Room) => (
         <div>
-          <p className="font-bold text-slate-100">{r.name}</p>
-          {r.description && <p className="text-xs text-slate-400 truncate max-w-xs mt-0.5">{r.description}</p>}
+          <p className="font-bold text-slate-900">{r.name}</p>
+          {r.description && <p className="text-xs text-slate-500 truncate max-w-xs mt-0.5">{r.description}</p>}
         </div>
       ),
     },
@@ -430,7 +430,7 @@ export default function AdminRoomsPage() {
       mobileHidden: true,
       cell: (r: Room) => {
         const b = buildings.find((bl) => bl.id === r.buildingId);
-        return <span className="font-semibold text-slate-300">{b?.name || 'Building'}</span>;
+        return <span className="font-semibold text-slate-600">{b?.name || 'Building'}</span>;
       },
     },
     {
@@ -479,7 +479,7 @@ export default function AdminRoomsPage() {
           )}
           <button
             onClick={() => handleOpenEditRoom(r)}
-            className="text-slate-400 hover:text-white hover:bg-slate-800/60 p-1.5 rounded-lg transition-colors cursor-pointer"
+            className="text-slate-500 hover:text-slate-900 hover:bg-slate-100/60 p-1.5 rounded-lg transition-colors cursor-pointer"
           >
             <Edit2 className="w-4 h-4" />
           </button>
@@ -499,13 +499,13 @@ export default function AdminRoomsPage() {
       header: 'Day',
       cell: (s: RentalSlot) => {
         const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        return <span className="font-medium text-slate-300">{days[s.dayOfWeek]}</span>;
+        return <span className="font-medium text-slate-600">{days[s.dayOfWeek]}</span>;
       },
     },
     {
       header: 'Time',
       cell: (s: RentalSlot) => (
-        <span className="text-slate-300">{s.startTime} - {s.endTime}</span>
+        <span className="text-slate-600">{s.startTime} - {s.endTime}</span>
       ),
     },
     {
@@ -552,7 +552,7 @@ export default function AdminRoomsPage() {
         {/* Buildings Table Panel */}
         <div className="lg:col-span-1 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <Building2 className="w-5 h-5 text-indigo-400" />
               <span>Buildings</span>
             </h2>
@@ -573,7 +573,7 @@ export default function AdminRoomsPage() {
         {/* Rooms Table Panel */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <Compass className="w-5 h-5 text-indigo-400" />
               <span>Meeting Rooms</span>
             </h2>
@@ -610,7 +610,7 @@ export default function AdminRoomsPage() {
             required
           />
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/40">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/40">
             <Button type="button" variant="secondary" onClick={() => setIsBuildingModalOpen(false)}>
               Cancel
             </Button>
@@ -679,12 +679,12 @@ export default function AdminRoomsPage() {
           </div>
 
           {/* Available for Rent Toggle */}
-          <div className="flex items-center justify-between p-4 rounded-lg border border-slate-700 bg-slate-800/30">
+          <div className="flex items-center justify-between p-4 rounded-lg border border-slate-300 bg-slate-100/30">
             <div className="flex items-center gap-3">
               <DollarSign className="w-5 h-5 text-emerald-400" />
               <div>
-                <p className="font-semibold text-slate-200">Available for Rent</p>
-                <p className="text-xs text-slate-400">Enable to allow renters to book this room</p>
+                <p className="font-semibold text-slate-800">Available for Rent</p>
+                <p className="text-xs text-slate-500">Enable to allow renters to book this room</p>
               </div>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -694,14 +694,14 @@ export default function AdminRoomsPage() {
                 onChange={(e) => setRoomIsRentable(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
             </label>
           </div>
 
           {/* Max Booking Hours (only shown when rentable) */}
           {roomIsRentable && (
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-300 tracking-wide uppercase">
+              <label className="text-xs font-semibold text-slate-600 tracking-wide uppercase">
                 Max Booking Hours
               </label>
               <Input
@@ -718,17 +718,17 @@ export default function AdminRoomsPage() {
 
           {/* Amenities Editor */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-300 tracking-wide uppercase">
+            <label className="text-xs font-semibold text-slate-600 tracking-wide uppercase">
               Amenities
             </label>
-            <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-slate-700 bg-slate-900/30 min-h-[60px]">
+            <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-slate-300 bg-white/30 min-h-[60px]">
               {roomAmenities.length === 0 && (
                 <p className="text-sm text-slate-500">No amenities added</p>
               )}
               {roomAmenities.map((amenity, idx) => (
                 <span
                   key={idx}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-800 text-slate-300 text-xs rounded-full"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 text-xs rounded-full"
                 >
                   {amenity}
                   <button
@@ -767,7 +767,7 @@ export default function AdminRoomsPage() {
 
           {/* Room Image Upload */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-300 tracking-wide uppercase">
+            <label className="text-xs font-semibold text-slate-600 tracking-wide uppercase">
               Room Image
             </label>
             {roomImagePreview ? (
@@ -775,7 +775,7 @@ export default function AdminRoomsPage() {
                 <img
                   src={roomImagePreview}
                   alt="Room preview"
-                  className="w-full h-40 object-cover rounded-lg border border-slate-800/50"
+                  className="w-full h-40 object-cover rounded-lg border border-slate-200/50"
                 />
                 <button
                   type="button"
@@ -786,12 +786,12 @@ export default function AdminRoomsPage() {
                 </button>
               </div>
             ) : (
-              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all">
+              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all">
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                   <svg className="w-8 h-8 mb-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  <p className="mb-1 text-sm text-slate-400">
+                  <p className="mb-1 text-sm text-slate-500">
                     <span className="font-semibold text-indigo-400">Click to upload</span> or drag and drop
                   </p>
                   <p className="text-xs text-slate-500">PNG, JPG, WEBP (max 5MB)</p>
@@ -806,7 +806,7 @@ export default function AdminRoomsPage() {
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/40">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/40">
             <Button type="button" variant="secondary" onClick={() => setIsRoomModalOpen(false)}>
               Cancel
             </Button>
@@ -827,7 +827,7 @@ export default function AdminRoomsPage() {
         <div className="space-y-6">
           {/* Add New Slot Form */}
           <div className="p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5">
-            <h4 className="font-semibold text-slate-200 mb-4 flex items-center gap-2">
+            <h4 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
               <Plus className="w-4 h-4" />
               Add New Rental Slot
             </h4>
@@ -881,7 +881,7 @@ export default function AdminRoomsPage() {
 
           {/* Existing Slots */}
           <div>
-            <h4 className="font-semibold text-slate-200 mb-4 flex items-center gap-2">
+            <h4 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
               <Clock className="w-4 h-4" />
               Current Rental Slots
             </h4>

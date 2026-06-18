@@ -124,7 +124,7 @@ export class PaymentsService {
           startTime: hold.startTime,
           endTime: hold.endTime,
           isRental: true,
-          status: BookingStatus.CANCELLED, // Default to cancelled until paid/approved
+          status: BookingStatus.PENDING, // Default to pending until paid/approved
         },
       });
 
@@ -165,7 +165,7 @@ export class PaymentsService {
 
     // Also notify all ROOM_ADMIN users
     const managers = await this.prisma.user.findMany({
-      where: { role: 'ROOM_ADMIN' as any },
+      where: { role: Role.ROOM_ADMIN },
       select: { id: true },
     });
 

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, OnModuleInit, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CheckAvailabilityDto } from './dto/check-availability.dto';
@@ -6,9 +6,11 @@ import { CreateHoldDto } from './dto/create-hold.dto';
 import { CreateRentalSlotDto } from './dto/create-rental-slot.dto';
 import { UpdateRentalSlotDto } from './dto/update-rental-slot.dto';
 import { BookingHoldStatus, BookingStatus, PaymentStatus, RoomCategory } from '@prisma/client';
+import { getPrismaPagination } from '../common/dto/pagination.dto';
 
 @Injectable()
 export class RentalsService implements OnModuleInit {
+  private readonly logger = new Logger(RentalsService.name);
   constructor(
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
@@ -50,17 +52,47 @@ export class RentalsService implements OnModuleInit {
     }
 
     if (expiredHolds.length > 0) {
-      console.log(`[RentalsService] Auto-cancelled ${expiredHolds.length} expired BookingHolds`);
+      this.logger.log(`Auto-cancelled ${expiredHolds.length} expired BookingHolds`);
     }
   }
 
-  async getAvailableRooms(date?: string, category?: RoomCategory) {
-    // Default to today if no date provided
-    const dateStr = date || new Date().toISOString().split('T')[0];
-    const dateObj = new Date(dateStr + 'T00:00:00');
-    const dayOfWeek = dateObj.getDay(); // local getDay() — matches how rentalSlots.dayOfWeek was stored
+  /**
+   * Get rooms that are rentable and have at least one available slot.
+   *
+   * Modes:
+   * - Single day (date param): returns rooms available on that specific date
+   * - Date range (startDate + endDate): returns rooms available on ALL days in the range
+   * - No date: defaults to today
+   *
+   * A room is "available" on a day if:
+   * 1. It has at least one active rental slot defined for that day-of-week
+   * 2. That slot has no booking or active hold conflict
+   */
+  async getAvailableRooms(date?: string, startDate?: string, endDate?: string, category?: RoomCategory) {
+    // Resolve date(s)
+    let searchDays: string[] = [];
 
-    // Get all rooms that are rentable and match category (if provided)
+    if (startDate && endDate) {
+      // Date range mode: build list of YYYY-MM-DD strings
+      const start = new Date(startDate + 'T00:00:00');
+      const end = new Date(endDate + 'T00:00:00');
+      if (start > end) {
+        throw new ConflictException('startDate must be before or equal to endDate');
+      }
+      const days: string[] = [];
+      const cur = new Date(start);
+      while (cur <= end) {
+        days.push(cur.toISOString().split('T')[0]);
+        cur.setDate(cur.getDate() + 1);
+      }
+      searchDays = days;
+    } else {
+      // Single-day or default mode
+      const dateStr = date || new Date().toISOString().split('T')[0];
+      searchDays = [dateStr];
+    }
+
+    // Get all rentable rooms matching category
     const rentableRooms = await this.prisma.room.findMany({
       where: {
         isRentable: true,
@@ -70,43 +102,56 @@ export class RentalsService implements OnModuleInit {
       include: {
         building: true,
         rentalSlots: {
-          where: {
-            isActive: true,
-            dayOfWeek: dateObj.getDay(),
-          },
+          where: { isActive: true },
         },
       },
     });
 
-
+    // For each room, check if it has availability on ALL search days
     const availableRooms: any[] = [];
     for (const room of rentableRooms) {
-      // Check availability for each rental slot in the room for the given date
-      for (const slot of room.rentalSlots) {
-        const startTime = slot.startTime;
-        const endTime = slot.endTime;
+      let hasAllDaysAvailable = true;
 
-        // Use the checkAvailability logic to see if the slot is free
-        const availability = await this.checkAvailability(
-          room.id,
-          dateStr,
-          startTime,
-          endTime,
-        );
+      for (const day of searchDays) {
+        const dateObj = new Date(day + 'T00:00:00');
+        const dayOfWeek = dateObj.getDay();
 
-        if (availability.available) {
-          // If at least one slot is available, add the room and break to avoid duplicates
-          const roomWithPrice = {
-            ...room,
-            category: room.category,
-            // Derive price from available rental slots (use minimum slot price)
-            price: room.rentalSlots.length > 0
-              ? Math.min(...room.rentalSlots.map(s => s.price))
-              : 0,
-          };
-          availableRooms.push(roomWithPrice);
-          break; // Move to the next room once one available slot is found
+        // Get slots for this specific day-of-week
+        const daySlots = room.rentalSlots.filter(s => s.dayOfWeek === dayOfWeek);
+
+        // If no slots defined for this day-of-week, room is unavailable on this day
+        if (daySlots.length === 0) {
+          hasAllDaysAvailable = false;
+          break;
         }
+
+        // Check if at least one slot on this day is free of conflicts
+        let slotAvailable = false;
+        for (const slot of daySlots) {
+          const availability = await this.checkAvailability(room.id, day, slot.startTime, slot.endTime);
+          if (availability.available) {
+            slotAvailable = true;
+            break;
+          }
+        }
+
+        if (!slotAvailable) {
+          hasAllDaysAvailable = false;
+          break;
+        }
+      }
+
+      if (hasAllDaysAvailable) {
+        availableRooms.push({
+          ...room,
+          category: room.category,
+          // Show price range from available slots
+          price: room.rentalSlots.length > 0
+            ? Math.min(...room.rentalSlots.map(s => s.price))
+            : 0,
+          // Include search context in response
+          searchDays,
+        });
       }
     }
 
@@ -380,8 +425,11 @@ export class RentalsService implements OnModuleInit {
   }
 
   // Get all booking holds for manager dashboard
-  async getAllHolds() {
+  async getAllHolds(page?: number, limit?: number) {
+    const { skip, take } = getPrismaPagination(page, limit);
     return this.prisma.bookingHold.findMany({
+      skip,
+      take,
       include: {
         user: {
           select: { id: true, name: true, email: true, role: true },
@@ -453,7 +501,7 @@ export class RentalsService implements OnModuleInit {
     // Parse date as local time — rentalSlots.dayOfWeek was stored with local getDay()
     const dateObj = new Date(date + 'T00:00:00');
     const dayOfWeek = dateObj.getDay(); // local getDay() — matches how rentalSlots.dayOfWeek was stored
-    console.log(`[getAvailableSlots] roomId=${roomId}, date=${date}, dayOfWeek=${dayOfWeek}`);
+    this.logger.log(`[getAvailableSlots] roomId=${roomId}, date=${date}, dayOfWeek=${dayOfWeek}`);
 
     // Get all active rental slots for this room on this day
     const slots = await this.prisma.rentalSlot.findMany({
@@ -549,13 +597,16 @@ export class RentalsService implements OnModuleInit {
         currentHour.setHours(currentHour.getHours() + 1);
       }
     }
-    console.log(`[getAvailableSlots] returning ${result.length} hourly slots`);
+    this.logger.log(`[getAvailableSlots] returning ${result.length} hourly slots`);
     return result;
   }
 
-  async getSlots(roomId?: string) {
+  async getSlots(roomId?: string, page?: number, limit?: number) {
+    const { skip, take } = getPrismaPagination(page, limit);
     return this.prisma.rentalSlot.findMany({
       where: { roomId },
+      skip,
+      take,
       include: { room: { include: { building: true } } },
       orderBy: [{ roomId: 'asc' }, { dayOfWeek: 'asc' }, { startTime: 'asc' }],
     });

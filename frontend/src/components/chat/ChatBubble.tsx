@@ -40,16 +40,16 @@ export const ChatPanel = ({ isOpen, onClose, children }: ChatPanelProps) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-96 h-[32rem] glass border border-slate-800/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-scale-up">
+    <div className="fixed bottom-6 right-6 z-50 w-96 h-[32rem] glass border border-slate-200/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-scale-up">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800/40 bg-slate-900/40">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200/40 bg-white/40">
         <div className="flex items-center gap-2">
           <MessageSquare className="w-5 h-5 text-indigo-400" />
-          <h3 className="font-bold text-slate-100">Messages</h3>
+          <h3 className="font-bold text-slate-900">Messages</h3>
         </div>
         <button
           onClick={onClose}
-          className="text-slate-400 hover:text-white hover:bg-slate-800/60 p-1.5 rounded-lg transition-colors cursor-pointer"
+          className="text-slate-500 hover:text-slate-900 hover:bg-slate-100/60 p-1.5 rounded-lg transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>

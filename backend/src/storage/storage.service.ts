@@ -26,17 +26,10 @@ export class StorageService {
   }
 
   async upload(file: Express.Multer.File): Promise<string> {
-    const storageType = this.configService.get<string>('STORAGE_TYPE');
-
-    if (storageType === 'LOCAL') {
-      const fileName = `${uuidv4()}${path.extname(file.originalname)}`;
-      const filePath = path.join(this.uploadDir, fileName);
-      fs.writeFileSync(filePath, file.buffer);
-      return `/uploads/${fileName}`;
-    }
-
-    // Placeholder for S3/Google Drive
-    throw new Error('Storage type not implemented');
+    const fileName = `${uuidv4()}${path.extname(file.originalname)}`;
+    const filePath = path.join(this.uploadDir, fileName);
+    fs.writeFileSync(filePath, file.buffer);
+    return `/uploads/${fileName}`;
   }
 
   async delete(filePath: string): Promise<void> {

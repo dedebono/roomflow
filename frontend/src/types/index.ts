@@ -13,6 +13,8 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  whatsappNumber?: string | null;
+  whatsappVerified?: boolean;
   role: Role;
   createdAt: string;
 }

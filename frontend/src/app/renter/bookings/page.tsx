@@ -112,12 +112,12 @@ export default function RenterBookingsPage() {
       header: 'Room',
       cell: (b: RentalBooking) => (
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-slate-800 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center">
             <DoorOpen className="w-5 h-5 text-indigo-400" />
           </div>
           <div>
-            <p className="font-bold text-slate-100">{b.room?.name || 'Room'}</p>
-            <p className="text-xs text-slate-400 flex items-center gap-1">
+            <p className="font-bold text-slate-900">{b.room?.name || 'Room'}</p>
+            <p className="text-xs text-slate-500 flex items-center gap-1">
               <MapPin className="w-3 h-3" />
               {b.room?.building?.name || 'Building'}
             </p>
@@ -133,7 +133,7 @@ export default function RenterBookingsPage() {
             <Calendar className="w-3.5 h-3.5" />
             {b.holdDate ? displayDateTime(b.holdDate, b.holdStartTime || '') : 'N/A'}
           </span>
-          <span className="text-xs text-slate-400 flex items-center gap-1">
+          <span className="text-xs text-slate-500 flex items-center gap-1">
             <Clock className="w-3.5 h-3.5" />
             {b.holdStartTime} - {b.holdEndTime}
           </span>
@@ -143,7 +143,7 @@ export default function RenterBookingsPage() {
     {
       header: 'Price',
       cell: (b: RentalBooking) => (
-        <span className="font-semibold text-slate-200">${b.price}</span>
+        <span className="font-semibold text-slate-800">${b.price}</span>
       ),
     },
     {
@@ -212,10 +212,10 @@ export default function RenterBookingsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border border-slate-900 glass">
           <CardHeader className="p-0 mb-2">
-            <CardTitle className="text-sm text-slate-400">Active Rentals</CardTitle>
+            <CardTitle className="text-sm text-slate-500">Active Rentals</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <p className="text-3xl font-bold text-slate-100 flex items-center gap-2">
+            <p className="text-3xl font-bold text-slate-900 flex items-center gap-2">
               <DoorOpen className="w-7 h-7 text-emerald-400" />
               {activeBookings}
             </p>
@@ -224,10 +224,10 @@ export default function RenterBookingsPage() {
 
         <Card className="border border-slate-900 glass">
           <CardHeader className="p-0 mb-2">
-            <CardTitle className="text-sm text-slate-400">Pending Payments</CardTitle>
+            <CardTitle className="text-sm text-slate-500">Pending Payments</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <p className="text-3xl font-bold text-slate-100 flex items-center gap-2">
+            <p className="text-3xl font-bold text-slate-900 flex items-center gap-2">
               <Timer className="w-7 h-7 text-amber-400" />
               {pendingPayments}
             </p>
@@ -236,10 +236,10 @@ export default function RenterBookingsPage() {
 
         <Card className="border border-slate-900 glass">
           <CardHeader className="p-0 mb-2">
-            <CardTitle className="text-sm text-slate-400">Total Spent</CardTitle>
+            <CardTitle className="text-sm text-slate-500">Total Spent</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <p className="text-3xl font-bold text-slate-100 flex items-center gap-2">
+            <p className="text-3xl font-bold text-slate-900 flex items-center gap-2">
               <CreditCard className="w-7 h-7 text-indigo-400" />
               ${totalSpent.toFixed(2)}
             </p>

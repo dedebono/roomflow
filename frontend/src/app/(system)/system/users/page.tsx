@@ -12,7 +12,7 @@ import { Select } from '@/components/ui/Select';
 import api from '@/lib/api';
 import { User, Role } from '@/types';
 import toast from 'react-hot-toast';
-import { Users, Plus, Edit2, Trash2, Shield, Mail, Key } from 'lucide-react';
+import { Users, Plus, Edit2, Trash2, Shield, Mail, Key, Phone } from 'lucide-react';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -23,6 +23,7 @@ export default function AdminUsersPage() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
+  const [userWhatsappNumber, setUserWhatsappNumber] = useState('');
   const [userPassword, setUserPassword] = useState('');
   const [userRole, setUserRole] = useState<Role>('USER');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,6 +49,7 @@ export default function AdminUsersPage() {
     setEditingUserId(user.id);
     setUserName(user.name);
     setUserEmail(user.email);
+    setUserWhatsappNumber(user.whatsappNumber || '');
     setUserPassword(''); // Clear for editing
     setUserRole(user.role);
     setIsModalOpen(true);
@@ -58,6 +60,7 @@ export default function AdminUsersPage() {
     setEditingUserId(null);
     setUserName('');
     setUserEmail('');
+    setUserWhatsappNumber('');
     setUserPassword('');
     setUserRole('USER');
     setIsModalOpen(true);
@@ -81,6 +84,7 @@ export default function AdminUsersPage() {
       const payload: any = {
         name: userName,
         email: userEmail,
+        whatsappNumber: userWhatsappNumber || undefined,
         role: userRole,
       };
 
@@ -128,8 +132,8 @@ export default function AdminUsersPage() {
       header: 'Employee Name',
       accessor: 'name' as const,
       cell: (u: User) => (
-        <span className="font-bold text-slate-100 flex items-center gap-2">
-          <div className="h-7 w-7 rounded-full bg-slate-800 flex items-center justify-center font-bold text-xs text-indigo-400">
+        <span className="font-bold text-slate-900 flex items-center gap-2">
+          <div className="h-7 w-7 rounded-full bg-slate-100 flex items-center justify-center font-bold text-xs text-indigo-400">
             {u.name.charAt(0)}
           </div>
           {u.name}
@@ -139,7 +143,13 @@ export default function AdminUsersPage() {
     {
       header: 'Email Address',
       accessor: 'email' as const,
-      cell: (u: User) => <span className="font-medium text-slate-300">{u.email}</span>,
+      cell: (u: User) => <span className="font-medium text-slate-600">{u.email}</span>,
+    },
+    {
+      header: 'WhatsApp',
+      accessor: 'whatsappNumber' as const,
+      mobileHidden: true,
+      cell: (u: User) => <span className="font-medium text-slate-600">{u.whatsappNumber || '—'}</span>,
     },
     {
       header: 'Access Role',
@@ -150,7 +160,7 @@ export default function AdminUsersPage() {
       header: 'Registered On',
       mobileHidden: true,
       cell: (u: User) => (
-        <span className="text-xs text-slate-400">{new Date(u.createdAt).toLocaleDateString()}</span>
+        <span className="text-xs text-slate-500">{new Date(u.createdAt).toLocaleDateString()}</span>
       ),
     },
     {
@@ -160,7 +170,7 @@ export default function AdminUsersPage() {
         <div className="flex items-center justify-end gap-1.5">
           <button
             onClick={() => handleOpenEditUser(u)}
-            className="text-slate-400 hover:text-white hover:bg-slate-800/60 p-1.5 rounded-lg transition-colors cursor-pointer"
+            className="text-slate-500 hover:text-slate-900 hover:bg-slate-100/60 p-1.5 rounded-lg transition-colors cursor-pointer"
           >
             <Edit2 className="w-4 h-4" />
           </button>
@@ -231,6 +241,15 @@ export default function AdminUsersPage() {
           />
 
           <Input
+            label="WhatsApp Number (Optional)"
+            type="tel"
+            placeholder="+628****6789"
+            value={userWhatsappNumber}
+            onChange={(e) => setUserWhatsappNumber(e.target.value)}
+            leftIcon={<Phone className="w-4 h-4" />}
+          />
+
+          <Input
             label={editingUserId ? 'Reset Password (Leave blank to keep current)' : 'Password'}
             type="password"
             placeholder="••••••••"
@@ -253,7 +272,7 @@ export default function AdminUsersPage() {
             required
           />
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/40">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/40">
             <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>

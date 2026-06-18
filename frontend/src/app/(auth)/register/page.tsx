@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/Card';
-import { Mail, Lock, User } from 'lucide-react';
+import { Mail, Lock, User, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function RegisterPage() {
@@ -15,6 +15,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,7 +37,7 @@ export default function RegisterPage() {
 
     setIsLoading(true);
     try {
-      await register(name, email, password);
+      await register(name, email, password, whatsappNumber);
       toast.success('Account created successfully');
     } catch (err: any) {
       toast.error(err.message || 'Registration failed');
@@ -57,10 +58,10 @@ export default function RegisterPage() {
             RF
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-white">RoomFlow</h1>
-          <p className="text-slate-400 mt-2 text-sm font-medium">Enterprise Room Booking Engine</p>
+          <p className="text-slate-500 mt-2 text-sm font-medium">Enterprise Room Booking Engine</p>
         </div>
 
-        <Card className="border border-slate-800/80 shadow-2xl glass bg-slate-900/30">
+        <Card className="border border-slate-200 shadow-2xl bg-white">
           <CardHeader className="pb-2">
             <CardTitle>Create Account</CardTitle>
             <CardDescription>Join RoomFlow and book your workspaces effortlessly</CardDescription>
@@ -88,6 +89,15 @@ export default function RegisterPage() {
               />
 
               <Input
+                label="WhatsApp Number (Optional)"
+                type="tel"
+                placeholder="+628123456789"
+                value={whatsappNumber}
+                onChange={(e) => setWhatsappNumber(e.target.value)}
+                leftIcon={<Phone className="w-4 h-4" />}
+              />
+
+              <Input
                 label="Password"
                 type="password"
                 placeholder="••••••••"
@@ -112,8 +122,8 @@ export default function RegisterPage() {
               </Button>
             </form>
           </CardContent>
-          <CardFooter className="justify-center border-t border-slate-800/20 pt-4 mt-2">
-            <p className="text-slate-400 text-xs">
+          <CardFooter className="justify-center border-t border-slate-200 pt-4 mt-2">
+            <p className="text-slate-500 text-xs">
               Already have an account?{' '}
               <Link href="/login" className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors hover:underline">
                 Sign in instead

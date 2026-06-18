@@ -242,7 +242,7 @@ export default function RentalsDashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <DoorOpen className="w-6 h-6 text-indigo-400" />
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-100">Rental Management</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Rental Management</h1>
         </div>
         <Button
           variant="secondary"
@@ -262,7 +262,7 @@ export default function RentalsDashboardPage() {
         <CardContent>
           <div className="flex flex-wrap gap-4 items-end">
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Room</label>
+              <label className="text-xs text-slate-500 mb-1 block">Room</label>
               <Select
                 value={filterRoom}
                 onChange={(e) => setFilterRoom(e.target.value)}
@@ -273,7 +273,7 @@ export default function RentalsDashboardPage() {
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Date</label>
+              <label className="text-xs text-slate-500 mb-1 block">Date</label>
               <Input
                 type="date"
                 value={filterDate}
@@ -281,7 +281,7 @@ export default function RentalsDashboardPage() {
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Status</label>
+              <label className="text-xs text-slate-500 mb-1 block">Status</label>
               <Select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
@@ -320,16 +320,16 @@ export default function RentalsDashboardPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-slate-400">Room</p>
-                <p className="text-slate-200 font-medium">{selectedHold.room?.name}</p>
+                <p className="text-xs text-slate-500">Room</p>
+                <p className="text-slate-800 font-medium">{selectedHold.room?.name}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-400">Renter</p>
-                <p className="text-slate-200 font-medium">{selectedHold.user?.name}</p>
+                <p className="text-xs text-slate-500">Renter</p>
+                <p className="text-slate-800 font-medium">{selectedHold.user?.name}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-400">Date</p>
-                <p className="text-slate-200 font-medium">
+                <p className="text-xs text-slate-500">Date</p>
+                <p className="text-slate-800 font-medium">
                   {(() => {
                     const parsedD = new Date(selectedHold.holdDate as string);
                     const d: Date = !isNaN(parsedD.getTime()) ? parsedD : new Date(selectedHold.holdDate as string);
@@ -338,8 +338,8 @@ export default function RentalsDashboardPage() {
                 </p>
               </div>
               <div>
-                <p className="text-xs text-slate-400">Time</p>
-                <p className="text-slate-200 font-medium">
+                <p className="text-xs text-slate-500">Time</p>
+                <p className="text-slate-800 font-medium">
                   {(() => {
                     const fmt = (dt: any) => {
                       const d = dt instanceof Date ? dt : new Date(dt);
@@ -350,16 +350,16 @@ export default function RentalsDashboardPage() {
                 </p>
               </div>
               <div>
-                <p className="text-xs text-slate-400">Price</p>
-                <p className="text-slate-200 font-medium">
+                <p className="text-xs text-slate-500">Price</p>
+                <p className="text-slate-800 font-medium">
                   {selectedHold.payments?.[0]
                     ? `$${selectedHold.payments[0].amount.toFixed(2)}`
                     : '-'}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-slate-400">Status</p>
-                <p className="text-slate-200 font-medium">
+                <p className="text-xs text-slate-500">Status</p>
+                <p className="text-slate-800 font-medium">
                   {(() => {
                     const p = selectedHold.payments?.[0] as any;
                     if (!p) return <Badge variant="neutral">—</Badge>;
@@ -376,7 +376,7 @@ export default function RentalsDashboardPage() {
             </div>
             {selectedHold.payments?.[0]?.fileUrl && (
               <div>
-                <p className="text-xs text-slate-400">Payment Proof</p>
+                <p className="text-xs text-slate-500">Payment Proof</p>
                 <button
                   onClick={() => window.open((selectedHold.payments as any)?.[0]?.fileUrl, '_blank')}
                   className="text-indigo-400 hover:text-indigo-300 underline text-sm"
@@ -386,7 +386,7 @@ export default function RentalsDashboardPage() {
               </div>
             )}
             {(selectedHold as any).status === 'ACTIVE' && ((selectedHold.payments as any)?.[0]?.status as string) === 'PAYMENT_PROOF_UPLOADED' && (
-              <div className="flex gap-2 pt-4 border-t border-slate-800">
+              <div className="flex gap-2 pt-4 border-t border-slate-200">
                 <Button
                   variant="success"
                   onClick={() => {
@@ -425,7 +425,7 @@ export default function RentalsDashboardPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="text-xs text-slate-400 mb-1 block">Select Room</label>
+            <label className="text-xs text-slate-500 mb-1 block">Select Room</label>
             <Select
               value={selectedRoomForSlots?.id || ''}
               onChange={(e) => {
@@ -440,17 +440,17 @@ export default function RentalsDashboardPage() {
           </div>
           {selectedRoomForSlots && (
             <div className="space-y-3">
-              <p className="text-sm text-slate-400">Rental slots for {selectedRoomForSlots.name}:</p>
+              <p className="text-sm text-slate-500">Rental slots for {selectedRoomForSlots.name}:</p>
               {rentalSlots
                 .filter((s) => s.roomId === selectedRoomForSlots.id)
                 .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime))
                 .map((slot) => (
-                  <div key={slot.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+                  <div key={slot.id} className="flex items-center justify-between p-3 bg-slate-100/50 rounded-lg">
                     <div>
-                      <p className="text-slate-200 font-medium">
+                      <p className="text-slate-800 font-medium">
                         {dayNames[slot.dayOfWeek]} &middot; {slot.startTime} - {slot.endTime}
                       </p>
-                      <p className="text-sm text-slate-400">${slot.price.toFixed(2)} / hour</p>
+                      <p className="text-sm text-slate-500">${slot.price.toFixed(2)} / hour</p>
                     </div>
                     <Badge variant={slot.isActive !== false ? 'success' : 'neutral'}>
                       {slot.isActive !== false ? 'Active' : 'Inactive'}

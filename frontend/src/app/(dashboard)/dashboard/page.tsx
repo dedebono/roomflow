@@ -165,12 +165,12 @@ export default function EmployeeDashboard() {
 
     toast(
       (t) => (
-        <div className="flex flex-col gap-1 text-slate-200">
+        <div className="flex flex-col gap-1 text-slate-800">
           <p className="font-bold text-sm text-white">{booking.title}</p>
-          <p className="text-xs text-slate-400">🚪 Room: <span className="font-semibold text-slate-300">{roomName}</span></p>
-          <p className="text-xs text-slate-400">📅 Date: <span className="font-semibold text-slate-300">{dateStr}</span></p>
-          <p className="text-xs text-slate-400">⏰ Time: <span className="font-semibold text-slate-300">{startTimeStr} - {endTimeStr}</span></p>
-          {booking.notes && <p className="text-xs text-slate-400 italic mt-1">📝 &ldquo;{booking.notes}&rdquo;</p>}
+          <p className="text-xs text-slate-500">🚪 Room: <span className="font-semibold text-slate-600">{roomName}</span></p>
+          <p className="text-xs text-slate-500">📅 Date: <span className="font-semibold text-slate-600">{dateStr}</span></p>
+          <p className="text-xs text-slate-500">⏰ Time: <span className="font-semibold text-slate-600">{startTimeStr} - {endTimeStr}</span></p>
+          {booking.notes && <p className="text-xs text-slate-500 italic mt-1">📝 &ldquo;{booking.notes}&rdquo;</p>}
           <button
             onClick={() => {
               toast.dismiss(t.id);
@@ -267,7 +267,7 @@ export default function EmployeeDashboard() {
                       {room.status}
                     </Badge>
                   </CardHeader>
-                  <CardContent className="p-0 mt-3 flex items-center justify-between text-xs text-slate-400">
+                  <CardContent className="p-0 mt-3 flex items-center justify-between text-xs text-slate-500">
                     <span className="flex items-center gap-1">
                       <Users className="w-3.5 h-3.5 text-indigo-400" />
                       Max: {room.capacity} people
@@ -299,7 +299,7 @@ export default function EmployeeDashboard() {
           onEventClick={handleEventClick}
         />
         {/* Color Legend */}
-        <div className="flex items-center gap-6 px-2 text-xs text-slate-400">
+        <div className="flex items-center gap-6 px-2 text-xs text-slate-500">
           <span className="flex items-center gap-2">
             <span className="inline-block w-3 h-3 rounded bg-blue-500 border border-blue-400"></span>
             Employee Booking
@@ -360,7 +360,7 @@ export default function EmployeeDashboard() {
             leftIcon={<AlignLeft className="w-4 h-4" />}
           />
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/40">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/40">
             <Button type="button" variant="secondary" onClick={() => setIsBookModalOpen(false)}>
               Cancel
             </Button>

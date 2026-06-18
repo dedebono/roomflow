@@ -34,24 +34,22 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-screen flex items-center justify-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-950 via-slate-950 to-black p-4 relative overflow-hidden">
-      {/* Background visual decorations */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
-
+    <div className="min-h-screen w-screen flex items-center justify-center bg-[#fefefe] p-4 relative overflow-hidden">
       <div className="w-full max-w-md relative z-10">
+        {/* Logo section */}
         <div className="text-center mb-8">
-          <div className="inline-flex h-12 w-12 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-500 items-center justify-center font-bold text-white tracking-wider text-xl shadow-lg shadow-indigo-500/30 mb-3 animate-pulse">
+          <div className="inline-flex h-10 w-10 rounded-lg bg-[#143258] items-center justify-center font-bold text-white tracking-wider text-base mb-3">
             RF
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white">RoomFlow</h1>
-          <p className="text-slate-500 mt-2 text-sm font-medium">Enterprise Room Booking Engine</p>
+          <h1 className="text-3xl font-bold tracking-tight text-black">RoomFlow</h1>
+          <p className="text-gray-500 mt-2 text-sm font-normal">Enterprise Room Booking Engine</p>
         </div>
 
-        <Card className="border border-slate-200 shadow-2xl bg-white">
-          <CardHeader className="pb-2">
-            <CardTitle>Sign In</CardTitle>
-            <CardDescription>Enter your credentials to access your booking dashboard</CardDescription>
+        {/* Sign In Card */}
+        <Card className="border border-gray-200 shadow-sm bg-white">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-black">Sign In</CardTitle>
+            <CardDescription className="text-gray-500">Enter your credentials to access your booking dashboard</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4 mt-2">
@@ -75,39 +73,39 @@ export default function LoginPage() {
                 required
               />
 
-              <Button type="submit" variant="primary" className="w-full mt-2" isLoading={isLoading}>
+              <Button type="submit" variant="primary" className="w-full mt-4" isLoading={isLoading}>
                 Sign In
               </Button>
             </form>
           </CardContent>
-          <CardFooter className="justify-center border-t border-slate-200 pt-4 mt-2">
-            <p className="text-slate-500 text-xs">
+          <CardFooter className="justify-center border-t border-gray-100 pt-4 mt-3">
+            <p className="text-gray-500 text-xs">
               Don&apos;t have an account?{' '}
-              <Link href="/register" className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors hover:underline">
+              <Link href="/register" className="text-[#143258] hover:text-[#0f2744] font-medium transition-colors hover:underline">
                 Create one now
               </Link>
             </p>
           </CardFooter>
         </Card>
 
-        {/* Quick Credentials Info Box for Seeding Validation */}
-        <div className="mt-6 p-4 rounded-xl border border-slate-200 bg-white text-xs text-slate-500 flex flex-col gap-2">
-          <p className="font-semibold text-slate-600">💡 Quick-start Seed Credentials:</p>
+        {/* Seed Credentials Info */}
+        <div className="mt-6 p-4 rounded-lg border border-gray-200 bg-white text-xs text-gray-600 flex flex-col gap-2">
+          <p className="font-semibold text-gray-700">💡 Quick-start Seed Credentials:</p>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <span className="font-medium text-slate-600">IT Admin:</span>
-              <p>admin@roomflow.local</p>
-              <p>password123</p>
+              <span className="font-medium text-gray-700">IT Admin:</span>
+              <p className="text-gray-500">admin@roomflow.local</p>
+              <p className="text-gray-500">password123</p>
             </div>
             <div>
-              <span className="font-medium text-slate-600">Room Manager:</span>
-              <p>manager@roomflow.local</p>
-              <p>password123</p>
+              <span className="font-medium text-gray-700">Room Manager:</span>
+              <p className="text-gray-500">manager@roomflow.local</p>
+              <p className="text-gray-500">password123</p>
             </div>
           </div>
-          <div className="border-t border-slate-200 pt-2 mt-1">
-            <span className="font-medium text-slate-600">Regular Employee:</span>
-            <p>user@roomflow.local / password123</p>
+          <div className="border-t border-gray-200 pt-2 mt-1">
+            <span className="font-medium text-gray-700">Regular Employee:</span>
+            <p className="text-gray-500">user@roomflow.local / password123</p>
           </div>
         </div>
       </div>

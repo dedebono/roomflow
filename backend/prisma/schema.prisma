@@ -26,6 +26,7 @@ enum RoomCategory {
 }
 
 enum BookingStatus {
+  PENDING
   BOOKED
   CANCELLED
 }
@@ -70,7 +71,12 @@ model User {
   id           String @id @default(uuid())
   name         String
   email        String @unique
+  whatsappNumber String?
+  whatsappVerified Boolean @default(false)
+  whatsappOtpCode String?
+  whatsappOtpExpiresAt DateTime?
   passwordHash String
+  refreshToken String?
   role         Role   @default(USER)
 
   bookings              Booking[]
@@ -207,6 +213,7 @@ model ChatMessage {
   isRead     Boolean  @default(false)
   createdAt  DateTime @default(now())
 
+  @@index([bookingId])
   @@index([senderId])
   @@index([receiverId])
   @@index([roomId])

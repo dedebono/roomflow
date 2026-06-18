@@ -17,13 +17,17 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import * as express from 'express';
 import { UploadPaymentDto } from './dto/upload-payment.dto';
+import { paymentFileFilter, MAX_FILE_SIZE } from '../common/validators/file.validator';
 
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @Post('upload')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: MAX_FILE_SIZE },
+    fileFilter: paymentFileFilter,
+  }))
   upload(
     @CurrentUser('userId') userId: string,
     @Req() req: express.Request,

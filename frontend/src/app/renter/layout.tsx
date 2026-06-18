@@ -8,7 +8,9 @@ import { ChatBubble, ChatPanel } from '@/components/chat/ChatBubble';
 import api from '@/lib/api';
 import { useWebSocket } from '@/lib/useWebSocket';
 import { useAuth } from '@/lib/auth';
+import { NotificationBell } from '@/components/layout/RenterNotificationBell';
 import { ChatMessage } from '@/types';
+import toast from 'react-hot-toast';
 
 interface RenterLayoutProps {
   children: ReactNode;
@@ -24,7 +26,7 @@ export default function RenterLayout({ children }: RenterLayoutProps) {
   const router = useRouter();
   const { user } = useAuth();
 
-  // WebSocket for real-time messaging
+  // WebSocket for real-time messaging & notifications
   const { sendMessage } = useWebSocket({
     onNewMessage: (data) => {
       if (selectedConversation &&
@@ -33,6 +35,13 @@ export default function RenterLayout({ children }: RenterLayoutProps) {
         setMessages((prev) => [...prev, data]);
       }
       fetchConversations();
+    },
+    onNotification: (data) => {
+      // Show toast for rental notifications
+      const type = data.type || data.event || '';
+      if (['BOOKING_CREATED', 'PAYMENT_PROOF_UPLOADED', 'PAYMENT_APPROVED', 'PAYMENT_REJECTED', 'RENTAL_BOOKED', 'BOOKING_EXPIRED'].some(t => type.includes(t))) {
+        toast.success(data.message || data.title || 'New booking notification', { duration: 5000 });
+      }
     },
   });
 
@@ -110,9 +119,18 @@ export default function RenterLayout({ children }: RenterLayoutProps) {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 overflow-hidden">
+    <div className="flex min-h-screen bg-slate-50 text-slate-900 overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
+        {/* Top bar with notification bell */}
+        <div className="sticky top-0 z-30 flex items-center justify-between px-4 md:px-8 py-3 border-b border-slate-200 bg-white backdrop-blur-md">
+          <div>
+            <p className="text-sm font-semibold text-slate-500">Renter Portal</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+          </div>
+        </div>
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-7xl mx-auto space-y-6">
             {children}
@@ -127,7 +145,7 @@ export default function RenterLayout({ children }: RenterLayoutProps) {
       <ChatPanel isOpen={isChatOpen} onClose={() => setIsChatOpen(false)}>
         {!selectedConversation ? (
           <div className="p-4 space-y-2">
-            <h3 className="text-sm font-semibold text-slate-400 mb-3">Conversations</h3>
+            <h3 className="text-sm font-semibold text-slate-500 mb-3">Conversations</h3>
             {conversations.length === 0 ? (
               <p className="text-sm text-slate-500 text-center py-4">No conversations yet</p>
             ) : (
@@ -137,15 +155,15 @@ export default function RenterLayout({ children }: RenterLayoutProps) {
                   <button
                     key={conv.id}
                     onClick={() => handleSelectConversation(conv)}
-                    className="w-full p-3 rounded-lg text-left hover:bg-slate-800/50 transition-colors flex items-center gap-3"
+                    className="w-full p-3 rounded-lg text-left hover:bg-slate-100/50 transition-colors flex items-center gap-3"
                   >
-                    <div className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center">
-                      <span className="text-sm font-semibold text-slate-400">
+                    <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center">
+                      <span className="text-sm font-semibold text-slate-500">
                         {other?.name?.charAt(0) || 'M'}
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-slate-200 truncate">{other?.name || 'Manager'}</p>
+                      <p className="font-semibold text-slate-800 truncate">{other?.name || 'Manager'}</p>
                       {conv.lastMessage && (
                         <p className="text-xs text-slate-500 truncate">{conv.lastMessage.content}</p>
                       )}
@@ -163,19 +181,19 @@ export default function RenterLayout({ children }: RenterLayoutProps) {
         ) : (
           <div className="flex flex-col h-full">
             {/* Conversation Header */}
-            <div className="p-4 border-b border-slate-800/40 flex items-center gap-3">
+            <div className="p-4 border-b border-slate-200/40 flex items-center gap-3">
               <button
                 onClick={() => setSelectedConversation(null)}
-                className="text-slate-400 hover:text-white text-sm"
+                className="text-slate-500 hover:text-slate-900 text-sm"
               >
                 ← Back
               </button>
-              <div className="h-8 w-8 rounded-full bg-slate-800 flex items-center justify-center">
-                <span className="text-xs font-semibold text-slate-400">
+              <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
+                <span className="text-xs font-semibold text-slate-500">
                   {(selectedConversation.participant1?.name || selectedConversation.participant2?.name || 'M')?.charAt(0)}
                 </span>
               </div>
-              <p className="font-semibold text-slate-200">
+              <p className="font-semibold text-slate-800">
                 {selectedConversation.participant1?.name || selectedConversation.participant2?.name || 'Manager'}
               </p>
             </div>
@@ -195,11 +213,11 @@ export default function RenterLayout({ children }: RenterLayoutProps) {
                       className={`max-w-[80%] p-3 rounded-2xl text-sm ${
                         isOwn
                           ? 'bg-indigo-600 text-white'
-                          : 'bg-slate-800 text-slate-200'
+                          : 'bg-slate-100 text-slate-800'
                       }`}
                     >
                       <p>{msg.content}</p>
-                      <p className={`text-xs mt-1 ${isOwn ? 'text-indigo-200' : 'text-slate-400'}`}>
+                      <p className={`text-xs mt-1 ${isOwn ? 'text-indigo-200' : 'text-slate-500'}`}>
                         {formatTime(msg.createdAt)}
                       </p>
                     </div>
@@ -209,14 +227,14 @@ export default function RenterLayout({ children }: RenterLayoutProps) {
             </div>
 
             {/* Message Input */}
-            <div className="p-4 border-t border-slate-800/40 flex gap-2">
+            <div className="p-4 border-t border-slate-200/40 flex gap-2">
               <input
                 type="text"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                 placeholder="Type a message..."
-                className="flex-1 bg-slate-800 text-slate-200 text-sm rounded-lg px-3 py-2 border border-slate-700 focus:border-indigo-500 focus:outline-none"
+                className="flex-1 bg-slate-100 text-slate-800 text-sm rounded-lg px-3 py-2 border border-slate-300 focus:border-indigo-500 focus:outline-none"
               />
               <button
                 onClick={handleSendMessage}

@@ -175,8 +175,8 @@ export default function MyBookingsPage() {
       mobileTitle: true,
       cell: (b: Booking) => (
         <div>
-          <p className="font-bold text-slate-100">{b.title}</p>
-          {b.notes && <p className="text-xs text-slate-400 italic max-w-xs truncate mt-0.5">&ldquo;{b.notes}&rdquo;</p>}
+          <p className="font-bold text-slate-900">{b.title}</p>
+          {b.notes && <p className="text-xs text-slate-500 italic max-w-xs truncate mt-0.5">&ldquo;{b.notes}&rdquo;</p>}
         </div>
       ),
     },
@@ -184,8 +184,8 @@ export default function MyBookingsPage() {
       header: 'Location & Room',
       cell: (b: Booking) => (
         <div>
-          <p className="font-semibold text-slate-200">{b.room?.name || 'Room'}</p>
-          <p className="text-xs text-slate-400">{b.room?.building?.name || 'Building'}</p>
+          <p className="font-semibold text-slate-800">{b.room?.name || 'Room'}</p>
+          <p className="text-xs text-slate-500">{b.room?.building?.name || 'Building'}</p>
         </div>
       ),
       mobileHidden: true,
@@ -198,8 +198,8 @@ export default function MyBookingsPage() {
             <Calendar className="w-3.5 h-3.5" />
             {displayDateTime(b.startTime)}
           </span>
-          <span className="text-xs text-slate-400 pl-4.5 hidden sm:block">to {displayDateTime(b.endTime)}</span>
-          <span className="text-xs text-slate-400 sm:hidden">{displayDateTime(b.endTime)}</span>
+          <span className="text-xs text-slate-500 pl-4.5 hidden sm:block">to {displayDateTime(b.endTime)}</span>
+          <span className="text-xs text-slate-500 sm:hidden">{displayDateTime(b.endTime)}</span>
         </div>
       ),
     },
@@ -249,7 +249,7 @@ export default function MyBookingsPage() {
       header: 'Reservation',
       mobileTitle: true,
       cell: (r: BookingChangeRequest) => (
-        <span className="font-semibold text-slate-200">{r.booking?.title || 'Reservation'}</span>
+        <span className="font-semibold text-slate-800">{r.booking?.title || 'Reservation'}</span>
       ),
     },
     {
@@ -257,7 +257,7 @@ export default function MyBookingsPage() {
       cell: (r: BookingChangeRequest) => {
         const roomName = rooms.find((rm) => rm.id === r.requestedRoomId)?.name;
         return (
-          <div className="flex flex-col gap-0.5 text-xs text-slate-400">
+          <div className="flex flex-col gap-0.5 text-xs text-slate-500">
             {roomName && (
               <p>
                 🚪 Room: <span className="font-semibold text-indigo-400">{roomName}</span>
@@ -277,7 +277,7 @@ export default function MyBookingsPage() {
     {
       header: 'Filed On',
       cell: (r: BookingChangeRequest) => (
-        <span className="text-xs text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</span>
+        <span className="text-xs text-slate-500">{new Date(r.createdAt).toLocaleDateString()}</span>
       ),
     },
     {
@@ -378,7 +378,7 @@ export default function MyBookingsPage() {
             required
           />
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/40">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/40">
             <Button type="button" variant="secondary" onClick={() => setIsModModalOpen(false)}>
               Cancel
             </Button>
@@ -402,8 +402,8 @@ export default function MyBookingsPage() {
             <span>As a regular employee, you cannot cancel bookings directly. Your cancellation request will be sent to the Room Manager for approval.</span>
           </div>
 
-          <div className="p-3 rounded-lg border border-slate-800 bg-slate-800/30 text-xs text-slate-400">
-            <p className="font-semibold text-slate-300 mb-1">{selectedBooking?.room?.name}</p>
+          <div className="p-3 rounded-lg border border-slate-200 bg-slate-100/30 text-xs text-slate-500">
+            <p className="font-semibold text-slate-600 mb-1">{selectedBooking?.room?.name}</p>
             <p>{selectedBooking ? displayDateTime(selectedBooking.startTime) : ''} → {selectedBooking ? displayDateTime(selectedBooking.endTime) : ''}</p>
           </div>
 
@@ -416,7 +416,7 @@ export default function MyBookingsPage() {
             required
           />
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/40">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/40">
             <Button type="button" variant="secondary" onClick={() => setIsCancelModalOpen(false)}>
               Back
             </Button>

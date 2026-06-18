@@ -208,7 +208,7 @@ export default function ManagerChatPage() {
             ) : (
               <>
                 {/* Renters without active conversation */}
-                <div className="p-3 border-b border-slate-800/40">
+                <div className="p-3 border-b border-slate-200/40">
                   <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-2">Start New Chat</p>
                   <div className="space-y-2">
                     {renters.map((renter) => {
@@ -220,12 +220,12 @@ export default function ManagerChatPage() {
                         <button
                           key={renter.id}
                           onClick={() => handleStartConversation(renter.id)}
-                          className="w-full p-2 rounded-lg text-left hover:bg-slate-800/50 transition-colors flex items-center gap-2"
+                          className="w-full p-2 rounded-lg text-left hover:bg-slate-100/50 transition-colors flex items-center gap-2"
                         >
-                          <div className="h-8 w-8 rounded-full bg-slate-800 flex items-center justify-center">
-                            <UserIcon className="w-4 h-4 text-slate-400" />
+                          <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
+                            <UserIcon className="w-4 h-4 text-slate-500" />
                           </div>
-                          <span className="text-sm text-slate-300 truncate">{renter.name}</span>
+                          <span className="text-sm text-slate-600 truncate">{renter.name}</span>
                         </button>
                       );
                     })}
@@ -244,17 +244,17 @@ export default function ManagerChatPage() {
                           <button
                             key={conv.userId}
                             onClick={() => handleSelectConversation(conv as any)}
-                            className={`w-full p-3 rounded-lg text-left hover:bg-slate-800/30 transition-colors ${
+                            className={`w-full p-3 rounded-lg text-left hover:bg-slate-100/30 transition-colors ${
                               selectedConversation?.userId === conv.userId ? 'bg-indigo-500/10' : ''
                             }`}
                           >
                             <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center">
-                                <UserIcon className="w-5 h-5 text-slate-400" />
+                              <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center">
+                                <UserIcon className="w-5 h-5 text-slate-500" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between">
-                                  <p className="font-semibold text-slate-200 truncate">
+                                  <p className="font-semibold text-slate-800 truncate">
                                     {conv.userName || 'Renter'}
                                   </p>
                                   <span className="text-xs text-slate-500">
@@ -262,7 +262,7 @@ export default function ManagerChatPage() {
                                   </span>
                                 </div>
                                 {conv.lastMessage && (
-                                  <p className="text-xs text-slate-400 truncate mt-0.5">
+                                  <p className="text-xs text-slate-500 truncate mt-0.5">
                                     {conv.lastMessage}
                                   </p>
                                 )}
@@ -289,10 +289,10 @@ export default function ManagerChatPage() {
           {selectedConversation ? (
             <>
               {/* Chat Header */}
-              <CardHeader className="p-4 border-b border-slate-800/40">
+              <CardHeader className="p-4 border-b border-slate-200/40">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center">
-                    <UserIcon className="w-5 h-5 text-slate-400" />
+                  <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center">
+                    <UserIcon className="w-5 h-5 text-slate-500" />
                   </div>
                   <div>
                     <CardTitle className="text-base">
@@ -328,12 +328,12 @@ export default function ManagerChatPage() {
                           className={`max-w-[70%] p-3 rounded-2xl ${
                             isOwn
                               ? 'bg-indigo-600 text-white rounded-br-md'
-                              : 'bg-slate-800 text-slate-200 rounded-bl-md'
+                              : 'bg-slate-100 text-slate-800 rounded-bl-md'
                           }`}
                         >
                           <p className="text-sm">{msg.content}</p>
                           <p className={`text-xs mt-1 ${
-                            isOwn ? 'text-indigo-200' : 'text-slate-400'
+                            isOwn ? 'text-indigo-200' : 'text-slate-500'
                           }`}>
                             {formatTime(msg.createdAt)}
                           </p>
@@ -346,7 +346,7 @@ export default function ManagerChatPage() {
               </CardContent>
 
               {/* Message Input */}
-              <div className="p-4 border-t border-slate-800/40">
+              <div className="p-4 border-t border-slate-200/40">
                 <div className="flex gap-2">
                   <Input
                     placeholder="Type a message..."

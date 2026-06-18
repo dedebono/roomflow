@@ -38,14 +38,14 @@ export default function RenterDashboard() {
       <Card className="border border-slate-900 glass bg-gradient-to-r from-indigo-950/40 to-slate-900/40">
         <CardContent>
           <div className="flex flex-col sm:items-center sm:flex-row gap-4">
-            <div className="h-14 w-14 rounded-full bg-slate-800 flex items-center justify-center font-bold text-xl text-indigo-400 border border-indigo-500/20">
+            <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center font-bold text-xl text-indigo-400 border border-indigo-500/20">
               {user?.name?.charAt(0) || 'R'}
             </div>
             <div className="flex-1">
-              <h2 className="text-2xl font-bold text-slate-100">
+              <h2 className="text-2xl font-bold text-slate-900">
                 Welcome back{user?.name ? `, ${user.name}` : ''}!
               </h2>
-              <p className="text-slate-400 text-sm mt-1">
+              <p className="text-slate-500 text-sm mt-1">
                 Browse available rooms and manage your bookings from here.
               </p>
             </div>
@@ -65,12 +65,12 @@ export default function RenterDashboard() {
           <Card key={idx} className="border border-slate-900 glass">
             <CardHeader className="p-0 mb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm text-slate-400">{stat.title}</CardTitle>
+                <CardTitle className="text-sm text-slate-500">{stat.title}</CardTitle>
                 {stat.icon}
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <p className="text-3xl font-bold text-slate-100">{stat.value}</p>
+              <p className="text-3xl font-bold text-slate-900">{stat.value}</p>
             </CardContent>
           </Card>
         ))}
@@ -88,7 +88,7 @@ export default function RenterDashboard() {
               <Badge variant="info">Browse</Badge>
             </CardHeader>
             <CardContent className="p-0">
-              <p className="text-sm text-slate-400">View all rentable rooms and book your preferred space</p>
+              <p className="text-sm text-slate-500">View all rentable rooms and book your preferred space</p>
             </CardContent>
           </Card>
         </Link>
@@ -103,7 +103,7 @@ export default function RenterDashboard() {
               <Badge variant="success">View</Badge>
             </CardHeader>
             <CardContent className="p-0">
-              <p className="text-sm text-slate-400">Check your booking history and current reservations</p>
+              <p className="text-sm text-slate-500">Check your booking history and current reservations</p>
             </CardContent>
           </Card>
         </Link>
@@ -118,7 +118,7 @@ export default function RenterDashboard() {
               <Badge variant="warning">Upload</Badge>
             </CardHeader>
             <CardContent className="p-0">
-              <p className="text-sm text-slate-400">Upload payment proofs and track payment status</p>
+              <p className="text-sm text-slate-500">Upload payment proofs and track payment status</p>
             </CardContent>
           </Card>
         </Link>

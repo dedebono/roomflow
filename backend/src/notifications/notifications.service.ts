@@ -2,12 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType } from '@prisma/client';
 import { WebSocketService } from '../websocket/websocket.service';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
 
 @Injectable()
 export class NotificationsService {
   constructor(
     private prisma: PrismaService,
     private webSocketService: WebSocketService,
+    private whatsAppService: WhatsAppService,
   ) {}
 
   async create(
@@ -29,6 +31,16 @@ export class NotificationsService {
 
     // Send real-time notification via WebSocket
     await this.webSocketService.sendNotification(userId, notification);
+
+    // Send WhatsApp notification via WAHA when user has WhatsApp number
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { whatsappNumber: true },
+    });
+
+    if (user?.whatsappNumber) {
+      await this.whatsAppService.sendText(user.whatsappNumber, `*${title}*\n\n${message}`);
+    }
 
     return notification;
   }

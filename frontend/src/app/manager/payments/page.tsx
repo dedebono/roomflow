@@ -133,7 +133,7 @@ export default function ManagerPaymentsPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <DollarSign className="w-6 h-6 text-indigo-400" />
-        <h1 className="text-2xl font-bold text-slate-100">Payment Management</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Payment Management</h1>
       </div>
 
       {/* Status Filter */}
@@ -153,7 +153,7 @@ export default function ManagerPaymentsPage() {
                 className={`px-4 py-2 rounded-lg transition-colors ${
                   statusFilter === option.value
                     ? 'bg-indigo-600 text-white'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
                 {option.label}
@@ -191,32 +191,32 @@ export default function ManagerPaymentsPage() {
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-lg bg-slate-800 flex items-center justify-center">
+                      <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center">
                         {payment.status === 'APPROVED' ? (
                           <CheckCircle className="w-5 h-5 text-emerald-400" />
                         ) : payment.status === 'REJECTED' ? (
                           <XCircle className="w-5 h-5 text-rose-400" />
                         ) : (
-                          <Clock className="w-5 h-5 text-slate-400" />
+                          <Clock className="w-5 h-5 text-slate-500" />
                         )}
                       </div>
                       <div>
-                        <p className="font-semibold text-slate-200">
+                        <p className="font-semibold text-slate-800">
                           {payment.booking.room.name}
                         </p>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-slate-500">
                           {payment.user.name} ({payment.user.email})
                         </p>
                       </div>
                     </div>
-                    <p className="text-sm text-slate-400 ml-13">
+                    <p className="text-sm text-slate-500 ml-13">
                       {formatDate(payment.booking.startTime)} at {formatTime(payment.booking.startTime)} - {formatTime(payment.booking.endTime)}
                     </p>
                   </div>
 
                   <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <p className="font-bold text-slate-100">${payment.amount}</p>
+                      <p className="font-bold text-slate-900">${payment.amount}</p>
                       {getStatusBadge(payment.status)}
                     </div>
 

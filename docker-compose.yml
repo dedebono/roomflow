@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -7,7 +5,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: roomflow
-      POSTGRES_PASSWORD: roomflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-roomflow}
       POSTGRES_DB: roomflow
     ports:
       - '5432:5432'
@@ -26,12 +24,16 @@ services:
     container_name: roomflow-backend
     restart: always
     environment:
-      DATABASE_URL: postgresql://roomflow:roomflow@postgres:5432/roomflow?schema=public
-      JWT_SECRET: roomflow-super-secret-key-123!
+      DATABASE_URL: postgresql://roomflow:${POSTGRES_PASSWORD:-roomflow}@postgres:5432/roomflow?schema=public
+      JWT_SECRET: ${JWT_SECRET}
       PORT: 3000
       STORAGE_TYPE: LOCAL
       EMAIL_ENABLED: "false"
       EMAIL_FROM: noreply@roomflow.local
+      WAHA_ENABLED: "true"
+      WAHA_API_URL: ${WAHA_API_URL}
+      WAHA_SESSION: ${WAHA_SESSION:-default}
+      WAHA_API_KEY: ${WAHA_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy

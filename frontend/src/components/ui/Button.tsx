@@ -15,14 +15,14 @@ export const Button = ({
   disabled,
   ...props
 }: ButtonProps) => {
-  const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-200 outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]';
+  const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-200 outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]';
   
   const variants = {
-    primary: 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 focus:ring-indigo-500 border border-indigo-500/20',
-    secondary: 'bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 hover:text-white border border-slate-700/50 focus:ring-slate-500',
-    danger: 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white shadow-lg shadow-red-500/20 hover:shadow-red-500/30 focus:ring-red-500 border border-red-500/20',
-    success: 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 focus:ring-emerald-500 border border-emerald-500/20',
-    ghost: 'hover:bg-slate-800/50 text-slate-400 hover:text-slate-200 focus:ring-slate-700',
+    primary: 'bg-[#143258] hover:bg-[#0f2744] text-white shadow-sm hover:shadow-md focus:ring-[#143258] border border-[#143258]',
+    secondary: 'bg-gray-100 hover:bg-gray-200 text-gray-900 hover:text-gray-900 border border-gray-300 focus:ring-gray-500',
+    danger: 'bg-rose-600 hover:bg-rose-700 text-white shadow-sm hover:shadow-md focus:ring-rose-500 border border-rose-600',
+    success: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow-md focus:ring-emerald-500 border border-emerald-600',
+    ghost: 'hover:bg-gray-100 text-gray-500 hover:text-gray-800 focus:ring-gray-400',
   };
 
   const sizes = {

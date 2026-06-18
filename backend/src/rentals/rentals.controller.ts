@@ -15,6 +15,8 @@ import { CreateRentalSlotDto } from './dto/create-rental-slot.dto';
 import { UpdateRentalSlotDto } from './dto/update-rental-slot.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
+import { Role, RoomCategory } from '@prisma/client';
 
 @Controller('rentals')
 export class RentalsController {
@@ -22,8 +24,13 @@ export class RentalsController {
 
   @Get('available-rooms')
   @Public()
-  getAvailableRooms(@Query('date') date: string, @Query('category') category?: string) {
-    return this.rentalsService.getAvailableRooms(date, category as any);
+  getAvailableRooms(
+    @Query('date') date: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Query('category') category?: string,
+  ) {
+    return this.rentalsService.getAvailableRooms(date, startDate, endDate, category as RoomCategory);
   }
 
   @Post('check-availability')
@@ -64,8 +71,12 @@ export class RentalsController {
   }
 
   @Get('holds')
-  getAllHolds() {
-    return this.rentalsService.getAllHolds();
+  @Roles(Role.ADMIN_IT, Role.ROOM_ADMIN)
+  getAllHolds(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.rentalsService.getAllHolds(page, limit);
   }
 
   @Get('holds/active')
@@ -80,8 +91,12 @@ export class RentalsController {
 
   // RentalSlot CRUD
   @Get('slots')
-  getSlots(@Query('roomId') roomId?: string) {
-    return this.rentalsService.getSlots(roomId);
+  getSlots(
+    @Query('roomId') roomId?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.rentalsService.getSlots(roomId, page, limit);
   }
 
   @Get('available-slots')
@@ -95,11 +110,13 @@ export class RentalsController {
   }
 
   @Post('slots')
+  @Roles(Role.ADMIN_IT, Role.ROOM_ADMIN)
   createSlot(@Body() dto: CreateRentalSlotDto) {
     return this.rentalsService.createSlot(dto);
   }
 
   @Patch('slots/:id')
+  @Roles(Role.ADMIN_IT, Role.ROOM_ADMIN)
   updateSlot(
     @Param('id') id: string,
     @Body() dto: UpdateRentalSlotDto,
@@ -108,6 +125,7 @@ export class RentalsController {
   }
 
   @Delete('slots/:id')
+  @Roles(Role.ADMIN_IT, Role.ROOM_ADMIN)
   deleteSlot(@Param('id') id: string) {
     return this.rentalsService.deleteSlot(id);
   }

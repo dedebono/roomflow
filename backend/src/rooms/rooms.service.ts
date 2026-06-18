@@ -5,6 +5,7 @@ import { UpdateRoomDto } from './dto/update-room.dto';
 import { StorageService } from '../storage/storage.service';
 import { ImageService } from '../storage/image.service';
 import { RoomStatus } from '@prisma/client';
+import { getPrismaPagination } from '../common/dto/pagination.dto';
 
 @Injectable()
 export class RoomsService {
@@ -28,12 +29,15 @@ export class RoomsService {
     });
   }
 
-  async findAll(buildingId?: string, status?: RoomStatus) {
+  async findAll(buildingId?: string, status?: RoomStatus, page?: number, limit?: number) {
+    const { skip, take } = getPrismaPagination(page, limit);
     return this.prisma.room.findMany({
       where: {
         buildingId,
         status,
       },
+      skip,
+      take,
       select: {
         id: true,
         buildingId: true,

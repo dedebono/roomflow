@@ -50,9 +50,9 @@ export function DataTable<T>({
   return (
     <>
       {/* ── Desktop table (md+) ── */}
-      <div className="hidden md:block w-full overflow-x-auto rounded-xl border border-slate-800/40 glass">
-        <table className="w-full border-collapse text-left text-sm text-slate-300">
-          <thead className="bg-slate-900/50 text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-800/40">
+      <div className="hidden md:block w-full overflow-x-auto rounded-xl border border-slate-200 glass">
+        <table className="w-full border-collapse text-left text-sm text-slate-600">
+          <thead className="bg-slate-100 text-xs font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-200">
             <tr>
               {columns.map((col, idx) => (
                 <th key={idx} scope="col" className={`px-6 py-4 ${col.className || ''}`}>
@@ -76,7 +76,7 @@ export function DataTable<T>({
               </tr>
             ) : (
               data.map((row, rowIdx) => (
-                <tr key={rowIdx} className="hover:bg-slate-900/30 transition-colors">
+                <tr key={rowIdx} className="hover:bg-slate-100 transition-colors">
                   {columns.map((col, colIdx) => (
                     <td key={colIdx} className={`px-6 py-4 whitespace-nowrap ${col.className || ''}`}>
                       {getCellContent(col, row)}
@@ -92,9 +92,9 @@ export function DataTable<T>({
       {/* ── Mobile card list (< md) ── */}
       <div className="md:hidden space-y-3">
         {isLoading ? (
-          <div className="rounded-xl border border-slate-800/40 glass p-4">{loadingSpinner}</div>
+          <div className="rounded-xl border border-slate-200 glass p-4">{loadingSpinner}</div>
         ) : data.length === 0 ? (
-          <div className="rounded-xl border border-slate-800/40 glass p-4">{emptyState}</div>
+          <div className="rounded-xl border border-slate-200 glass p-4">{emptyState}</div>
         ) : (
           data.map((row, rowIdx) => {
             const titleCol = columns.find((c) => c.mobileTitle) ?? columns[0];
@@ -107,11 +107,11 @@ export function DataTable<T>({
             return (
               <div
                 key={rowIdx}
-                className="rounded-xl border border-slate-800/40 glass p-4 space-y-3"
+                className="rounded-xl border border-slate-200 glass p-4 space-y-3"
               >
                 {/* Card title row */}
                 <div className="flex items-start justify-between gap-2">
-                  <div className="font-semibold text-slate-100 text-sm leading-snug">
+                  <div className="font-semibold text-slate-900 text-sm leading-snug">
                     {getCellContent(titleCol, row)}
                   </div>
                   {actionsCol && (
@@ -129,7 +129,7 @@ export function DataTable<T>({
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-0.5">
                           {col.header}
                         </p>
-                        <div className="text-xs text-slate-300 truncate">
+                        <div className="text-xs text-slate-600 truncate">
                           {getCellContent(col, row)}
                         </div>
                       </div>

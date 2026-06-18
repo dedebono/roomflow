@@ -257,7 +257,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
     return (
       <Card className="border border-slate-900 glass text-center py-12">
         <CardContent>
-          <p className="text-slate-400">Room not found.</p>
+          <p className="text-slate-500">Room not found.</p>
           <Link href="/renter/rooms" className="mt-4 inline-block">
             <Button variant="secondary">Back to Rooms</Button>
           </Link>
@@ -269,7 +269,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
   return (
     <>
       {/* Back Button */}
-      <Link href="/renter/rooms" className="inline-flex items-center gap-2 text-slate-400 hover:text-white mb-4">
+      <Link href="/renter/rooms" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 mb-4">
         <ArrowLeft className="w-4 h-4" />
         <span className="text-sm font-semibold">Back to Rooms</span>
       </Link>
@@ -279,7 +279,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
         <div className="lg:col-span-2 space-y-6">
           {/* Room Image */}
           <Card className="border border-slate-900 glass overflow-hidden">
-            <div className="relative h-64 bg-slate-900">
+            <div className="relative h-64 bg-white">
               {room.imageUrl ? (
                 <img
                   src={room.imageUrl}
@@ -307,7 +307,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
               <CardDescription>{room.building?.name || 'Building'}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-4 text-sm text-slate-400">
+              <div className="flex items-center gap-4 text-sm text-slate-500">
                 <span className="flex items-center gap-1.5">
                   <Users className="w-4 h-4 text-indigo-400" />
                   Up to {room.capacity} guests
@@ -319,7 +319,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
               </div>
 
               {room.description && (
-                <p className="text-slate-300 text-sm">{room.description}</p>
+                <p className="text-slate-600 text-sm">{room.description}</p>
               )}
 
               {/* Amenities */}
@@ -328,7 +328,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                   {amenities.map((amenity: string, idx: number) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/60 text-slate-300 text-xs rounded-full"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/60 text-slate-600 text-xs rounded-full"
                     >
                       {getAmenityIcon(amenity)}
                       {amenity}
@@ -350,7 +350,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="w-full flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-300 tracking-wide uppercase">
+                <label className="text-xs font-semibold text-slate-600 tracking-wide uppercase">
                   Rental Date
                 </label>
                 <input
@@ -367,7 +367,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                   }}
                   min={new Date().toISOString().split('T')[0]}
                   style={{ colorScheme: 'dark' }}
-                  className="w-full bg-slate-900/60 hover:bg-slate-900/80 focus:bg-slate-950 text-slate-100 text-sm rounded-lg border border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/20 px-3.5 py-2.5 transition-all duration-200 focus:ring-4 outline-none"
+                  className="w-full bg-white/60 hover:bg-white/80 focus:bg-white text-slate-900 text-sm rounded-lg border border-slate-200 focus:border-indigo-500 focus:ring-indigo-500/20 px-3.5 py-2.5 transition-all duration-200 focus:ring-4 outline-none"
                 />
               </div>
 
@@ -375,7 +375,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                 <>
                   {timeSlots.length > 0 ? (
                     <div className="space-y-2">
-                      <p className="text-xs font-semibold text-slate-300 tracking-wide uppercase">Available Time Slots</p>
+                      <p className="text-xs font-semibold text-slate-600 tracking-wide uppercase">Available Time Slots</p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {timeSlots.map((slot, idx) => {
                           const isDisabled = !slot.available;
@@ -389,15 +389,15 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                               isSelected
                                 ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-500/30 scale-105'
                                 : isDisabled
-                                  ? 'bg-slate-900/40 border-slate-800 text-slate-600 cursor-not-allowed opacity-60 line-through'
-                                  : 'bg-slate-800/40 border-slate-700/50 text-slate-200 hover:border-indigo-500/50 hover:bg-slate-800 hover:scale-[1.02]'
+                                  ? 'bg-white/40 border-slate-200 text-slate-600 cursor-not-allowed opacity-60 line-through'
+                                  : 'bg-slate-100/40 border-slate-300/50 text-slate-800 hover:border-indigo-500/50 hover:bg-slate-100 hover:scale-[1.02]'
                             }`}
                           >
                             <div className="flex items-center gap-1.5">
                               <Clock className={`w-3.5 h-3.5 ${isSelected ? 'text-indigo-200' : 'text-indigo-400'}`} />
                               <span>{formatTime(slot.startTime)} - {formatTime(slot.endTime)}</span>
                             </div>
-                            <div className={`text-xs font-medium ${isSelected ? 'text-indigo-100' : 'text-slate-400'}`}>
+                            <div className={`text-xs font-medium ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
                               ${slot.price}
                             </div>
                             {isDisabled && (
@@ -409,7 +409,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm text-slate-400">No available time slots for this date.</p>
+                    <p className="text-sm text-slate-500">No available time slots for this date.</p>
                   )}
                 </>
               )}
@@ -447,17 +447,17 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2 text-sm">
-                  <p className="text-slate-400">
-                    <span className="font-semibold text-slate-300">Date:</span> {activeHold.holdDate}
+                  <p className="text-slate-500">
+                    <span className="font-semibold text-slate-600">Date:</span> {activeHold.holdDate}
                   </p>
-                  <p className="text-slate-400">
-                    <span className="font-semibold text-slate-300">Time:</span> {activeHold.startTime} - {activeHold.endTime}
+                  <p className="text-slate-500">
+                    <span className="font-semibold text-slate-600">Time:</span> {activeHold.startTime} - {activeHold.endTime}
                   </p>
-                  <p className="text-slate-400">
-                    <span className="font-semibold text-slate-300">Amount:</span> ${activeHold.price}
+                  <p className="text-slate-500">
+                    <span className="font-semibold text-slate-600">Amount:</span> ${activeHold.price}
                   </p>
-                  <p className="text-slate-400">
-                    <span className="font-semibold text-slate-300">Status:</span> {activeHold.status}
+                  <p className="text-slate-500">
+                    <span className="font-semibold text-slate-600">Status:</span> {activeHold.status}
                   </p>
                   {countdown && (
                     <p className="text-amber-400 flex items-center gap-1">
@@ -501,7 +501,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
 
                 {activeHold.status === 'CANCELLED' && (
                   <div className="p-3 bg-slate-500/10 border border-slate-500/20 rounded-lg">
-                    <p className="text-sm text-slate-300">Booking hold cancelled.</p>
+                    <p className="text-sm text-slate-600">Booking hold cancelled.</p>
                   </div>
                 )}
               </CardContent>
@@ -509,7 +509,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
           ) : (
             <Card className="border border-slate-900 glass">
               <CardContent className="pt-6">
-                <p className="text-slate-400 text-sm">No active booking hold. Select a date and time slot to create one.</p>
+                <p className="text-slate-500 text-sm">No active booking hold. Select a date and time slot to create one.</p>
               </CardContent>
             </Card>
           )}
@@ -520,11 +520,11 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
       <Modal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} title="Upload Payment Proof">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-slate-300 mb-2">Payment Proof File</label>
+            <label className="block text-sm font-semibold text-slate-600 mb-2">Payment Proof File</label>
             <input
               type="file"
               onChange={(e) => setPaymentFile(e.target.files?.[0] || null)}
-              className="w-full px-3 py-2 bg-slate-900/60 border border-slate-800 rounded-lg text-slate-300"
+              className="w-full px-3 py-2 bg-white/60 border border-slate-200 rounded-lg text-slate-600"
             />
           </div>
           <div className="flex gap-2">

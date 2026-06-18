@@ -106,7 +106,7 @@ export default function NotificationsPage() {
       case 'RENTAL_BOOKED':
         return <Calendar className="w-5 h-5 text-violet-400" />;
       default:
-        return <Bell className="w-5 h-5 text-slate-400" />;
+        return <Bell className="w-5 h-5 text-slate-500" />;
     }
   };
 
@@ -145,12 +145,12 @@ export default function NotificationsPage() {
       header: 'Notification',
       cell: (n: Notification) => (
         <div className="flex items-start gap-3">
-          <div className="h-10 w-10 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
             {getNotificationIcon(n.type)}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <p className={`font-semibold ${n.read ? 'text-slate-400' : 'text-slate-200'}`}>
+              <p className={`font-semibold ${n.read ? 'text-slate-500' : 'text-slate-800'}`}>
                 {n.title}
               </p>
               {!n.read && (
@@ -219,8 +219,8 @@ export default function NotificationsPage() {
         <div className="flex items-center gap-3">
           <BellRing className="w-6 h-6 text-indigo-400" />
           <div>
-            <h2 className="text-lg font-bold text-slate-100">Notifications</h2>
-            <p className="text-sm text-slate-400">
+            <h2 className="text-lg font-bold text-slate-900">Notifications</h2>
+            <p className="text-sm text-slate-500">
               {unreadCount > 0
                 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}`
                 : 'All caught up!'}
@@ -244,7 +244,7 @@ export default function NotificationsPage() {
           ) : notifications.length === 0 ? (
             <div className="text-center py-12">
               <Bell className="w-16 h-16 mx-auto mb-4 text-slate-600" />
-              <p className="text-lg font-semibold text-slate-400">No notifications</p>
+              <p className="text-lg font-semibold text-slate-500">No notifications</p>
               <p className="text-sm text-slate-500 mt-1">You're all caught up!</p>
             </div>
           ) : (

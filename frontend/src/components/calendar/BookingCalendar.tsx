@@ -33,7 +33,7 @@ export default function BookingCalendar({
   editable = false,
 }: BookingCalendarProps) {
   return (
-    <div className="w-full glass rounded-2xl p-2 sm:p-6 border border-slate-900 shadow-xl bg-slate-900/10 calendar-container">
+    <div className="w-full glass rounded-2xl p-2 sm:p-6 border border-slate-200 shadow-xl bg-white calendar-container">
       <style jsx global>{`
         .fc {
           --fc-border-color: rgba(30, 41, 59, 0.5);

@@ -9,6 +9,10 @@ export class RegisterDto {
   @IsEmail()
   email: string;
 
+  @IsString()
+  @IsOptional()
+  whatsappNumber?: string;
+
   @IsNotEmpty()
   @MinLength(6)
   password: string;

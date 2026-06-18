@@ -10,9 +10,10 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string, whatsappNumber?: string) => Promise<void>;
   logout: () => void;
   hasRole: (roles: Role[]) => boolean;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -57,6 +58,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   }, []);
 
+  const refreshUser = async () => {
+    try {
+      const res = await api.get('/auth/me');
+      const updated = res.data;
+      const storage = getStorage();
+      if (storage) storage.setItem(USER_KEY, JSON.stringify(updated));
+      setUser(updated);
+    } catch {
+      // ignore
+    }
+  };
+
   const login = async (email: string, password: string) => {
     console.log('[auth] attempting login for:', email);
     const response = await api.post('/auth/login', { email, password });
@@ -75,15 +88,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setToken(access_token);
     setUser(loggedUser);
 
+    // If WhatsApp number provided but not verified, redirect to OTP page
+    if (loggedUser.whatsappNumber && !loggedUser.whatsappVerified) {
+      const storage = getStorage();
+      if (storage) storage.setItem('verify_email', email);
+      router.push('/verify-whatsapp?mode=resend');
+      return;
+    }
+
     if (loggedUser.role === 'ADMIN_IT')      router.push('/system/users');
     else if (loggedUser.role === 'ROOM_ADMIN') router.push('/dashboard');
     else if (loggedUser.role === 'RENTER')     router.push('/renter/dashboard');
     else                                       router.push('/dashboard');
   };
 
-  const register = async (name: string, email: string, password: string) => {
-    await api.post('/auth/register', { name, email, password });
-    await login(email, password);
+  const register = async (name: string, email: string, password: string, whatsappNumber?: string) => {
+    await api.post('/auth/register', { name, email, password, whatsappNumber });
+
+    if (whatsappNumber) {
+      // Store email for verify-whatsapp page (sessionStorage persists across navigation within same tab)
+      const storage = getStorage();
+      if (storage) storage.setItem('verify_email', email);
+      router.push('/verify-whatsapp');
+    } else {
+      router.push('/login');
+    }
   };
 
   const logout = () => {
@@ -100,7 +129,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, hasRole }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, hasRole, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

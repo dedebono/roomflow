@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/';
 const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://room.ytcb.org';
 
 const api = axios.create({
@@ -46,12 +46,9 @@ api.interceptors.request.use(
         const token = storage?.getItem('roomflow_token');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
-          console.log('[api] token attached:', token.slice(0, 20) + '...');
-        } else {
-          console.log('[api] no token found in storage');
         }
-      } catch (e) {
-        console.error('[api] storage error:', e);
+      } catch {
+        // storage error, continue without token
       }
     }
     return config;
@@ -63,11 +60,9 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => {
-    console.log('[api] response:', response.status, typeof response.data, Array.isArray(response.data) ? response.data.length + ' items' : JSON.stringify(response.data)?.slice(0, 100));
     return response;
   },
   (error) => {
-    console.error('[api] error:', error?.response?.status, error?.response?.data, error?.message, error?.code);
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
         try {

@@ -12,7 +12,7 @@ export const Badge = ({ children, variant = 'neutral', className = '' }: BadgePr
     success: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
     warning: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
     danger: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-    neutral: 'bg-slate-800 text-slate-400 border-slate-700/50',
+    neutral: 'bg-slate-100 text-slate-500 border-slate-300/50',
   };
 
   return (

@@ -202,14 +202,20 @@ export default function RenterPaymentsPage() {
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full" />
             </div>
-          ) : pendingHolds.length === 0 ? (
+          ) : pendingHolds.filter(h => {
+            const latestPayment = h.payments?.[0];
+            return !latestPayment || latestPayment.status === 'PENDING';
+          }).length === 0 ? (
             <div className="text-center py-8 text-slate-500">
               <CheckCircle className="w-12 h-12 mx-auto mb-3 text-emerald-500/50" />
               <p>No pending payments. You're all caught up!</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {pendingHolds.map((hold) => {
+              {pendingHolds.filter(h => {
+                const latestPayment = h.payments?.[0];
+                return !latestPayment || latestPayment.status === 'PENDING';
+              }).map((hold) => {
                 const countdown = countdowns[hold.id] ?? '';
                 const pct = getCountdownPercent(hold.expiresAt ?? new Date().toISOString());
                 const isExpired = countdown === 'Expired';
@@ -222,13 +228,13 @@ export default function RenterPaymentsPage() {
                     key={hold.id}
                     className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors ${
                       isExpired
-                        ? 'border-slate-700/50 bg-slate-800/20'
+                        ? 'border-slate-300/50 bg-slate-100/20'
                         : 'border-amber-500/20 bg-amber-500/5'
                     }`}
                   >
                     <div className="flex items-center gap-4">
                       <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${
-                        isExpired ? 'bg-slate-800' : 'bg-amber-500/20'
+                        isExpired ? 'bg-slate-100' : 'bg-amber-500/20'
                       }`}>
                         {isExpired ? (
                           <XCircle className="w-6 h-6 text-slate-500" />
@@ -237,10 +243,10 @@ export default function RenterPaymentsPage() {
                         )}
                       </div>
                       <div>
-                        <p className="font-bold text-slate-100">
+                        <p className="font-bold text-slate-900">
                           {hold.room?.name || 'Room'}
                         </p>
-                        <p className="text-sm text-slate-400">
+                        <p className="text-sm text-slate-500">
                           {hold.holdDate && formatDate(hold.holdDate)} at {formatTime(hold.startTime)} - {formatTime(hold.endTime)}
                         </p>
                         {amount > 0 && (
@@ -262,7 +268,7 @@ export default function RenterPaymentsPage() {
                             </span>
                             <span className="text-amber-300 font-mono font-bold">{countdown}</span>
                           </div>
-                          <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-1000"
                               style={{ width: `${pct}%` }}
@@ -337,18 +343,18 @@ export default function RenterPaymentsPage() {
                     <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
                       payment.status === 'APPROVED' ? 'bg-emerald-500/20' :
                       payment.status === 'REJECTED' ? 'bg-rose-500/20' :
-                      'bg-slate-800'
+                      'bg-slate-100'
                     }`}>
                       {payment.status === 'APPROVED' ? (
                         <CheckCircle className="w-5 h-5 text-emerald-400" />
                       ) : payment.status === 'REJECTED' ? (
                         <XCircle className="w-5 h-5 text-rose-400" />
                       ) : (
-                        <Clock className="w-5 h-5 text-slate-400" />
+                        <Clock className="w-5 h-5 text-slate-500" />
                       )}
                     </div>
                     <div>
-                      <p className="font-semibold text-slate-200">
+                      <p className="font-semibold text-slate-800">
                         {(payment as any).booking?.room?.name || (payment as any).booking?.title || 'Room Rental'}
                       </p>
                       <p className="text-xs text-slate-500">
@@ -357,7 +363,7 @@ export default function RenterPaymentsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className="font-bold text-slate-100">${payment.amount}</span>
+                    <span className="font-bold text-slate-900">${payment.amount}</span>
                     <div className="flex items-center gap-2">
                       {getStatusBadge(payment.status)}
                       {(payment as any).fileUrl && (
@@ -397,22 +403,22 @@ export default function RenterPaymentsPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-300 tracking-wide uppercase">
+            <label className="text-xs font-semibold text-slate-600 tracking-wide uppercase">
               Payment Receipt / Screenshot
             </label>
             <input
               type="file"
               accept="image/*,.pdf"
               onChange={(e) => setPaymentFile(e.target.files?.[0] || null)}
-              className="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-500/20 file:text-indigo-300 hover:file:bg-indigo-500/30 cursor-pointer"
+              className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-500/20 file:text-indigo-300 hover:file:bg-indigo-500/30 cursor-pointer"
             />
           </div>
 
           {paymentFile && (
-            <div className="p-3 rounded-lg bg-slate-800/50 flex items-center gap-3">
+            <div className="p-3 rounded-lg bg-slate-100/50 flex items-center gap-3">
               <FileText className="w-5 h-5 text-indigo-400" />
               <div>
-                <p className="text-sm text-slate-300">{paymentFile.name}</p>
+                <p className="text-sm text-slate-600">{paymentFile.name}</p>
                 <p className="text-xs text-slate-500">
                   {(paymentFile.size / 1024 / 1024).toFixed(2)} MB
                 </p>
@@ -420,7 +426,7 @@ export default function RenterPaymentsPage() {
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/40">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/40">
             <Button
               type="button"
               variant="secondary"

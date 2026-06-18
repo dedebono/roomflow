@@ -18,7 +18,7 @@ const Badge = ({ children, variant = 'neutral' }: { children: React.ReactNode; v
     success: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
     warning: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
     danger: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-    neutral: 'bg-slate-800 text-slate-400 border-slate-700/50',
+    neutral: 'bg-slate-100 text-slate-500 border-slate-300/50',
   };
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold tracking-wide border ${variants[variant]}`}>
@@ -32,6 +32,8 @@ export default function AvailableRoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [debugInfo, setDebugInfo] = useState<string>('');
@@ -40,13 +42,19 @@ export default function AvailableRoomsPage() {
     fetchAvailableRooms();
   }, []);
 
-  const fetchAvailableRooms = async (date?: string, category?: string) => {
+  const fetchAvailableRooms = async (date?: string, category?: string, sDate?: string, eDate?: string) => {
     setLoading(true);
     try {
       const params: any = {};
       const dateToUse = date !== undefined ? date : dateFilter;
       if (dateToUse) {
         params.date = dateToUse;
+      }
+      const sDateToUse = sDate !== undefined ? sDate : startDate;
+      const eDateToUse = eDate !== undefined ? eDate : endDate;
+      if (sDateToUse && eDateToUse) {
+        params.startDate = sDateToUse;
+        params.endDate = eDateToUse;
       }
       if (category) {
         params.category = category;
@@ -82,10 +90,6 @@ export default function AvailableRoomsPage() {
     }
   };
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setDateFilter(e.target.value);
-  };
-
   const filteredRooms = rooms.filter((room) =>
     room.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (room.description || '').toLowerCase().includes(searchTerm.toLowerCase())
@@ -108,24 +112,28 @@ export default function AvailableRoomsPage() {
                 leftIcon={<MapPin className="w-4 h-4" />}
               />
             </div>
-            <div className="w-full sm:w-48">
+            <div className="w-full sm:w-36">
               <Input
-                label="Filter by Date"
+                label="Start Date"
                 type="date"
-                value={dateFilter}
-                onChange={handleDateChange}
-                onBlur={(e) => {
-                  if (e.target.value && e.target.value !== dateFilter) {
-                    setDateFilter(e.target.value);
-                  }
-                }}
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                leftIcon={<Calendar className="w-4 h-4" />}
+              />
+            </div>
+            <div className="w-full sm:w-36">
+              <Input
+                label="End Date"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
                 leftIcon={<Calendar className="w-4 h-4" />}
               />
             </div>
             <div className="w-full sm:w-44">
-              <label className="text-xs font-semibold text-slate-400 mb-1 block">Category</label>
+              <label className="text-xs font-semibold text-slate-500 mb-1 block">Category</label>
               <select
-                className="w-full h-10 px-3 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                className="w-full h-10 px-3 rounded-lg bg-slate-100 border border-slate-300 text-slate-800 text-sm focus:outline-none focus:border-indigo-500"
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
               >
@@ -134,35 +142,50 @@ export default function AvailableRoomsPage() {
                 <option value="EVENT">Event</option>
               </select>
             </div>
-            <Button variant="secondary" onClick={() => {
+            <Button variant="secondary" onClick={async () => {
+              if (startDate && endDate && startDate > endDate) {
+                toast.error('Start date must be before end date');
+                return;
+              }
               setSearchTerm('');
-              fetchAvailableRooms(dateFilter);
-              setDateFilter('');
+              await fetchAvailableRooms(
+                dateFilter,
+                categoryFilter,
+                startDate,
+                endDate,
+              );
             }}>
               Refresh
             </Button>
-            {categoryFilter && (
+            {(categoryFilter || startDate || endDate) && (
               <Button variant="secondary" onClick={() => {
                 setCategoryFilter('');
-                fetchAvailableRooms(dateFilter, '');
+                setStartDate('');
+                setEndDate('');
+                fetchAvailableRooms('', '');
               }}>
                 Clear
               </Button>
             )}
           </div>
+          {startDate && endDate && (
+            <div className="mt-2 text-xs text-indigo-400 font-medium">
+              Search range: {startDate} → {endDate} ({Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000*60*60*24)) + 1} days)
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Room Cards */}
       {loading ? (
-        <div className="text-center py-12 text-slate-400">
+        <div className="text-center py-12 text-slate-500">
           <div className="animate-spin inline-block w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full mb-2" />
           <p>Loading rooms...</p>
         </div>
       ) : filteredRooms.length === 0 ? (
         <Card className="border border-slate-900 glass text-center py-12">
           <CardContent>
-            <p className="text-slate-400">No rooms available for the selected criteria.</p>
+            <p className="text-slate-500">No rooms available for the selected criteria.</p>
           </CardContent>
         </Card>
       ) : (
@@ -170,7 +193,7 @@ export default function AvailableRoomsPage() {
           {filteredRooms.map((room) => (
             <Card key={room.id} className="border border-slate-900 glass flex flex-col overflow-hidden group hover:border-indigo-500/40 transition-all">
               {/* Room Image */}
-              <div className="relative h-48 bg-slate-900 overflow-hidden">
+              <div className="relative h-48 bg-white overflow-hidden">
                 {room.imageUrl ? (
                   <img
                     src={room.imageUrl}
@@ -196,12 +219,12 @@ export default function AvailableRoomsPage() {
 
               {/* Room Info */}
               <div className="p-4 flex flex-col flex-1">
-                <h3 className="text-lg font-bold text-slate-100">{room.name}</h3>
+                <h3 className="text-lg font-bold text-slate-900">{room.name}</h3>
                 {room.description && (
-                  <p className="text-sm text-slate-400 mt-1 line-clamp-2">{room.description}</p>
+                  <p className="text-sm text-slate-500 mt-1 line-clamp-2">{room.description}</p>
                 )}
 
-                <div className="mt-3 flex items-center gap-4 text-xs text-slate-400">
+                <div className="mt-3 flex items-center gap-4 text-xs text-slate-500">
                   <span className="flex items-center gap-1">
                     <Users className="w-3.5 h-3.5" />
                     {room.capacity} people
@@ -224,7 +247,7 @@ export default function AvailableRoomsPage() {
                     {room.amenities.slice(0, 4).map((amenity, idx) => (
                       <span
                         key={idx}
-                        className="px-2 py-0.5 bg-slate-800/60 text-slate-400 text-xs rounded-full"
+                        className="px-2 py-0.5 bg-slate-100/60 text-slate-500 text-xs rounded-full"
                       >
                         {amenity}
                       </span>

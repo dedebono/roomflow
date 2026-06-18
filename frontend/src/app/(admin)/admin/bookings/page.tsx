@@ -287,7 +287,7 @@ export default function AdminBookingsPage() {
         <Card className="lg:col-span-3 border border-indigo-500/10 bg-indigo-500/5 glass flex items-center p-5 gap-4">
           <ShieldAlert className="w-10 h-10 text-indigo-400 shrink-0" />
           <div className="text-xs text-indigo-300 space-y-1">
-            <p className="font-bold text-sm text-slate-200">🛠️ Administrative Management Console:</p>
+            <p className="font-bold text-sm text-slate-800">🛠️ Administrative Management Console:</p>
             <p>You have full override authority. Drag and drop any booking block to reschedule instantly.</p>
             <p>Clicking an existing block allows you to force edit, move rooms, or completely cancel reservations.</p>
           </div>
@@ -304,7 +304,7 @@ export default function AdminBookingsPage() {
           editable={true}
         />
         {/* Color Legend */}
-        <div className="flex items-center gap-6 px-2 text-xs text-slate-400">
+        <div className="flex items-center gap-6 px-2 text-xs text-slate-500">
           <span className="flex items-center gap-2">
             <span className="inline-block w-3 h-3 rounded bg-blue-500 border border-blue-400"></span>
             Employee Booking
@@ -367,7 +367,7 @@ export default function AdminBookingsPage() {
             leftIcon={<AlignLeft className="w-4 h-4" />}
           />
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/40">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/40">
             <Button type="button" variant="secondary" onClick={() => setIsBookModalOpen(false)}>
               Cancel
             </Button>
@@ -423,7 +423,7 @@ export default function AdminBookingsPage() {
             leftIcon={<AlignLeft className="w-4 h-4" />}
           />
 
-          <div className="flex items-center justify-between pt-4 border-t border-slate-800/40">
+          <div className="flex items-center justify-between pt-4 border-t border-slate-200/40">
             <Button type="button" variant="danger" onClick={handleCancelBooking}>
               Cancel Reservation
             </Button>

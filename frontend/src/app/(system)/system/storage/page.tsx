@@ -49,13 +49,13 @@ export default function StorageSettingsPage() {
                 className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
                   storageType === 'LOCAL'
                     ? 'bg-indigo-500/10 border-indigo-500/50 text-indigo-200'
-                    : 'bg-slate-900/40 border-slate-800/80 text-slate-400 hover:border-slate-700/50 hover:bg-slate-900/60'
+                    : 'bg-white/40 border-slate-200/80 text-slate-500 hover:border-slate-300/50 hover:bg-white/60'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <HardDrive className={`w-5 h-5 ${storageType === 'LOCAL' ? 'text-indigo-400' : 'text-slate-400'}`} />
+                  <HardDrive className={`w-5 h-5 ${storageType === 'LOCAL' ? 'text-indigo-400' : 'text-slate-500'}`} />
                   <div>
-                    <p className="font-bold text-sm text-slate-200">Local Directory</p>
+                    <p className="font-bold text-sm text-slate-800">Local Directory</p>
                     <p className="text-xs text-slate-500">Saves uploads to server storage</p>
                   </div>
                 </div>
@@ -70,13 +70,13 @@ export default function StorageSettingsPage() {
                 className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
                   storageType === 'S2_STORAGE'
                     ? 'bg-indigo-500/10 border-indigo-500/50 text-indigo-200'
-                    : 'bg-slate-900/40 border-slate-800/80 text-slate-400 hover:border-slate-700/50 hover:bg-slate-900/60'
+                    : 'bg-white/40 border-slate-200/80 text-slate-500 hover:border-slate-300/50 hover:bg-white/60'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Cloud className={`w-5 h-5 ${storageType === 'S2_STORAGE' ? 'text-indigo-400' : 'text-slate-400'}`} />
+                  <Cloud className={`w-5 h-5 ${storageType === 'S2_STORAGE' ? 'text-indigo-400' : 'text-slate-500'}`} />
                   <div>
-                    <p className="font-bold text-sm text-slate-200">S2 / S3 Cloud Bucket</p>
+                    <p className="font-bold text-sm text-slate-800">S2 / S3 Cloud Bucket</p>
                     <p className="text-xs text-slate-500">Scaleable cloud object storage</p>
                   </div>
                 </div>
@@ -91,13 +91,13 @@ export default function StorageSettingsPage() {
                 className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
                   storageType === 'GOOGLE_DRIVE'
                     ? 'bg-indigo-500/10 border-indigo-500/50 text-indigo-200'
-                    : 'bg-slate-900/40 border-slate-800/80 text-slate-400 hover:border-slate-700/50 hover:bg-slate-900/60'
+                    : 'bg-white/40 border-slate-200/80 text-slate-500 hover:border-slate-300/50 hover:bg-white/60'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Cloud className={`w-5 h-5 ${storageType === 'GOOGLE_DRIVE' ? 'text-indigo-400' : 'text-slate-400'}`} />
+                  <Cloud className={`w-5 h-5 ${storageType === 'GOOGLE_DRIVE' ? 'text-indigo-400' : 'text-slate-500'}`} />
                   <div>
-                    <p className="font-bold text-sm text-slate-200">Google Drive API</p>
+                    <p className="font-bold text-sm text-slate-800">Google Drive API</p>
                     <p className="text-xs text-slate-500">Corporate Google Drive folders</p>
                   </div>
                 </div>
@@ -121,19 +121,19 @@ export default function StorageSettingsPage() {
             </CardHeader>
             <CardContent className="p-0">
               {storageType === 'LOCAL' && (
-                <div className="p-6 rounded-xl border border-slate-800/50 bg-slate-900/20 text-sm text-slate-400 space-y-4">
+                <div className="p-6 rounded-xl border border-slate-200/50 bg-white/20 text-sm text-slate-500 space-y-4">
                   <div className="flex items-start gap-3 text-indigo-300">
                     <Settings className="w-5 h-5 shrink-0 text-indigo-400 mt-0.5" />
                     <div>
-                      <p className="font-semibold text-slate-200">Local Disk Configuration:</p>
+                      <p className="font-semibold text-slate-800">Local Disk Configuration:</p>
                       <p className="text-xs text-slate-500 mt-1">Saves all meeting room photos and assets directly inside the project uploads subdirectory.</p>
                     </div>
                   </div>
                   <div className="space-y-2 mt-4 text-xs font-semibold uppercase">
                     <p className="text-slate-500">Active Settings:</p>
-                    <div className="grid grid-cols-2 gap-2 text-slate-300">
-                      <div>Upload Path: <span className="font-mono text-slate-400">./uploads/</span></div>
-                      <div>Max Size Limit: <span className="font-mono text-slate-400">5 MB</span></div>
+                    <div className="grid grid-cols-2 gap-2 text-slate-600">
+                      <div>Upload Path: <span className="font-mono text-slate-500">./uploads/</span></div>
+                      <div>Max Size Limit: <span className="font-mono text-slate-500">5 MB</span></div>
                     </div>
                   </div>
                 </div>
