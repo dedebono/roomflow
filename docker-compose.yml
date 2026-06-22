@@ -28,6 +28,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       PORT: 3000
       STORAGE_TYPE: LOCAL
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
       EMAIL_ENABLED: "false"
       EMAIL_FROM: noreply@roomflow.local
       WAHA_ENABLED: "true"
@@ -47,11 +48,13 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: https://room.ytcb.org/api
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL}
     container_name: roomflow-frontend
     restart: always
     environment:
-      NEXT_PUBLIC_API_URL: https://room.ytcb.org/api
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL}
     depends_on:
       - backend
     ports:

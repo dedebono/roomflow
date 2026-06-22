@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '/';
-const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://room.ytcb.org';
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 
 const api = axios.create({
   baseURL: API_URL,

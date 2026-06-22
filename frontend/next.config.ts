@@ -1,5 +1,17 @@
 import type { NextConfig } from "next";
 
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+
+// Extract hostname from BASE_URL for remote image patterns
+let remoteHostname = 'localhost';
+try {
+  if (baseUrl) {
+    remoteHostname = new URL(baseUrl).hostname;
+  }
+} catch {
+  // fallback
+}
+
 const nextConfig: NextConfig = {
   // Standalone output for Docker
   output: 'standalone',
@@ -12,7 +24,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "room.ytcb.org",
+        hostname: remoteHostname,
       },
     ],
   },

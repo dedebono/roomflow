@@ -9,9 +9,9 @@ class WebSocketClient {
   private listeners: Map<string, Set<Function>> = new Map();
 
   constructor(url?: string) {
-    this.url = url || (typeof window !== 'undefined' && window.location.hostname.includes('room.ytcb.org')
-      ? 'https://room.ytcb.org'
-      : 'http://localhost:3001');
+    this.url = url || (typeof window !== 'undefined'
+      ? `${window.location.protocol}//${window.location.host}`
+      : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001');
   }
 
   on(event: string, callback: Function): () => void {
