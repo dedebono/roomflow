@@ -1,4 +1,5 @@
 import axios from 'axios';
+import type { PaymentGateway, CreatePaymentGatewayDto, UpdatePaymentGatewayDto, PaymentGatewayPublic } from '@/types/payment-gateway';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '/';
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
@@ -82,3 +83,34 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+// Payment Gateways API
+export const paymentGatewaysApi = {
+  getAll: async (): Promise<PaymentGateway[]> => {
+    const response = await api.get('/payment-gateways');
+    return response.data;
+  },
+  getById: async (id: string): Promise<PaymentGateway> => {
+    const response = await api.get(`/payment-gateways/${id}`);
+    return response.data;
+  },
+  create: async (data: CreatePaymentGatewayDto): Promise<PaymentGateway> => {
+    const response = await api.post('/payment-gateways', data);
+    return response.data;
+  },
+  update: async (id: string, data: UpdatePaymentGatewayDto): Promise<PaymentGateway> => {
+    const response = await api.patch(`/payment-gateways/${id}`, data);
+    return response.data;
+  },
+  toggle: async (id: string, enabled: boolean): Promise<PaymentGateway> => {
+    const response = await api.patch(`/payment-gateways/${id}/toggle`, { enabled });
+    return response.data;
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/payment-gateways/${id}`);
+  },
+  getAvailable: async (): Promise<PaymentGatewayPublic[]> => {
+    const response = await api.get('/payments/gateways');
+    return response.data;
+  },
+};

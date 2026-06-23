@@ -20,6 +20,7 @@ import {
   Bell,
   X,
   LayoutDashboard,
+  Wallet,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -179,6 +180,10 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
             <Link href="/system/storage" className={getLinkClass('/system/storage')} onClick={handleLinkClick}>
               <FolderLock className="w-4 h-4" />
               <span>Storage Systems</span>
+            </Link>
+            <Link href="/system/payment-gateways" className={getLinkClass('/system/payment-gateways')} onClick={handleLinkClick}>
+              <Wallet className="w-4 h-4" />
+              <span>Payment Gateways</span>
             </Link>
           </>
         )}

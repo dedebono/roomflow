@@ -17,6 +17,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import * as express from 'express';
 import { UploadPaymentDto } from './dto/upload-payment.dto';
+import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { paymentFileFilter, MAX_FILE_SIZE } from '../common/validators/file.validator';
 
 @Controller('payments')
@@ -60,6 +61,11 @@ export class PaymentsController {
     return this.paymentsService.getPending();
   }
 
+  @Get('gateways')
+  getGateways() {
+    return this.paymentsService.getEnabledGateways();
+  }
+
   @Patch(':id/approve')
   @Roles(Role.ADMIN_IT, Role.ROOM_ADMIN)
   approve(
@@ -82,5 +88,19 @@ export class PaymentsController {
   @Get('my')
   getMyPayments(@CurrentUser('userId') userId: string) {
     return this.paymentsService.getMyPayments(userId);
+  }
+
+  @Post('initiate')
+  initiatePayment(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: InitiatePaymentDto,
+  ) {
+    return this.paymentsService.initiatePayment(
+      userId,
+      dto.bookingHoldId,
+      dto.gatewayId,
+      dto.amount,
+      dto.paymentMethod,
+    );
   }
 }

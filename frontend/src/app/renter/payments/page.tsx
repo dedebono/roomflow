@@ -5,10 +5,11 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
-import api from '@/lib/api';
+import api, { paymentGatewaysApi } from '@/lib/api';
 import { BookingHold, Payment } from '@/types';
+import type { PaymentGatewayPublic } from '@/types/payment-gateway';
 import toast from 'react-hot-toast';
-import { Upload, CreditCard, CheckCircle, Clock, XCircle, FileText, Calendar, DollarSign, Timer } from 'lucide-react';
+import { Upload, CreditCard, CheckCircle, Clock, XCircle, FileText, Calendar, DollarSign, Timer, ExternalLink, Wallet } from 'lucide-react';
 
 // Shape returned by /rentals/my-holds
 interface PendingHold {
@@ -62,6 +63,10 @@ export default function RenterPaymentsPage() {
   const [selectedAmount, setSelectedAmount] = useState<number>(0);
   const [paymentFile, setPaymentFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [gateways, setGateways] = useState<PaymentGatewayPublic[]>([]);
+  const [selectedGatewayId, setSelectedGatewayId] = useState<string>('');
+  const [selectedGatewayName, setSelectedGatewayName] = useState<string>('');
+  const [isInitiatingGateway, setIsInitiatingGateway] = useState(false);
   // countdownMap: holdId → "Mm Ss" string
   const [countdowns, setCountdowns] = useState<Record<string, string>>({});
   const [tick, setTick] = useState(0); // force re-render every second
@@ -116,12 +121,26 @@ export default function RenterPaymentsPage() {
     return () => clearInterval(interval);
   }, [countdowns]);
 
-  const handleOpenUpload = (holdId: string) => {
+  const handleOpenUpload = async (holdId: string) => {
     setSelectedHoldId(holdId);
     const hold = pendingHolds.find((h) => h.id === holdId);
     setSelectedAmount(hold?.payments?.[0]?.amount ?? 0);
     setPaymentFile(null);
+    setSelectedGatewayId('');
+    setSelectedGatewayName('');
     setIsUploadModalOpen(true);
+
+    // Load available gateways
+    try {
+      const data = await paymentGatewaysApi.getAvailable();
+      setGateways(data);
+      if (data.length > 0) {
+        setSelectedGatewayId(data[0].id);
+        setSelectedGatewayName(data[0].name);
+      }
+    } catch {
+      setGateways([]);
+    }
   };
 
   const handlePaymentUpload = async () => {
@@ -150,6 +169,46 @@ export default function RenterPaymentsPage() {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleInitiateGatewayPayment = async () => {
+    if (!selectedGatewayId || !selectedHoldId || !selectedAmount) {
+      toast.error('Please select a payment gateway and ensure an amount is set.');
+      return;
+    }
+
+    setIsInitiatingGateway(true);
+    try {
+      const res = await api.post('/payments/initiate', {
+        bookingHoldId: selectedHoldId,
+        gatewayId: selectedGatewayId,
+        amount: selectedAmount,
+        paymentMethod: 'qris',
+      });
+
+      const { paymentUrl } = res.data;
+      if (paymentUrl) {
+        toast.success('Redirecting to payment gateway...');
+        setTimeout(() => {
+          window.location.href = paymentUrl;
+        }, 1000);
+      } else {
+        toast.success(`Payment initiated via ${selectedGatewayName}. Please complete payment on the gateway.`);
+        setIsUploadModalOpen(false);
+        fetchPayments();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to initiate payment');
+    } finally {
+      setIsInitiatingGateway(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsUploadModalOpen(false);
+    setSelectedGatewayId('');
+    setSelectedGatewayName('');
+    setGateways([]);
   };
 
   const getStatusBadge = (status: string) => {
@@ -388,14 +447,78 @@ export default function RenterPaymentsPage() {
       {/* Upload Payment Modal */}
       <Modal
         isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-        title="Upload Payment Proof"
+        onClose={handleCloseModal}
+        title="Complete Payment"
         size="md"
       >
+        {/* Gateway Selection */}
+        {gateways.length > 0 && (
+          <div className="mb-4">
+            <label className="text-xs font-semibold text-slate-600 tracking-wide uppercase mb-2 block">
+              <Wallet className="w-3.5 h-3.5 inline mr-1" />
+              Select Payment Gateway
+            </label>
+            <div className="grid grid-cols-1 gap-2">
+              {gateways.map((gw) => (
+                <button
+                  key={gw.id}
+                  type="button"
+                  onClick={() => { setSelectedGatewayId(gw.id); setSelectedGatewayName(gw.name); }}
+                  className={`p-3 rounded-lg border text-left transition-all ${
+                    selectedGatewayId === gw.id
+                      ? 'border-indigo-500 bg-indigo-500/10'
+                      : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-500/5'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
+                      selectedGatewayId === gw.id ? 'bg-indigo-500/20' : 'bg-slate-100'
+                    }`}>
+                      {gw.logo ? (
+                        <img src={gw.logo} alt={gw.name} className="h-5 w-5 rounded object-contain" />
+                      ) : (
+                        <Wallet className={`w-4 h-4 ${selectedGatewayId === gw.id ? 'text-indigo-400' : 'text-slate-500'}`} />
+                      )}
+                    </div>
+                    <div>
+                      <p className={`font-semibold text-sm ${selectedGatewayId === gw.id ? 'text-indigo-600' : 'text-slate-800'}`}>
+                        {gw.name}
+                      </p>
+                      <p className="text-xs text-slate-500">Pay directly via {gw.name}</p>
+                    </div>
+                    {selectedGatewayId === gw.id && (
+                      <CheckCircle className="w-4 h-4 text-indigo-500 ml-auto" />
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <Button
+              variant="primary"
+              className="w-full mt-3"
+              isLoading={isInitiatingGateway}
+              onClick={handleInitiateGatewayPayment}
+            >
+              <ExternalLink className="w-4 h-4" />
+              Pay with {selectedGatewayName || 'Gateway'}
+            </Button>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200" />
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-white px-3 text-xs text-slate-400">or upload proof manually</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4">
           <div className="p-3 rounded-lg border border-indigo-500/20 bg-indigo-500/5">
             <p className="text-xs text-indigo-300">
-              <strong>Payment Instructions:</strong><br />
+              <strong>Manual Transfer Instructions:</strong><br />
               Bank: Demo Bank<br />
               Account: 1234-5678-9012<br />
               Name: RoomFlow Rentals

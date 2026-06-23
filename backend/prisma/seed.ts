@@ -72,6 +72,31 @@ async function main() {
   }
 
   console.log('Rooms created');
+
+  // Payment Gateways
+  await prisma.paymentGateway.upsert({
+    where: { name: 'Pakasir' },
+    update: {},
+    create: {
+      name: 'Pakasir',
+      logo: null,
+      config: {},
+      enabled: false, // Admin must enable after configuring API key
+    },
+  });
+
+  await prisma.paymentGateway.upsert({
+    where: { name: 'Manual Transfer' },
+    update: {},
+    create: {
+      name: 'Manual Transfer',
+      logo: null,
+      config: {},
+      enabled: true, // Always available as fallback
+    },
+  });
+
+  console.log('Payment gateways created');
 }
 
 main()

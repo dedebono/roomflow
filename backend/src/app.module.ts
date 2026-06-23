@@ -16,7 +16,9 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { EmailModule } from './email/email.module';
 import { RentalsModule } from './rentals/rentals.module';
+import { PakasirModule } from './pakasir/pakasir.module';
 import { PaymentsModule } from './payments/payments.module';
+import { PaymentGatewaysModule } from './payment-gateways/payment-gateways.module';
 import { ChatModule } from './chat/chat.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { WebSocketModule } from './websocket/websocket.module';
@@ -38,7 +40,9 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     StorageModule,
     EmailModule,
     RentalsModule,
+    PakasirModule,
     PaymentsModule,
+    PaymentGatewaysModule,
     ChatModule,
     NotificationsModule,
     WebSocketModule,

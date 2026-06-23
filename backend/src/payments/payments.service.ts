@@ -8,6 +8,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PaymentStatus, BookingHoldStatus, Role, BookingStatus } from '@prisma/client';
+import { PakasirService } from '../pakasir/pakasir.service';
+import { PaymentGatewaysService } from '../payment-gateways/payment-gateways.service';
 
 @Injectable()
 export class PaymentsService {
@@ -15,7 +17,13 @@ export class PaymentsService {
     private prisma: PrismaService,
     private storageService: StorageService,
     private notificationsService: NotificationsService,
+    private paymentGatewaysService: PaymentGatewaysService,
+    private pakasirService: PakasirService,
   ) {}
+
+  async getEnabledGateways() {
+    return this.paymentGatewaysService.findAllEnabled();
+  }
 
   async upload(
     userId: string,
@@ -101,7 +109,7 @@ export class PaymentsService {
         data: {
           fileUrl,
           amount,
-          description,
+          notes: description,
           status: PaymentStatus.PAYMENT_PROOF_UPLOADED,
         },
         include: {
@@ -136,7 +144,7 @@ export class PaymentsService {
           userId,
           fileUrl,
           amount,
-          description,
+          notes: description,
           status: PaymentStatus.PAYMENT_PROOF_UPLOADED,
         },
         include: {
@@ -357,5 +365,87 @@ export class PaymentsService {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async initiatePayment(
+    userId: string,
+    bookingHoldId: string,
+    gatewayId: string,
+    amount: number,
+    paymentMethod?: string,
+  ) {
+    // Resolve booking from hold
+    const hold = await this.prisma.bookingHold.findUnique({
+      where: { id: bookingHoldId },
+      include: { room: true },
+    });
+
+    if (!hold) {
+      throw new NotFoundException('Booking hold not found');
+    }
+    if (hold.userId !== userId) {
+      throw new ForbiddenException('This booking hold does not belong to you');
+    }
+    if (hold.status !== BookingHoldStatus.ACTIVE) {
+      throw new BadRequestException('Booking hold is not active');
+    }
+    if (new Date() > hold.expiresAt) {
+      throw new BadRequestException('Booking hold has expired');
+    }
+
+    // Create or find booking
+    let booking = await this.prisma.booking.findFirst({
+      where: { bookingHoldId },
+    });
+
+    if (!booking) {
+      booking = await this.prisma.booking.create({
+        data: {
+          roomId: hold.roomId,
+          userId: hold.userId,
+          title: `Rental: ${hold.room.name}`,
+          startTime: hold.startTime,
+          endTime: hold.endTime,
+          isRental: true,
+          status: BookingStatus.PENDING,
+          bookingHoldId,
+        },
+      });
+    }
+
+    const orderId = `RF-${booking.id.slice(0, 8)}-${Date.now()}`;
+    const result = await this.pakasirService.createTransaction(gatewayId, {
+      orderId,
+      amount,
+      paymentMethod: paymentMethod || 'qris',
+    });
+
+    // Build payment URL if available
+    let paymentUrl: string | undefined;
+    const gateway = await this.prisma.paymentGateway.findUnique({ where: { id: gatewayId } });
+    if (gateway) {
+      const config = (gateway.config || {}) as Record<string, string>;
+      paymentUrl = this.pakasirService.getPaymentUrl(config, {
+        amount,
+        orderId,
+        redirect: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/renter/payments`,
+      });
+    }
+
+    // Create payment record
+    const payment = await this.prisma.payment.create({
+      data: {
+        bookingId: booking.id,
+        bookingHoldId,
+        userId,
+        amount,
+        status: PaymentStatus.PENDING,
+        paymentMethod: (result as any).payment?.payment_method || paymentMethod || 'qris',
+        externalId: orderId,
+        paymentGatewayId: gatewayId,
+      },
+    });
+
+    return { payment, paymentUrl };
   }
 }
