@@ -11,6 +11,11 @@ import { Booking, BookingHold } from '@/types';
 import toast from 'react-hot-toast';
 import { Calendar, Clock, MapPin, CreditCard, CheckCircle, XCircle, Timer, DoorOpen } from 'lucide-react';
 
+const formatRupiah = (amount: number | undefined) =>
+  amount !== undefined
+    ? 'Rp ' + amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+    : 'Rp -';
+
 interface RentalBooking {
   id: string;
   type: 'booking_hold' | 'confirmed';
@@ -143,7 +148,7 @@ export default function RenterBookingsPage() {
     {
       header: 'Price',
       cell: (b: RentalBooking) => (
-        <span className="font-semibold text-slate-800">${b.price}</span>
+        <span className="font-semibold text-slate-800">{formatRupiah(b.price)}</span>
       ),
     },
     {
@@ -173,7 +178,7 @@ export default function RenterBookingsPage() {
       cell: (b: RentalBooking) => (
         <div className="flex items-center justify-end gap-2">
           {b.holdStatus === 'ACTIVE' && (
-            <Link href={`/renter/rooms/${b.roomId}`}>
+            <Link href={`/renter/rooms/${b.roomId}?holdId=${b.id}`}>
               <Button size="sm" variant="primary">
                 <CreditCard className="w-3.5 h-3.5" />
                 Pay Now
@@ -241,7 +246,7 @@ export default function RenterBookingsPage() {
           <CardContent className="p-0">
             <p className="text-3xl font-bold text-slate-900 flex items-center gap-2">
               <CreditCard className="w-7 h-7 text-indigo-400" />
-              ${totalSpent.toFixed(2)}
+              {formatRupiah(totalSpent)}
             </p>
           </CardContent>
         </Card>

@@ -1,7 +1,8 @@
 import { Controller, Post, Body, Logger, HttpCode } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { PaymentStatus, BookingStatus } from '@prisma/client';
+import { PaymentStatus, BookingStatus, BookingHoldStatus } from '@prisma/client';
+import { Public } from '../common/decorators/public.decorator';
 
 @Controller('pakasir')
 export class PakasirController {
@@ -14,6 +15,7 @@ export class PakasirController {
 
   @Post('webhook')
   @HttpCode(200)
+  @Public()
   async handleWebhook(@Body() body: any) {
     this.logger.log('Pakasir webhook received:', JSON.stringify(body));
 
@@ -46,6 +48,7 @@ export class PakasirController {
     switch (String(status).toLowerCase()) {
       case 'success':
       case 'paid':
+      case 'completed':
         newStatus = PaymentStatus.APPROVED;
         bookingNewStatus = BookingStatus.BOOKED;
         break;
@@ -73,6 +76,14 @@ export class PakasirController {
       await this.prisma.booking.update({
         where: { id: payment.bookingId },
         data: { status: bookingNewStatus },
+      });
+    }
+
+    // Convert the booking hold to CONVERTED so it no longer blocks availability
+    if (payment.bookingHoldId) {
+      await this.prisma.bookingHold.update({
+        where: { id: payment.bookingHoldId },
+        data: { status: BookingHoldStatus.CONVERTED },
       });
     }
 

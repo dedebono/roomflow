@@ -353,7 +353,7 @@ export default function RentalsDashboardPage() {
                 <p className="text-xs text-slate-500">Price</p>
                 <p className="text-slate-800 font-medium">
                   {selectedHold.payments?.[0]
-                    ? `$${selectedHold.payments[0].amount.toFixed(2)}`
+                    ? `Rp ${selectedHold.payments[0].amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
                     : '-'}
                 </p>
               </div>
@@ -450,7 +450,7 @@ export default function RentalsDashboardPage() {
                       <p className="text-slate-800 font-medium">
                         {dayNames[slot.dayOfWeek]} &middot; {slot.startTime} - {slot.endTime}
                       </p>
-                      <p className="text-sm text-slate-500">${slot.price.toFixed(2)} / hour</p>
+                      <p className="text-sm text-slate-500">Rp {slot.price.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} / hour</p>
                     </div>
                     <Badge variant={slot.isActive !== false ? 'success' : 'neutral'}>
                       {slot.isActive !== false ? 'Active' : 'Inactive'}

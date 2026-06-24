@@ -19,6 +19,7 @@ import * as express from 'express';
 import { UploadPaymentDto } from './dto/upload-payment.dto';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { paymentFileFilter, MAX_FILE_SIZE } from '../common/validators/file.validator';
+import { Public } from '../common/decorators/public.decorator';
 
 @Controller('payments')
 export class PaymentsController {
@@ -62,6 +63,7 @@ export class PaymentsController {
   }
 
   @Get('gateways')
+  @Public()
   getGateways() {
     return this.paymentsService.getEnabledGateways();
   }
@@ -99,8 +101,22 @@ export class PaymentsController {
       userId,
       dto.bookingHoldId,
       dto.gatewayId,
-      dto.amount,
+      dto.amount ?? 0,
       dto.paymentMethod,
     );
+  }
+
+  /**
+   * Called when Pakasir redirects the user back after payment.
+   * Pakasir appends ?order_id=...&status=completed/failed.
+   * This acts like a manual webhook for redirect-based flows.
+   */
+  @Get('confirm-callback')
+  @Public()
+  confirmCallback(
+    @Req() req: express.Request,
+  ) {
+    const { order_id, status } = req.query as Record<string, string>;
+    return this.paymentsService.confirmPaymentCallback(order_id, status);
   }
 }

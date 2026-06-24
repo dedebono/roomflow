@@ -11,6 +11,9 @@ import type { PaymentGatewayPublic } from '@/types/payment-gateway';
 import toast from 'react-hot-toast';
 import { Upload, CreditCard, CheckCircle, Clock, XCircle, FileText, Calendar, DollarSign, Timer, ExternalLink, Wallet } from 'lucide-react';
 
+const formatRupiah = (amount: number) =>
+  'Rp ' + amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
 // Shape returned by /rentals/my-holds
 interface PendingHold {
   id: string;
@@ -55,6 +58,7 @@ function getCountdownPercent(expiresAt: string): number {
 }
 
 export default function RenterPaymentsPage() {
+  console.log('PAYMENTS_PAGE_MOUNTED');
   const [pendingHolds, setPendingHolds] = useState<PendingHold[]>([]);
   const [allPayments, setAllPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,7 +78,7 @@ export default function RenterPaymentsPage() {
   const fetchPayments = useCallback(async () => {
     setIsLoading(true);
     try {
-      const holdsRes = await api.get('/rentals/my-holds');
+      const holdsRes = await api.get('/rentals/my-holds', { timeout: 20000 });
       const holds: PendingHold[] = holdsRes.data;
 
       // Seed initial countdowns
@@ -87,7 +91,7 @@ export default function RenterPaymentsPage() {
       setCountdowns(initial);
       setPendingHolds(holds);
 
-      const paymentsRes = await api.get('/payments/my');
+      const paymentsRes = await api.get('/payments/my', { timeout: 20000 });
       setAllPayments(paymentsRes.data);
     } catch {
       toast.error('Failed to load payment data');
@@ -96,8 +100,44 @@ export default function RenterPaymentsPage() {
     }
   }, []);
 
+  // Initial data load
   useEffect(() => {
     fetchPayments();
+  }, [fetchPayments]);
+
+  // Handle Pakasir redirect (payment completed via QR/redirect)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const orderStatus = params.get('status');
+    const orderId = params.get('order_id');
+    if (orderStatus && orderId) {
+      // Clear URL params without reload
+      window.history.replaceState({}, '', window.location.pathname);
+      if (orderStatus === 'success' || orderStatus === 'completed') {
+        toast.success('Payment completed! Confirming with server...');
+        // Call backend to process redirect callback (acts like webhook for redirect-based flows)
+        // Use fetch with timeout to avoid hanging forever if backend is slow
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api'}/payments/confirm-callback?order_id=${encodeURIComponent(orderId)}&status=${encodeURIComponent(orderStatus)}`, {
+          signal: controller.signal,
+        })
+          .then(() => {
+            clearTimeout(timeoutId);
+            toast.success('Payment confirmed!');
+            fetchPayments();
+          })
+          .catch(() => {
+            clearTimeout(timeoutId);
+            // Fallback: just refresh the payment list
+            fetchPayments();
+          });
+      } else if (orderStatus === 'failed') {
+        toast.error('Payment failed. Please try again.');
+        fetchPayments();
+      }
+    }
   }, [fetchPayments]);
 
   // Tick every second to update countdowns
@@ -310,7 +350,7 @@ export default function RenterPaymentsPage() {
                         </p>
                         {amount > 0 && (
                           <p className="text-lg font-bold text-amber-400 mt-1">
-                            ${amount}
+                            {formatRupiah(amount)}
                           </p>
                         )}
                       </div>
@@ -393,52 +433,59 @@ export default function RenterPaymentsPage() {
             </div>
           ) : (
             <div className="divide-y divide-slate-800/20">
-              {allPayments.map((payment) => (
-                <div
-                  key={payment.id}
-                  className="p-4 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                      payment.status === 'APPROVED' ? 'bg-emerald-500/20' :
-                      payment.status === 'REJECTED' ? 'bg-rose-500/20' :
-                      'bg-slate-100'
-                    }`}>
-                      {payment.status === 'APPROVED' ? (
-                        <CheckCircle className="w-5 h-5 text-emerald-400" />
-                      ) : payment.status === 'REJECTED' ? (
-                        <XCircle className="w-5 h-5 text-rose-400" />
-                      ) : (
-                        <Clock className="w-5 h-5 text-slate-500" />
-                      )}
+              {allPayments.map((payment) => {
+                try {
+                  return (
+                    <div
+                      key={payment.id}
+                      className="p-4 flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                          payment.status === 'APPROVED' ? 'bg-emerald-500/20' :
+                          payment.status === 'REJECTED' ? 'bg-rose-500/20' :
+                          'bg-slate-100'
+                        }`}>
+                          {payment.status === 'APPROVED' ? (
+                            <CheckCircle className="w-5 h-5 text-emerald-400" />
+                          ) : payment.status === 'REJECTED' ? (
+                            <XCircle className="w-5 h-5 text-rose-400" />
+                          ) : (
+                            <Clock className="w-5 h-5 text-slate-500" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-800">
+                            {(payment as any).booking?.room?.name || (payment as any).booking?.title || 'Room Rental'}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {formatDate((payment as any).booking?.startTime)} at {formatTime((payment as any).booking?.startTime)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="font-bold text-slate-900">{formatRupiah((payment as any).amount)}</span>
+                        <div className="flex items-center gap-2">
+                          {getStatusBadge(payment.status)}
+                          {(payment as any).fileUrl && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => window.open((payment as any).fileUrl, '_blank')}
+                            >
+                              <FileText className="w-4 h-4" />
+                              View Proof
+                            </Button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-slate-800">
-                        {(payment as any).booking?.room?.name || (payment as any).booking?.title || 'Room Rental'}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {formatDate((payment as any).booking?.startTime)} at {formatTime((payment as any).booking?.startTime)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="font-bold text-slate-900">${payment.amount}</span>
-                    <div className="flex items-center gap-2">
-                      {getStatusBadge(payment.status)}
-                      {(payment as any).fileUrl && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => window.open((payment as any).fileUrl, '_blank')}
-                        >
-                          <FileText className="w-4 h-4" />
-                          View Proof
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  );
+                } catch (e) {
+                  console.error('Payment render error:', e, payment);
+                  return null;
+                }
+              })}
             </div>
           )}
         </CardContent>
@@ -504,71 +551,73 @@ export default function RenterPaymentsPage() {
               Pay with {selectedGatewayName || 'Gateway'}
             </Button>
 
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200" />
+            {selectedGatewayName?.toLowerCase() !== 'pakasir' ? (
+              <div className="space-y-4">
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-200" />
+                  </div>
+                  <div className="relative flex justify-center">
+                    <span className="bg-white px-3 text-xs text-slate-400">or upload proof manually</span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg border border-indigo-500/20 bg-indigo-500/5">
+                  <p className="text-xs text-indigo-300">
+                    <strong>Manual Transfer Instructions:</strong><br />
+                    Bank: Demo Bank<br />
+                    Account: 1234-5678-9012<br />
+                    Name: RoomFlow Rentals
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-600 tracking-wide uppercase">
+                    Payment Receipt / Screenshot
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => setPaymentFile(e.target.files?.[0] || null)}
+                    className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-500/20 file:text-indigo-300 hover:file:bg-indigo-500/30 cursor-pointer"
+                  />
+                </div>
+
+                {paymentFile && (
+                  <div className="p-3 rounded-lg bg-slate-100/50 flex items-center gap-3">
+                    <FileText className="w-5 h-5 text-indigo-400" />
+                    <div>
+                      <p className="text-sm text-slate-600">{paymentFile.name}</p>
+                      <p className="text-xs text-slate-500">
+                        {(paymentFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/40">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setIsUploadModalOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handlePaymentUpload}
+                    isLoading={isUploading}
+                    disabled={!paymentFile}
+                  >
+                    <Upload className="w-4 h-4" />
+                    Submit Payment
+                  </Button>
+                </div>
               </div>
-              <div className="relative flex justify-center">
-                <span className="bg-white px-3 text-xs text-slate-400">or upload proof manually</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <div className="p-3 rounded-lg border border-indigo-500/20 bg-indigo-500/5">
-            <p className="text-xs text-indigo-300">
-              <strong>Manual Transfer Instructions:</strong><br />
-              Bank: Demo Bank<br />
-              Account: 1234-5678-9012<br />
-              Name: RoomFlow Rentals
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-600 tracking-wide uppercase">
-              Payment Receipt / Screenshot
-            </label>
-            <input
-              type="file"
-              accept="image/*,.pdf"
-              onChange={(e) => setPaymentFile(e.target.files?.[0] || null)}
-              className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-500/20 file:text-indigo-300 hover:file:bg-indigo-500/30 cursor-pointer"
-            />
-          </div>
-
-          {paymentFile && (
-            <div className="p-3 rounded-lg bg-slate-100/50 flex items-center gap-3">
-              <FileText className="w-5 h-5 text-indigo-400" />
-              <div>
-                <p className="text-sm text-slate-600">{paymentFile.name}</p>
-                <p className="text-xs text-slate-500">
-                  {(paymentFile.size / 1024 / 1024).toFixed(2)} MB
-                </p>
-              </div>
-            </div>
-          )}
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/40">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setIsUploadModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handlePaymentUpload}
-              isLoading={isUploading}
-              disabled={!paymentFile}
-            >
-              <Upload className="w-4 h-4" />
-              Submit Payment
-            </Button>
-          </div>
+            ) : null}
         </div>
-      </Modal>
-    </>
-  );
-}
+        )}
+        </Modal>
+      </>
+    );
+  }

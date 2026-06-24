@@ -414,10 +414,12 @@ export class PaymentsService {
     }
 
     const orderId = `RF-${booking.id.slice(0, 8)}-${Date.now()}`;
+    const finalAmount = amount || hold.price; // Already stored as IDR in DB
+    const finalMethod = paymentMethod || 'qris';
     const result = await this.pakasirService.createTransaction(gatewayId, {
       orderId,
-      amount,
-      paymentMethod: paymentMethod || 'qris',
+      amount: finalAmount,
+      paymentMethod: finalMethod,
     });
 
     // Build payment URL if available
@@ -426,9 +428,9 @@ export class PaymentsService {
     if (gateway) {
       const config = (gateway.config || {}) as Record<string, string>;
       paymentUrl = this.pakasirService.getPaymentUrl(config, {
-        amount,
+        amount: finalAmount,
         orderId,
-        redirect: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/renter/payments`,
+        redirect: `https://room.ytcb.org/renter/payments`,
       });
     }
 
@@ -438,14 +440,84 @@ export class PaymentsService {
         bookingId: booking.id,
         bookingHoldId,
         userId,
-        amount,
+        amount: finalAmount,
         status: PaymentStatus.PENDING,
-        paymentMethod: (result as any).payment?.payment_method || paymentMethod || 'qris',
+        paymentMethod: (result as any).payment?.payment_method || finalMethod,
         externalId: orderId,
         paymentGatewayId: gatewayId,
       },
     });
 
     return { payment, paymentUrl };
+  }
+
+  /**
+   * Confirm a payment from redirect callback (Pakasir sends order_id + status via URL params).
+   * This is a fallback when webhook is not configured.
+   */
+  async confirmPaymentCallback(orderId: string, status: string) {
+    if (!orderId) {
+      return { status: 'ignored', message: 'Missing order_id' };
+    }
+
+    const payment = await this.prisma.payment.findFirst({
+      where: { externalId: orderId },
+      include: { booking: { include: { room: true } }, user: true },
+    });
+
+    if (!payment) {
+      return { status: 'not_found', message: 'Payment not found for this order' };
+    }
+
+    let newStatus: PaymentStatus;
+    let bookingNewStatus: BookingStatus | undefined;
+
+    switch (String(status).toLowerCase()) {
+      case 'success':
+      case 'paid':
+      case 'completed':
+        newStatus = PaymentStatus.APPROVED;
+        bookingNewStatus = BookingStatus.BOOKED;
+        break;
+      case 'failed':
+      case 'expired':
+        newStatus = PaymentStatus.REJECTED;
+        bookingNewStatus = BookingStatus.CANCELLED;
+        break;
+      case 'pending':
+      default:
+        return { status: 'pending', message: 'Payment still pending' };
+    }
+
+    await this.prisma.payment.update({
+      where: { id: payment.id },
+      data: { status: newStatus, paymentMethod: payment.paymentMethod },
+    });
+
+    if (bookingNewStatus) {
+      await this.prisma.booking.update({
+        where: { id: payment.bookingId },
+        data: { status: bookingNewStatus },
+      });
+    }
+
+    if (payment.bookingHoldId) {
+      await this.prisma.bookingHold.update({
+        where: { id: payment.bookingHoldId },
+        data: { status: BookingHoldStatus.CONVERTED },
+      });
+    }
+
+    if (newStatus === PaymentStatus.APPROVED) {
+      await this.notificationsService.create(
+        payment.userId,
+        'PAYMENT_APPROVED',
+        'Payment Approved',
+        `Your payment of Rp ${(payment.amount || 0).toLocaleString('id-ID')} for ${payment.booking.room.name} has been confirmed.`,
+        JSON.stringify({ paymentId: payment.id, bookingId: payment.bookingId }),
+      );
+    }
+
+    return { status: 'processed', paymentId: payment.id, bookingStatus: bookingNewStatus };
   }
 }

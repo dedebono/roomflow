@@ -40,7 +40,7 @@ const VenueCard = ({ room, router }: { room: Room; router: ReturnType<typeof use
         <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full">Modern</span>
       </div>
       <div className="flex items-center justify-between pt-2">
-        <p className="text-sm"><span className="text-2xl font-bold text-slate-900">${room.price || 0}</span> <span className="text-slate-500">/hour</span></p>
+        <p className="text-sm"><span className="text-2xl font-bold text-slate-900">Rp {(room.price || 0).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span> <span className="text-slate-500">/hour</span></p>
         <motion.button
           whileHover={{ scale: 1.1 }}
           onClick={() => router.push('/login')}

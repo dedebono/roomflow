@@ -53,7 +53,7 @@ export const EventZone = ({ rooms }: { rooms: Room[] }) => {
                   <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">{room.building?.name || 'Hall'}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <p className="text-sm"><span className="text-2xl font-bold text-slate-900">${room.price || 0}</span> <span className="text-slate-500">/hour</span></p>
+                  <p className="text-sm"><span className="text-2xl font-bold text-slate-900">Rp {(room.price || 0).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span> <span className="text-slate-500">/hour</span></p>
                   <Button variant="secondary" className="bg-slate-100 hover:bg-slate-200 text-sm rounded-full h-9 cursor-pointer transition-all duration-300">
                     View Details <ArrowRight className="ml-1 w-3 h-3" />
                   </Button>

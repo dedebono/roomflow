@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, IsPositive } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsPositive, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class InitiatePaymentDto {
@@ -10,12 +10,14 @@ export class InitiatePaymentDto {
   @IsNotEmpty()
   gatewayId: string;
 
+  @IsOptional()
   @IsNumber()
   @IsPositive()
   @Type(() => Number)
-  amount: number;
+  amount?: number;
 
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  paymentMethod: string;
+  paymentMethod?: string;
 }

@@ -46,6 +46,9 @@ export class PakasirService {
 
     const method = params.paymentMethod || 'qris';
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
     try {
       const response = await fetch(`${apiUrl}/transactioncreate/${method}`, {
         method: 'POST',
@@ -56,7 +59,10 @@ export class PakasirService {
           amount: params.amount,
           api_key: apiKey,
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeout);
 
       if (!response.ok) {
         const errBody = await response.text();
@@ -100,5 +106,68 @@ export class PakasirService {
     }
 
     return url;
+  }
+
+  /**
+   * Get transaction status from Pakasir API.
+   * Used for redirect-based integration (no webhook configured).
+   */
+  async getTransactionStatus(
+    gatewayId: string,
+    orderId: string,
+  ): Promise<{ status: string; paymentMethod?: string; amount?: number }> {
+    const gateway = await this.prisma.paymentGateway.findUnique({
+      where: { id: gatewayId },
+    });
+    if (!gateway) {
+      throw new BadRequestException(`Payment gateway '${gatewayId}' not found.`);
+    }
+    if (!gateway.enabled) {
+      throw new BadRequestException(`Payment gateway '${gateway.name}' is disabled.`);
+    }
+
+    const config = (gateway.config || {}) as Record<string, string>;
+    const apiKey = config.apiKey;
+    const projectSlug = config.projectSlug;
+    const apiUrl = config.apiUrl || this.BASE_URL;
+
+    if (!apiKey || !projectSlug) {
+      throw new BadRequestException(
+        `Gateway '${gateway.name}' is not fully configured.`,
+      );
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      const response = await fetch(
+        `${apiUrl}/transaction/${projectSlug}/${orderId}?api_key=${apiKey}`,
+        {
+          method: 'GET',
+          signal: controller.signal,
+        },
+      );
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        const errBody = await response.text();
+        throw new Error(`Pakasir API error ${response.status}: ${errBody}`);
+      }
+
+      const data = await response.json() as any;
+      const tx = data.transaction || data;
+      return {
+        status: tx.status || 'unknown',
+        paymentMethod: tx.payment_method,
+        amount: tx.amount,
+      };
+    } catch (error: any) {
+      this.logger.error(`Pakasir getStatus error for ${orderId}: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to check payment status: ${error.message}`,
+      );
+    }
   }
 }

@@ -8,6 +8,11 @@ import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { FileText, CheckCircle, Clock, XCircle, Eye, DollarSign } from 'lucide-react';
 
+const formatRupiah = (amount: number | undefined) =>
+  amount !== undefined
+    ? 'Rp ' + amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+    : 'Rp -';
+
 interface ManagerPayment {
   id: string;
   amount: number;
@@ -216,7 +221,7 @@ export default function ManagerPaymentsPage() {
 
                   <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <p className="font-bold text-slate-900">${payment.amount}</p>
+                      <p className="font-bold text-slate-900">{formatRupiah(payment.amount)}</p>
                       {getStatusBadge(payment.status)}
                     </div>
 

@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono, Playfair_Display, Karla } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '../lib/auth';
@@ -29,12 +29,13 @@ const karla = Karla({
 export const metadata: Metadata = {
   title: 'RoomFlow — Premium Multi-Building Booking Engine',
   description: 'Manage and schedule rooms across multiple corporate buildings with intuitive conflict detection, dynamic calendars, and advanced RBAC rules.',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

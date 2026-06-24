@@ -1,17 +1,28 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, use, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams, useParams } from 'next/navigation';
+import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import api, { getImageUrl } from '@/lib/api';
-import { Room, RentalSlot, BookingHold } from '@/types';
+import { paymentGatewaysApi } from '@/lib/api';
+import { Room, BookingHold } from '@/types';
 import toast from 'react-hot-toast';
-import { Calendar, Clock, Users, MapPin, Wifi, Monitor, Coffee, ArrowLeft, Upload, CheckCircle, XCircle, Timer } from 'lucide-react';
-import Link from 'next/link';
+import {
+  Calendar, Clock, Users, MapPin, Wifi, Monitor, Coffee,
+  ArrowLeft, Upload, CheckCircle, Timer, ExternalLink, CreditCard, Loader2,
+} from 'lucide-react';
+
+const formatRupiah = (amount: number | undefined) =>
+  amount !== undefined
+    ? 'Rp ' + amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+    : 'Rp -';
+
+const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+const formatTimeDisplay = (isoStr: string) => isoStr.substring(11, 16);  // "2026-06-23T09:00:00.000Z" -> "09:00"
 
 interface TimeSlot {
   id: string;
@@ -21,10 +32,25 @@ interface TimeSlot {
   available: boolean;
 }
 
-export default function RoomDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
+interface PaymentGatewayOption {
+  id: string;
+  name: string;
+  logo?: string;
+  description?: string;
+  config?: {
+    apiUrl?: string;
+    apiKey?: string;
+    projectSlug?: string;
+    virtualAccount?: string;
+  };
+}
+
+export default function RoomDetailPage() {
+  const params = useParams();
   const router = useRouter();
-  const roomId = resolvedParams.id;
+  const searchParams = useSearchParams();
+  const roomId = params.id as string;
+  const holdIdFromQuery = searchParams.get('holdId');
 
   const [room, setRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,7 +60,15 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
   const [activeHold, setActiveHold] = useState<BookingHold | null>(null);
   const [countdown, setCountdown] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Payment modal state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [gateways, setGateways] = useState<PaymentGatewayOption[]>([]);
+  const [selectedGateway, setSelectedGateway] = useState<PaymentGatewayOption | null>(null);
+  const [isLoadingGateways, setIsLoadingGateways] = useState(false);
+  const [isInitiating, setIsInitiating] = useState(false);
+
+  // Manual upload state
   const [paymentFile, setPaymentFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -61,33 +95,25 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
     }
   }, [roomId, router]);
 
-  // Fetch available time slots for selected date
-  const fetchTimeSlots = useCallback(async (date: string) => {
-    if (!date) return;
-    try {
-      console.log('[fetchTimeSlots] roomId:', roomId, 'date:', date);
-      const res = await api.get(`/rentals/available-slots`, {
-        params: { roomId, date },
-      });
-      console.log('[fetchTimeSlots] response:', res.data);
-      setTimeSlots(res.data);
-    } catch (err) {
-      console.error('[fetchTimeSlots] error:', err);
-      toast.error('Failed to load available time slots');
-    }
-  }, [roomId]);
-
-  // Fetch active booking hold for this room
+  // Fetch active booking hold — use holdId from query if available
   const fetchActiveHold = useCallback(async () => {
     try {
-      const res = await api.get(`/rentals/active-hold`, {
-        params: { roomId },
-      });
-      setActiveHold(res.data);
+      let res;
+      if (holdIdFromQuery) {
+        // Fetch specific hold by ID
+        res = await api.get(`/rentals/holds/${holdIdFromQuery}`);
+        setActiveHold(res.data);
+      } else {
+        // Fetch active hold for this room
+        res = await api.get(`/rentals/active-hold`, {
+          params: { roomId },
+        });
+        setActiveHold(res.data);
+      }
     } catch {
       setActiveHold(null);
     }
-  }, [roomId]);
+  }, [roomId, holdIdFromQuery]);
 
   useEffect(() => {
     const init = async () => {
@@ -99,35 +125,23 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
     init();
   }, [fetchRoom, fetchActiveHold]);
 
-  // Attach native event listener to date input
-  useEffect(() => {
-    const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
-    if (!dateInput) return;
-
-    const handleDateChange = () => {
-      const date = dateInput.value;
-      console.log('[native date listener] date changed to:', date);
-      setSelectedDate(date);
-      setSelectedSlot(null);
-      if (date) {
-        fetchTimeSlots(date);
-      } else {
-        setTimeSlots([]);
-      }
-    };
-
-    dateInput.addEventListener('change', handleDateChange);
-    dateInput.addEventListener('input', handleDateChange);
-    return () => {
-      dateInput.removeEventListener('change', handleDateChange);
-      dateInput.removeEventListener('input', handleDateChange);
-    };
-  }, [fetchTimeSlots]);
-
   const formatTime = (isoString: string) => {
-    const date = new Date(isoString);
-    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }).replace(':', '.');
+    // Extract HH:MM directly from ISO string — preserves the local time the admin set
+    return isoString.substring(11, 16);
   };
+
+  // Fetch available time slots for selected date
+  const fetchTimeSlots = useCallback(async (date: string) => {
+    if (!date) return;
+    try {
+      const res = await api.get(`/rentals/available-slots`, {
+        params: { roomId, date },
+      });
+      setTimeSlots(res.data);
+    } catch {
+      toast.error('Failed to load available time slots');
+    }
+  }, [roomId]);
 
   // Create booking hold
   const handleCreateHold = async () => {
@@ -139,7 +153,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
     setIsSubmitting(true);
     try {
       const extractTime = (isoString: string) => isoString.split('T')[1].substring(0, 5);
-      
+
       const res = await api.post('/rentals/create-hold', {
         roomId,
         date: selectedDate,
@@ -167,12 +181,55 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
       await api.delete(`/rentals/holds/${activeHold.id}`);
       toast.success('Booking hold cancelled');
       setActiveHold(null);
+      router.push('/renter/rooms');
     } catch {
       toast.error('Failed to cancel booking hold');
     }
   };
 
-  // Upload payment proof
+  // Open payment modal — fetch available gateways
+  const openPaymentModal = async () => {
+    setIsPaymentModalOpen(true);
+    setSelectedGateway(null);
+    setPaymentFile(null);
+    setIsLoadingGateways(true);
+    try {
+      const data = await paymentGatewaysApi.getAvailable();
+      setGateways(data);
+    } catch {
+      toast.error('Failed to load payment gateways');
+    } finally {
+      setIsLoadingGateways(false);
+    }
+  };
+
+  // Initiate Pakasir payment
+  const handleInitiatePakasir = async () => {
+    if (!selectedGateway || !activeHold) return;
+    setIsInitiating(true);
+    try {
+      const res = await api.post('/payments/initiate', {
+        bookingHoldId: activeHold.id,
+        gatewayId: selectedGateway.id,
+      });
+      const { paymentUrl } = res.data;
+      if (paymentUrl) {
+        toast.success('Redirecting to Pakasir payment page...');
+        window.open(paymentUrl, '_blank');
+        setIsPaymentModalOpen(false);
+        // Refresh hold after a moment to check status
+        setTimeout(() => fetchActiveHold(), 5000);
+      } else {
+        toast.error('No payment URL returned from gateway');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to initiate payment');
+    } finally {
+      setIsInitiating(false);
+    }
+  };
+
+  // Upload manual payment proof
   const handlePaymentUpload = async () => {
     if (!paymentFile || !activeHold) return;
 
@@ -226,17 +283,6 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
   }, [activeHold, fetchActiveHold]);
 
   // Format amenities
-  const getAmenities = (amenitiesStr?: string) => {
-    if (!amenitiesStr) return [];
-    try {
-      return JSON.parse(amenitiesStr);
-    } catch {
-      return amenitiesStr.split(',').map((s: string) => s.trim());
-    }
-  };
-
-  const amenities = room?.amenities || [];
-
   const getAmenityIcon = (amenity: string) => {
     const lower = amenity.toLowerCase();
     if (lower.includes('wifi') || lower.includes('internet')) return <Wifi className="w-4 h-4" />;
@@ -266,6 +312,8 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
     );
   }
 
+  const amenities = room.amenities || [];
+
   return (
     <>
       {/* Back Button */}
@@ -281,20 +329,14 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
           <Card className="border border-slate-900 glass overflow-hidden">
             <div className="relative h-64 bg-white">
               {room.imageUrl ? (
-                <img
-                  src={room.imageUrl}
-                  alt={room.name}
-                  className="w-full h-full object-cover"
-                />
+                <img src={room.imageUrl} alt={room.name} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-slate-600">
                   <MapPin className="w-16 h-16" />
                 </div>
               )}
               <div className="absolute top-4 right-4 flex gap-2">
-                <Badge variant={room.status === 'ACTIVE' ? 'success' : 'warning'}>
-                  {room.status}
-                </Badge>
+                <Badge variant={room.status === 'ACTIVE' ? 'success' : 'warning'}>{room.status}</Badge>
                 {room.isRentable && <Badge variant="info">For Rent</Badge>}
               </div>
             </div>
@@ -317,19 +359,11 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                   {room.building?.name || 'Building'}
                 </span>
               </div>
-
-              {room.description && (
-                <p className="text-slate-600 text-sm">{room.description}</p>
-              )}
-
-              {/* Amenities */}
+              {room.description && <p className="text-slate-600 text-sm">{room.description}</p>}
               {amenities.length > 0 && (
                 <div className="flex flex-wrap gap-2 pt-2">
                   {amenities.map((amenity: string, idx: number) => (
-                    <span
-                      key={idx}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/60 text-slate-600 text-xs rounded-full"
-                    >
+                    <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/60 text-slate-600 text-xs rounded-full">
                       {getAmenityIcon(amenity)}
                       {amenity}
                     </span>
@@ -350,9 +384,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="w-full flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-600 tracking-wide uppercase">
-                  Rental Date
-                </label>
+                <label className="text-xs font-semibold text-slate-600 tracking-wide uppercase">Rental Date</label>
                 <input
                   type="date"
                   value={selectedDate}
@@ -381,29 +413,27 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                           const isDisabled = !slot.available;
                           const isSelected = selectedSlot?.id === slot.id;
                           return (
-                          <button
-                            key={idx}
-                            onClick={() => !isDisabled && setSelectedSlot(slot)}
-                            disabled={isDisabled}
-                            className={`p-3 rounded-xl text-sm font-bold transition-all border-2 flex flex-col items-center justify-center gap-1 ${
-                              isSelected
-                                ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-500/30 scale-105'
-                                : isDisabled
-                                  ? 'bg-white/40 border-slate-200 text-slate-600 cursor-not-allowed opacity-60 line-through'
-                                  : 'bg-slate-100/40 border-slate-300/50 text-slate-800 hover:border-indigo-500/50 hover:bg-slate-100 hover:scale-[1.02]'
-                            }`}
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <Clock className={`w-3.5 h-3.5 ${isSelected ? 'text-indigo-200' : 'text-indigo-400'}`} />
-                              <span>{formatTime(slot.startTime)} - {formatTime(slot.endTime)}</span>
-                            </div>
-                            <div className={`text-xs font-medium ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
-                              ${slot.price}
-                            </div>
-                            {isDisabled && (
-                              <div className="mt-1 text-[10px] uppercase font-bold text-rose-500/80">Booked</div>
-                            )}
-                          </button>
+                            <button
+                              key={idx}
+                              onClick={() => !isDisabled && setSelectedSlot(slot)}
+                              disabled={isDisabled}
+                              className={`p-3 rounded-xl text-sm font-bold transition-all border-2 flex flex-col items-center justify-center gap-1 ${
+                                isSelected
+                                  ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-500/30 scale-105'
+                                  : isDisabled
+                                    ? 'bg-white/40 border-slate-200 text-slate-600 cursor-not-allowed opacity-60 line-through'
+                                    : 'bg-slate-100/40 border-slate-300/50 text-slate-800 hover:border-indigo-500/50 hover:bg-slate-100 hover:scale-[1.02]'
+                              }`}
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <Clock className={`w-3.5 h-3.5 ${isSelected ? 'text-indigo-200' : 'text-indigo-400'}`} />
+                                <span>{formatTime(slot.startTime)} - {formatTime(slot.endTime)}</span>
+                              </div>
+                              <div className={`text-xs font-medium ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
+                                {formatRupiah(slot.price)}
+                              </div>
+                              {isDisabled && <div className="mt-1 text-[10px] uppercase font-bold text-rose-500/80">Booked</div>}
+                            </button>
                           );
                         })}
                       </div>
@@ -418,7 +448,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                 <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
                   <p className="text-sm text-indigo-300">
                     <CheckCircle className="w-4 h-4 inline mr-2" />
-                    Selected: {formatTime(selectedSlot.startTime)} - {formatTime(selectedSlot.endTime)} (${selectedSlot.price})
+                    Selected: {formatTime(selectedSlot.startTime)} - {formatTime(selectedSlot.endTime)} ({formatRupiah(selectedSlot.price)})
                   </p>
                 </div>
               )}
@@ -448,13 +478,13 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
               <CardContent className="space-y-4">
                 <div className="space-y-2 text-sm">
                   <p className="text-slate-500">
-                    <span className="font-semibold text-slate-600">Date:</span> {activeHold.holdDate}
+                    <span className="font-semibold text-slate-600">Date:</span> {formatDate(activeHold.holdDate)}
                   </p>
                   <p className="text-slate-500">
-                    <span className="font-semibold text-slate-600">Time:</span> {activeHold.startTime} - {activeHold.endTime}
+                    <span className="font-semibold text-slate-600">Time:</span> {formatTimeDisplay(activeHold.startTime)} - {formatTimeDisplay(activeHold.endTime)}
                   </p>
                   <p className="text-slate-500">
-                    <span className="font-semibold text-slate-600">Amount:</span> ${activeHold.price}
+                    <span className="font-semibold text-slate-600">Amount:</span> {formatRupiah(activeHold.price)}
                   </p>
                   <p className="text-slate-500">
                     <span className="font-semibold text-slate-600">Status:</span> {activeHold.status}
@@ -471,11 +501,11 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                   <>
                     <Button
                       variant="primary"
-                      onClick={() => setIsPaymentModalOpen(true)}
+                      onClick={openPaymentModal}
                       className="w-full"
                     >
-                      <Upload className="w-4 h-4 mr-2" />
-                      Upload Payment Proof
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Choose Payment Method
                     </Button>
                     <Button
                       variant="secondary"
@@ -516,34 +546,116 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
-      {/* Payment Modal */}
-      <Modal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} title="Upload Payment Proof">
+      {/* Payment Gateway Selection Modal */}
+      <Modal isOpen={isPaymentModalOpen} onClose={() => { setIsPaymentModalOpen(false); setSelectedGateway(null); }} title="Choose Payment Method">
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-slate-600 mb-2">Payment Proof File</label>
-            <input
-              type="file"
-              onChange={(e) => setPaymentFile(e.target.files?.[0] || null)}
-              className="w-full px-3 py-2 bg-white/60 border border-slate-200 rounded-lg text-slate-600"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="primary"
-              onClick={handlePaymentUpload}
-              disabled={!paymentFile || isUploading}
-              className="flex-1"
-            >
-              {isUploading ? 'Uploading...' : 'Upload'}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => setIsPaymentModalOpen(false)}
-              className="flex-1"
-            >
+          {isLoadingGateways ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full" />
+              <span className="ml-3 text-sm text-slate-500">Loading gateways...</span>
+            </div>
+          ) : gateways.length === 0 ? (
+            <div className="text-center py-6">
+              <p className="text-slate-500 text-sm">No payment gateways available.</p>
+            </div>
+          ) : !selectedGateway ? (
+            <>
+              <p className="text-sm text-slate-500 mb-3">Select a payment method to complete your booking:</p>
+              <div className="space-y-2">
+                {gateways.map((gw) => (
+                  <button
+                    key={gw.id}
+                    onClick={() => setSelectedGateway(gw)}
+                    className="w-full p-4 border-2 border-slate-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-all text-left flex items-center gap-3"
+                  >
+                    <div className="h-10 w-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                      <CreditCard className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-900">{gw.name}</p>
+                      {gw.description && <p className="text-xs text-slate-500">{gw.description}</p>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Back to gateway selection */}
+              <button onClick={() => setSelectedGateway(null)} className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1 mb-2">
+                ← Back
+              </button>
+
+              <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg mb-3">
+                <p className="text-sm font-semibold text-indigo-900">{selectedGateway.name}</p>
+              </div>
+
+              {selectedGateway.name.toLowerCase().includes('pakasir') ? (
+                <>
+                  <p className="text-sm text-slate-500 mb-4">
+                    You will be redirected to Pakasir to complete your payment of{' '}
+                    <strong>{formatRupiah(activeHold?.price)}</strong> for the room rental.
+                  </p>
+                  <Button
+                    variant="primary"
+                    onClick={handleInitiatePakasir}
+                    disabled={isInitiating}
+                    className="w-full"
+                  >
+                    {isInitiating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Redirecting...
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Pay with Pakasir — {formatRupiah(activeHold?.price)}
+                      </>
+                    )}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  {/* Manual transfer — upload payment proof */}
+                  <div className="mb-3">
+                    <label className="block text-sm font-semibold text-slate-600 mb-2">Upload Payment Proof</label>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => setPaymentFile(e.target.files?.[0] || null)}
+                      className="w-full px-3 py-2 bg-white/60 border border-slate-200 rounded-lg text-slate-600 text-sm"
+                    />
+                    <p className="text-xs text-slate-400 mt-1">Accepts image or PDF</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="primary"
+                      onClick={handlePaymentUpload}
+                      disabled={!paymentFile || isUploading}
+                      className="flex-1"
+                    >
+                      {isUploading ? 'Uploading...' : 'Upload Proof'}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setIsPaymentModalOpen(false)}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          {/* Close button when no specific gateway selected */}
+          {!selectedGateway && !isLoadingGateways && (
+            <Button variant="secondary" onClick={() => { setIsPaymentModalOpen(false); setSelectedGateway(null); }} className="w-full mt-2">
               Cancel
             </Button>
-          </div>
+          )}
         </div>
       </Modal>
     </>

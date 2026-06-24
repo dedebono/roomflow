@@ -89,6 +89,14 @@ export class RentalsController {
     return this.rentalsService.getMyHolds(userId);
   }
 
+  @Get('holds/:id')
+  getHoldById(
+    @CurrentUser('userId') userId: string,
+    @Param('id') id: string,
+  ) {
+    return this.rentalsService.getHoldById(id, userId);
+  }
+
   // RentalSlot CRUD
   @Get('slots')
   getSlots(

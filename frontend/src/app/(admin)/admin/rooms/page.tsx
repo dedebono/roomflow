@@ -14,6 +14,9 @@ import { Building, Room, RoomStatus, RentalSlot, RoomCategory } from '@/types';
 import toast from 'react-hot-toast';
 import { Building2, Plus, Edit2, Trash2, Users, Compass, FileText, X, Settings, DollarSign, Clock, ListFilter } from 'lucide-react';
 
+const formatRupiah = (amount: number) =>
+  'Rp ' + amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
 export default function AdminRoomsPage() {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -511,7 +514,7 @@ export default function AdminRoomsPage() {
     {
       header: 'Price/hr',
       cell: (s: RentalSlot) => (
-        <span className="font-bold text-emerald-400">${s.price}</span>
+        <span className="font-bold text-emerald-400">{formatRupiah(s.price)}</span>
       ),
     },
     {
@@ -859,7 +862,7 @@ export default function AdminRoomsPage() {
                 onChange={(e) => setNewSlotEnd(e.target.value)}
               />
               <Input
-                label="Price/hr ($)"
+                label="Price/hr (Rp)"
                 type="number"
                 min={1}
                 value={newSlotPrice}

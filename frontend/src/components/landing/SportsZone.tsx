@@ -60,7 +60,7 @@ export const SportsZone = ({ rooms }: { rooms: Room[] }) => {
                 <div className="flex items-center gap-4 text-sm">
                   <span className="text-emerald-400 font-semibold">{room.status === 'ACTIVE' ? 'Available Today' : 'Fully Booked'}</span>
                   <span className="text-slate-500">|</span>
-                  <span className="text-slate-900 font-bold">${room.price || 0}<span className="text-slate-500 font-normal">/hr</span></span>
+                  <span className="text-slate-900 font-bold">Rp {(room.price || 0).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}<span className="text-slate-500 font-normal">/hr</span></span>
                 </div>
                 <div className="flex items-center gap-1 text-xs text-slate-500">
                   <MapPin className="w-3 h-3" /> {room.building?.name || 'N/A'}
