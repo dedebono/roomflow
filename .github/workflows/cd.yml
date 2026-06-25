@@ -1,0 +1,42 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ubuntu
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            cd ~/roomflow
+            
+            # Pull new images
+            export SHA=${{ github.event.workflow_run.head_sha }}
+            docker compose pull
+            
+            # Roll rolling restart
+            docker compose up -d --no-deps backend frontend nginx
+            
+            # Health check backend
+            echo "Waiting for backend..."
+            for i in {1..30}; do
+              if curl -s http://localhost:3000/api/health | grep -q "ok"; then
+                echo "Backend OK!"
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "Backend health check failed"
+            exit 1

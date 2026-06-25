@@ -1,0 +1,31 @@
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: 'Git SHA to rollback to'
+        required: true
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rollback via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ubuntu
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            cd ~/roomflow
+            
+            export SHA=${{ github.event.inputs.sha }}
+            
+            docker compose pull
+            
+            docker compose up -d --no-deps backend frontend nginx
+            
+            echo "Rolled back to $SHA"
