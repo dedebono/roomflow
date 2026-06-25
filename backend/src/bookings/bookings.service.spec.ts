@@ -20,6 +20,9 @@ describe('BookingsService', () => {
     room: {
       findUnique: jest.fn(),
     },
+    bookingHold: {
+      findMany: jest.fn(),
+    },
   };
 
   const mockEmailService = {

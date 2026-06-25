@@ -20,11 +20,14 @@ describe('UsersService', () => {
     },
   };
 
+  const mockWhatsApp = { sendMessage: jest.fn() };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: 'WhatsAppService', useValue: mockWhatsApp },
       ],
     }).compile();
 

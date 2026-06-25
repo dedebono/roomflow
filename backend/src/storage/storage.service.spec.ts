@@ -27,23 +27,26 @@ describe('StorageService', () => {
     (path.basename as jest.Mock).mockReturnValue('test.jpg');
     (fs.existsSync as jest.Mock).mockReturnValue(true);
 
+    // Mutable config mock — tests can override storageType per test
+    const storageType = { value: 'LOCAL' };
+    const configMock = {
+      get: jest.fn((key: string) => {
+        if (key === 'STORAGE_TYPE') return storageType.value;
+        return null;
+      }),
+      _storageType: storageType,
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StorageService,
-        {
-          provide: ConfigService,
-          useValue: {
-            get: jest.fn((key: string) => {
-              if (key === 'STORAGE_TYPE') return 'LOCAL';
-              return null;
-            }),
-          },
-        },
+        { provide: ConfigService, useValue: configMock },
       ],
     }).compile();
 
     service = module.get<StorageService>(StorageService);
-    configService = module.get<ConfigService>(ConfigService);
+    // Attach configMock to service so tests can change storage type
+    (service as any).config = configMock;
   });
 
   it('should be defined', () => {
@@ -77,12 +80,13 @@ describe('StorageService', () => {
     });
 
     it('should throw for unimplemented storage types', async () => {
-      (configService.get as jest.Mock).mockReturnValue('S3');
-
       const mockFile = {
         originalname: 'test.jpg',
         buffer: Buffer.from('test data'),
       } as Express.Multer.File;
+
+      // Change storage type to S3 via the mutable config
+      (service as any).config._storageType.value = 'S3';
 
       await expect(service.upload(mockFile)).rejects.toThrow(
         'Storage type not implemented',

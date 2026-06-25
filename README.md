@@ -366,14 +366,14 @@ sudo docker compose up -d frontend
 ### 502 Bad Gateway
 
 ```bash
+# Check if nginx.conf is mounted correctly
+cat nginx.conf | grep proxy_pass
+
+# Verify containers are on same network
+sudo docker network inspect roomflow_default
+
 # Restart nginx
 sudo docker compose restart nginx
-
-# Check backend is running
-sudo docker compose logs backend --tail=10
-
-# Check nginx logs
-sudo docker compose logs nginx --tail=10
 ```
 
 ### Prisma Migration Error
