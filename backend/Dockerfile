@@ -1,37 +1,20 @@
-# Build stage
 FROM node:20-alpine AS builder
-
+RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
 WORKDIR /app
-
-# Install dependencies first (layer caching)
 COPY package*.json ./
-RUN npm ci
-
-# Copy source and build
+RUN pnpm install
 COPY . .
-RUN npx prisma generate
-RUN npm run build
+RUN pnpm prisma generate && pnpm run build
 
-# Production stage
 FROM node:20-alpine
-
 WORKDIR /app
-
-# Install production deps only
 COPY package*.json ./
-RUN npm ci --only=production
-
-# Copy built app
+# Skip install, copy fully built node_modules directly
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma /app/node_modules/.prisma
-
-# Create uploads directory
 RUN mkdir -p /app/uploads
-
 ENV NODE_ENV=production
 ENV PORT=3000
-
 EXPOSE 3000
-
 CMD ["node", "dist/src/main.js"]

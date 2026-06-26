@@ -110,7 +110,7 @@ export const paymentGatewaysApi = {
     await api.delete(`/payment-gateways/${id}`);
   },
   getAvailable: async (): Promise<PaymentGatewayPublic[]> => {
-    const response = await api.get('/payments/gateways');
+    const response = await api.get('/payment-gateways');
     return response.data;
   },
 };

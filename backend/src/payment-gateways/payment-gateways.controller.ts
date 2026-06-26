@@ -13,6 +13,7 @@ import { CreatePaymentGatewayDto } from './dto/create-payment-gateway.dto';
 import { UpdatePaymentGatewayDto } from './dto/update-payment-gateway.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
+import { Public } from '../common/decorators/public.decorator';
 
 @Controller('payment-gateways')
 export class PaymentGatewaysController {
@@ -24,6 +25,12 @@ export class PaymentGatewaysController {
   @Roles(Role.ADMIN_IT)
   create(@Body() createPaymentGatewayDto: CreatePaymentGatewayDto) {
     return this.paymentGatewaysService.create(createPaymentGatewayDto);
+  }
+
+  @Get('available')
+  @Public()
+  findAllEnabled() {
+    return this.paymentGatewaysService.findAllEnabled();
   }
 
   @Get()
