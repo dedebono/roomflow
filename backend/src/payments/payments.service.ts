@@ -427,10 +427,11 @@ export class PaymentsService {
     const gateway = await this.prisma.paymentGateway.findUnique({ where: { id: gatewayId } });
     if (gateway) {
       const config = (gateway.config || {}) as Record<string, string>;
+      const frontendBase = process.env.FRONTEND_BASE_URL || 'https://room.ytcb.org';
       paymentUrl = this.pakasirService.getPaymentUrl(config, {
         amount: finalAmount,
         orderId,
-        redirect: `https://room.ytcb.org/renter/payments`,
+        redirect: `${frontendBase}/renter/payments`,
       });
     }
 
