@@ -97,6 +97,11 @@ export class RentalsController {
     return this.rentalsService.getHoldById(id, userId);
   }
 
+  @Delete('holds/:id')
+  cancelHold(@CurrentUser('userId') userId: string, @Param('id') id: string) {
+    return this.rentalsService.cancelHold(id, userId);
+  }
+
   // RentalSlot CRUD
   @Get('slots')
   getSlots(

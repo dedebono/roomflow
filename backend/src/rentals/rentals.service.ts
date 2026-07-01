@@ -499,6 +499,36 @@ export class RentalsService implements OnModuleInit {
     return hold;
   }
 
+  async cancelHold(id: string, userId: string) {
+    const hold = await this.prisma.bookingHold.findFirst({
+      where: { id, userId },
+      include: { room: true },
+    });
+
+    if (!hold) {
+      throw new NotFoundException('Booking hold not found');
+    }
+
+    if (hold.status !== BookingHoldStatus.ACTIVE) {
+      throw new ConflictException('Only active holds can be cancelled');
+    }
+
+    const cancelled = await this.prisma.bookingHold.update({
+      where: { id },
+      data: { status: BookingHoldStatus.CANCELLED },
+    });
+
+    await this.notificationsService.create(
+      userId,
+      'BOOKING_CANCELLED',
+      'Booking Hold Cancelled',
+      `Your hold for ${hold.room.name} has been cancelled.`,
+      JSON.stringify({ holdId: id, roomId: hold.roomId }),
+    );
+
+    return cancelled;
+  }
+
   // Get available time slots for a room on a given date
   async getAvailableSlots(roomId: string, date: string) {
     // Parse date string as a UTC midnight date to avoid timezone shifting the day.
