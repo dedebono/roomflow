@@ -88,9 +88,15 @@ export default function RenterBookingsPage() {
     });
   };
 
+  const formatTime = (timeStr: string) => {
+    if (!timeStr) return '';
+    // Extract HH:MM from ISO format (e.g., "2026-07-27T09:00:00.000Z" -> "09:00")
+    return timeStr.substring(11, 16);
+  };
+
   const displayDateTime = (dateStr: string, timeStr: string) => {
     const date = new Date(dateStr);
-    return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${timeStr}`;
+    return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${formatTime(timeStr)}`;
   };
 
   const getStatusBadge = (booking: RentalBooking) => {
@@ -140,7 +146,7 @@ export default function RenterBookingsPage() {
           </span>
           <span className="text-xs text-slate-500 flex items-center gap-1">
             <Clock className="w-3.5 h-3.5" />
-            {b.holdStartTime} - {b.holdEndTime}
+            {formatTime(b.holdStartTime || '')} - {formatTime(b.holdEndTime || '')}
           </span>
         </div>
       ),

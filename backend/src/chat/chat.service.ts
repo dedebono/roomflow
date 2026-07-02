@@ -28,6 +28,7 @@ export class ChatService {
       throw new NotFoundException('Receiver not found');
     }
 
+    console.log('Creating message in DB...');
     // Create the message
     const message = await this.prisma.chatMessage.create({
       data: {
@@ -46,9 +47,10 @@ export class ChatService {
         },
       },
     });
+    console.log('Message created in DB:', message.id);
 
-    // Send WebSocket notification to receiver
-    await this.webSocketService.sendNewMessage({
+    // Send WebSocket notification to receiver (non-blocking)
+    this.webSocketService.sendNewMessage({
       id: message.id,
       senderId: message.senderId,
       senderName: message.sender.name,
@@ -57,10 +59,10 @@ export class ChatService {
       bookingId: message.bookingId ?? undefined,
       isRead: message.isRead,
       createdAt: message.createdAt,
-    });
+    }).catch(err => console.error('WebSocket send failed:', err));
 
-    // Create notification for receiver
-    await this.notificationsService.create(
+    // Create notification for receiver (non-blocking)
+    this.notificationsService.create(
       receiverId,
       'NEW_MESSAGE',
       'New Message',
@@ -71,7 +73,7 @@ export class ChatService {
         senderName: message.sender.name,
         content: message.content,
       }),
-    );
+    ).catch(err => console.error('Notification create failed:', err));
 
     return message;
   }
@@ -161,6 +163,7 @@ export class ChatService {
 
     return {
       id: `conv_${participantId}`,
+      userId: participantId,
       participant1Id: userId,
       participant2Id: participantId,
       participant1: null,

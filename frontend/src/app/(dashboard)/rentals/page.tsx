@@ -153,7 +153,7 @@ export default function RentalsDashboardPage() {
     },
     {
       header: 'Price',
-      cell: (h: RentalHold) => h.payments?.[0] ? `$${h.payments[0].amount.toFixed(2)}` : '-',
+      cell: (h: RentalHold) => h.payments?.[0] ? `Rp ${h.payments[0].amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '-',
     },
     {
       header: 'Status',
