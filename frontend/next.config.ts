@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
   },
 
   // Prevent double rendering in dev mode
-  reactStrictMode: true,
+  reactStrictMode: false,
 };
 
 export default nextConfig;

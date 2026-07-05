@@ -7,6 +7,7 @@ import {
   Param,
   Query,
   Delete,
+  Header,
 } from '@nestjs/common';
 import { RentalsService } from './rentals.service';
 import { CheckAvailabilityDto } from './dto/check-availability.dto';
@@ -31,6 +32,21 @@ export class RentalsController {
     @Query('category') category?: string,
   ) {
     return this.rentalsService.getAvailableRooms(date, startDate, endDate, category as RoomCategory);
+  }
+
+  @Get('rooms/:id')
+  @Public()
+  getRoomDetails(@Param('id') roomId: string) {
+    return this.rentalsService.getRoomDetails(roomId);
+  }
+
+  @Get('rooms/:id/availability')
+  @Public()
+  @Header('Cache-Control', 'no-cache, no-store, must-revalidate')
+  @Header('Pragma', 'no-cache')
+  @Header('Expires', '0')
+  getRoomAvailability(@Param('id') roomId: string, @Query('month') month: string) {
+    return this.rentalsService.getRoomAvailability(roomId, month);
   }
 
   @Post('check-availability')

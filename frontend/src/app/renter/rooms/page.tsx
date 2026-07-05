@@ -31,40 +31,25 @@ export default function AvailableRoomsPage() {
   const { user } = useAuth();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('');
-  const [debugInfo, setDebugInfo] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<string>('')
 
   useEffect(() => {
     fetchAvailableRooms();
-  }, []);
+  }, [])
 
-  const fetchAvailableRooms = async (date?: string, category?: string, sDate?: string, eDate?: string) => {
-    setLoading(true);
+  const fetchAvailableRooms = async (category?: string) => {
+    setLoading(true)
     try {
-      const params: any = {};
-      const dateToUse = date !== undefined ? date : dateFilter;
-      if (dateToUse) {
-        params.date = dateToUse;
-      }
-      const sDateToUse = sDate !== undefined ? sDate : startDate;
-      const eDateToUse = eDate !== undefined ? eDate : endDate;
-      if (sDateToUse && eDateToUse) {
-        params.startDate = sDateToUse;
-        params.endDate = eDateToUse;
-      }
+      const params: any = {}
       if (category) {
-        params.category = category;
+        params.category = category
       }
-      const res = await api.get(`/rentals/available-rooms?_=${Date.now()}`, { params });
-      setDebugInfo(`res.data type: ${typeof res.data}, isArray: ${Array.isArray(res.data)}, keys: ${res.data && typeof res.data === 'object' ? Object.keys(res.data).join(',') : 'N/A'}, length: ${Array.isArray(res.data) ? res.data.length : 'N/A'}`);
+      const res = await api.get(`/rentals/available-rooms?_=${Date.now()}`, { params })
       // Defensive: ensure res.data is an array
-      const rawRooms = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
-      if (rawRooms.length === 0 && !dateFilter) {
-        console.warn('[rooms] API returned 0 rooms — check backend response or auth');
+      const rawRooms = Array.isArray(res.data) ? res.data : (res.data?.data ?? [])
+      if (rawRooms.length === 0) {
+        console.warn('[rooms] API returned 0 rooms — check backend response or auth')
       }
       // amenities may come as JSON string or array — normalise to array
       const normalised = rawRooms.map((room: any) => ({
@@ -80,15 +65,15 @@ export default function AvailableRoomsPage() {
         imageUrl: room.imageUrl
           ? getImageUrl(room.imageUrl)
           : undefined,
-      }));
-      setRooms(normalised);
+      }))
+      setRooms(normalised)
     } catch (err: any) {
-      console.error('[rooms] fetch error:', err?.response?.data, err?.message, err);
-      toast.error('Failed to load available rooms');
+      console.error('[rooms] fetch error:', err?.response?.data, err?.message, err)
+      toast.error('Failed to load available rooms')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const filteredRooms = rooms.filter((room) =>
     room.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -112,24 +97,6 @@ export default function AvailableRoomsPage() {
                 leftIcon={<MapPin className="w-4 h-4" />}
               />
             </div>
-            <div className="w-full sm:w-36">
-              <Input
-                label="Start Date"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                leftIcon={<Calendar className="w-4 h-4" />}
-              />
-            </div>
-            <div className="w-full sm:w-36">
-              <Input
-                label="End Date"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                leftIcon={<Calendar className="w-4 h-4" />}
-              />
-            </div>
             <div className="w-full sm:w-44">
               <label className="text-xs font-semibold text-slate-500 mb-1 block">Category</label>
               <select
@@ -143,36 +110,20 @@ export default function AvailableRoomsPage() {
               </select>
             </div>
             <Button variant="secondary" onClick={async () => {
-              if (startDate && endDate && startDate > endDate) {
-                toast.error('Start date must be before end date');
-                return;
-              }
               setSearchTerm('');
-              await fetchAvailableRooms(
-                dateFilter,
-                categoryFilter,
-                startDate,
-                endDate,
-              );
+              await fetchAvailableRooms(categoryFilter);
             }}>
               Refresh
             </Button>
-            {(categoryFilter || startDate || endDate) && (
+            {categoryFilter && (
               <Button variant="secondary" onClick={() => {
                 setCategoryFilter('');
-                setStartDate('');
-                setEndDate('');
-                fetchAvailableRooms('', '');
+                fetchAvailableRooms('');
               }}>
                 Clear
               </Button>
             )}
           </div>
-          {startDate && endDate && (
-            <div className="mt-2 text-xs text-indigo-400 font-medium">
-              Search range: {startDate} → {endDate} ({Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000*60*60*24)) + 1} days)
-            </div>
-          )}
         </CardContent>
       </Card>
 

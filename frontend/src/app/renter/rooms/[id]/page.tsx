@@ -15,6 +15,9 @@ import {
   Calendar, Clock, Users, MapPin, Wifi, Monitor, Coffee,
   ArrowLeft, Upload, CheckCircle, Timer, ExternalLink, CreditCard, Loader2,
 } from 'lucide-react';
+import { RoomCalendar } from '@/components/rental/RoomCalendar';
+import { TimeSlotSelector } from '@/components/rental/TimeSlotSelector';
+import { BookingSummary } from '@/components/rental/BookingSummary';
 
 const formatRupiah = (amount: number | undefined) =>
   amount !== undefined
@@ -60,6 +63,7 @@ export default function RoomDetailPage() {
   const [activeHold, setActiveHold] = useState<BookingHold | null>(null);
   const [countdown, setCountdown] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   // Payment modal state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -133,15 +137,26 @@ export default function RoomDetailPage() {
   // Fetch available time slots for selected date
   const fetchTimeSlots = useCallback(async (date: string) => {
     if (!date) return;
+    setLoadingSlots(true);
     try {
       const res = await api.get(`/rentals/available-slots`, {
         params: { roomId, date },
       });
       setTimeSlots(res.data);
+      setSelectedSlot(null); // Clear previous selection
     } catch {
       toast.error('Failed to load available time slots');
+      setTimeSlots([]);
+    } finally {
+      setLoadingSlots(false);
     }
   }, [roomId]);
+
+  // Handle date selection
+  const handleDateSelect = (date: string) => {
+    setSelectedDate(date);
+    fetchTimeSlots(date);
+  };
 
   // Create booking hold
   const handleCreateHold = async () => {
@@ -323,7 +338,7 @@ export default function RoomDetailPage() {
       </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Room Details */}
+        {/* Room Details & Calendar */}
         <div className="lg:col-span-2 space-y-6">
           {/* Room Image */}
           <Card className="border border-slate-900 glass overflow-hidden">
@@ -373,99 +388,52 @@ export default function RoomDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Date & Time Selection */}
-          <Card className="border border-slate-900 glass">
-            <CardHeader className="p-0 mb-4">
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-indigo-400" />
-                Select Rental Date & Time
-              </CardTitle>
-              <CardDescription>Choose your preferred date and hourly slot</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="w-full flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-600 tracking-wide uppercase">Rental Date</label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => {
-                    setSelectedDate(e.target.value);
-                    setSelectedSlot(null);
-                    if (e.target.value) {
-                      fetchTimeSlots(e.target.value);
-                    } else {
-                      setTimeSlots([]);
-                    }
-                  }}
-                  min={new Date().toISOString().split('T')[0]}
-                  style={{ colorScheme: 'dark' }}
-                  className="w-full bg-white/60 hover:bg-white/80 focus:bg-white text-slate-900 text-sm rounded-lg border border-slate-200 focus:border-indigo-500 focus:ring-indigo-500/20 px-3.5 py-2.5 transition-all duration-200 focus:ring-4 outline-none"
-                />
-              </div>
+          {/* Calendar & Time Selection */}
+          {!activeHold ? (
+            <>
+              {/* Calendar */}
+              <Card className="border border-slate-900 glass">
+                <CardHeader className="p-0 mb-4">
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-indigo-400" />
+                    Select Rental Date
+                  </CardTitle>
+                  <CardDescription>Choose your preferred date</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <RoomCalendar
+                    roomId={roomId}
+                    onDateSelect={handleDateSelect}
+                    selectedDate={selectedDate}
+                  />
+                </CardContent>
+              </Card>
 
+              {/* Time Slots */}
               {selectedDate && (
-                <>
-                  {timeSlots.length > 0 ? (
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold text-slate-600 tracking-wide uppercase">Available Time Slots</p>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {timeSlots.map((slot, idx) => {
-                          const isDisabled = !slot.available;
-                          const isSelected = selectedSlot?.id === slot.id;
-                          return (
-                            <button
-                              key={idx}
-                              onClick={() => !isDisabled && setSelectedSlot(slot)}
-                              disabled={isDisabled}
-                              className={`p-3 rounded-xl text-sm font-bold transition-all border-2 flex flex-col items-center justify-center gap-1 ${
-                                isSelected
-                                  ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-500/30 scale-105'
-                                  : isDisabled
-                                    ? 'bg-white/40 border-slate-200 text-slate-600 cursor-not-allowed opacity-60 line-through'
-                                    : 'bg-slate-100/40 border-slate-300/50 text-slate-800 hover:border-indigo-500/50 hover:bg-slate-100 hover:scale-[1.02]'
-                              }`}
-                            >
-                              <div className="flex items-center gap-1.5">
-                                <Clock className={`w-3.5 h-3.5 ${isSelected ? 'text-indigo-200' : 'text-indigo-400'}`} />
-                                <span>{formatTime(slot.startTime)} - {formatTime(slot.endTime)}</span>
-                              </div>
-                              <div className={`text-xs font-medium ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
-                                {formatRupiah(slot.price)}
-                              </div>
-                              {isDisabled && <div className="mt-1 text-[10px] uppercase font-bold text-rose-500/80">Booked</div>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-slate-500">No available time slots for this date.</p>
-                  )}
-                </>
+                <Card className="border border-slate-900 glass">
+                  <CardHeader className="p-0 mb-4">
+                    <CardTitle className="flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-indigo-400" />
+                      Select Time Slot
+                    </CardTitle>
+                    <CardDescription>Choose your preferred time for {selectedDate}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <TimeSlotSelector
+                      slots={timeSlots}
+                      selectedSlot={selectedSlot}
+                      onSlotSelect={setSelectedSlot}
+                      loading={loadingSlots}
+                    />
+                  </CardContent>
+                </Card>
               )}
-
-              {selectedSlot && (
-                <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
-                  <p className="text-sm text-indigo-300">
-                    <CheckCircle className="w-4 h-4 inline mr-2" />
-                    Selected: {formatTime(selectedSlot.startTime)} - {formatTime(selectedSlot.endTime)} ({formatRupiah(selectedSlot.price)})
-                  </p>
-                </div>
-              )}
-
-              <Button
-                variant="primary"
-                onClick={handleCreateHold}
-                disabled={!selectedSlot || isSubmitting}
-                className="w-full"
-              >
-                {isSubmitting ? 'Creating Hold...' : 'Create Booking Hold'}
-              </Button>
-            </CardContent>
-          </Card>
+            </>
+          ) : null}
         </div>
 
-        {/* Booking Status Sidebar */}
+        {/* Sidebar: Booking Status or Summary */}
         <div className="space-y-6">
           {activeHold ? (
             <Card className="border border-emerald-500/20 bg-emerald-500/5">
@@ -498,164 +466,103 @@ export default function RoomDetailPage() {
                 </div>
 
                 {activeHold.status === 'ACTIVE' && (
-                  <>
-                    <Button
-                      variant="primary"
-                      onClick={openPaymentModal}
-                      className="w-full"
-                    >
-                      <CreditCard className="w-4 h-4 mr-2" />
-                      Choose Payment Method
+                  <div className="space-y-2">
+                    <Button variant="primary" onClick={openPaymentModal} className="w-full">
+                      <CreditCard className="w-4 h-4" />
+                      Pay Now
                     </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={handleCancelHold}
-                      className="w-full"
-                    >
+                    <Button variant="secondary" onClick={handleCancelHold} className="w-full">
                       Cancel Hold
                     </Button>
-                  </>
-                )}
-
-                {activeHold.status === 'CONVERTED' && (
-                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                    <p className="text-sm text-emerald-300">Booking confirmed!</p>
-                  </div>
-                )}
-
-                {activeHold.status === 'EXPIRED' && (
-                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg">
-                    <p className="text-sm text-rose-300">Booking hold expired.</p>
-                  </div>
-                )}
-
-                {activeHold.status === 'CANCELLED' && (
-                  <div className="p-3 bg-slate-500/10 border border-slate-500/20 rounded-lg">
-                    <p className="text-sm text-slate-600">Booking hold cancelled.</p>
                   </div>
                 )}
               </CardContent>
             </Card>
           ) : (
-            <Card className="border border-slate-900 glass">
-              <CardContent className="pt-6">
-                <p className="text-slate-500 text-sm">No active booking hold. Select a date and time slot to create one.</p>
-              </CardContent>
-            </Card>
+            <BookingSummary
+              selectedDate={selectedDate}
+              selectedSlot={selectedSlot}
+              roomName={room.name}
+              onCreateHold={handleCreateHold}
+              isLoading={isSubmitting}
+            />
           )}
         </div>
       </div>
 
-      {/* Payment Gateway Selection Modal */}
-      <Modal isOpen={isPaymentModalOpen} onClose={() => { setIsPaymentModalOpen(false); setSelectedGateway(null); }} title="Choose Payment Method">
+      {/* Payment Modal */}
+      <Modal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        title="Complete Payment"
+      >
         <div className="space-y-4">
           {isLoadingGateways ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full" />
-              <span className="ml-3 text-sm text-slate-500">Loading gateways...</span>
+            <div className="text-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+              <p className="text-sm text-slate-500">Loading payment options...</p>
             </div>
-          ) : gateways.length === 0 ? (
-            <div className="text-center py-6">
-              <p className="text-slate-500 text-sm">No payment gateways available.</p>
-            </div>
-          ) : !selectedGateway ? (
+          ) : gateways.length > 0 ? (
             <>
-              <p className="text-sm text-slate-500 mb-3">Select a payment method to complete your booking:</p>
               <div className="space-y-2">
-                {gateways.map((gw) => (
-                  <button
-                    key={gw.id}
-                    onClick={() => setSelectedGateway(gw)}
-                    className="w-full p-4 border-2 border-slate-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-all text-left flex items-center gap-3"
-                  >
-                    <div className="h-10 w-10 rounded-lg bg-indigo-100 flex items-center justify-center">
-                      <CreditCard className="w-5 h-5 text-indigo-600" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-slate-900">{gw.name}</p>
-                      {gw.description && <p className="text-xs text-slate-500">{gw.description}</p>}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : (
-            <>
-              {/* Back to gateway selection */}
-              <button onClick={() => setSelectedGateway(null)} className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1 mb-2">
-                ← Back
-              </button>
-
-              <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg mb-3">
-                <p className="text-sm font-semibold text-indigo-900">{selectedGateway.name}</p>
+                <label className="text-sm font-semibold text-slate-600">Select Payment Gateway</label>
+                <div className="space-y-2">
+                  {gateways.map((gateway) => (
+                    <button
+                      key={gateway.id}
+                      onClick={() => setSelectedGateway(gateway)}
+                      className={`w-full p-3 rounded-lg border-2 transition-all text-left ${
+                        selectedGateway?.id === gateway.id
+                          ? 'border-indigo-500 bg-indigo-50'
+                          : 'border-slate-200 bg-white hover:border-indigo-300'
+                      }`}
+                    >
+                      <p className="font-semibold text-slate-900">{gateway.name}</p>
+                      {gateway.description && (
+                        <p className="text-xs text-slate-500 mt-1">{gateway.description}</p>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {selectedGateway.name.toLowerCase().includes('pakasir') ? (
-                <>
-                  <p className="text-sm text-slate-500 mb-4">
-                    You will be redirected to Pakasir to complete your payment of{' '}
-                    <strong>{formatRupiah(activeHold?.price)}</strong> for the room rental.
-                  </p>
-                  <Button
-                    variant="primary"
-                    onClick={handleInitiatePakasir}
-                    disabled={isInitiating}
-                    className="w-full"
-                  >
-                    {isInitiating ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Redirecting...
-                      </>
-                    ) : (
-                      <>
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                        Pay with Pakasir — {formatRupiah(activeHold?.price)}
-                      </>
-                    )}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  {/* Manual transfer — upload payment proof */}
-                  <div className="mb-3">
-                    <label className="block text-sm font-semibold text-slate-600 mb-2">Upload Payment Proof</label>
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setPaymentFile(e.target.files?.[0] || null)}
-                      className="w-full px-3 py-2 bg-white/60 border border-slate-200 rounded-lg text-slate-600 text-sm"
-                    />
-                    <p className="text-xs text-slate-400 mt-1">Accepts image or PDF</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="primary"
-                      onClick={handlePaymentUpload}
-                      disabled={!paymentFile || isUploading}
-                      className="flex-1"
-                    >
-                      {isUploading ? 'Uploading...' : 'Upload Proof'}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => setIsPaymentModalOpen(false)}
-                      className="flex-1"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </>
-              )}
+              <Button
+                variant="primary"
+                onClick={handleInitiatePakasir}
+                disabled={!selectedGateway || isInitiating}
+                className="w-full"
+              >
+                {isInitiating ? 'Processing...' : 'Pay via Gateway'}
+                <ExternalLink className="w-4 h-4 ml-2" />
+              </Button>
             </>
-          )}
+          ) : null}
 
-          {/* Close button when no specific gateway selected */}
-          {!selectedGateway && !isLoadingGateways && (
-            <Button variant="secondary" onClick={() => { setIsPaymentModalOpen(false); setSelectedGateway(null); }} className="w-full mt-2">
-              Cancel
-            </Button>
-          )}
+          <div className="border-t border-slate-200 pt-4">
+            <label className="text-sm font-semibold text-slate-600 block mb-2">Or Upload Payment Proof</label>
+            <div className="space-y-2">
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={(e) => setPaymentFile(e.target.files?.[0] || null)}
+                className="block w-full text-sm text-slate-500
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-lg file:border-0
+                  file:text-sm file:font-semibold
+                  file:bg-indigo-50 file:text-indigo-700
+                  hover:file:bg-indigo-100"
+              />
+              <Button
+                variant="secondary"
+                onClick={handlePaymentUpload}
+                disabled={!paymentFile || isUploading}
+                className="w-full"
+              >
+                {isUploading ? 'Uploading...' : 'Upload Proof'}
+                <Upload className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </div>
         </div>
       </Modal>
     </>
