@@ -1,41 +1,66 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../prisma/prisma.service';
+
+interface WahaConfig {
+  enabled: boolean;
+  wahaUrl: string | null;
+  wahaSession: string;
+  wahaApiKey: string | null;
+}
 
 @Injectable()
 export class WhatsAppService {
-  private readonly enabled: boolean;
-  private readonly apiUrl: string;
-  private readonly session: string;
-  private readonly apiKey: string;
+  // Fallbacks from env (used when DB has no config)
+  private readonly envEnabled: boolean;
+  private readonly envUrl: string;
+  private readonly envSession: string;
+  private readonly envApiKey: string;
   private readonly swaggerUsername: string;
   private readonly swaggerPassword: string;
-  private readonly gowsPath: string;
-  private readonly gowsSocket: string;
-  private readonly mediaStorage: string;
-  private readonly zipper: string;
-  private readonly whatsappApiSchema: string;
-  private readonly whatsappDefaultEngine: string;
 
-  constructor(private configService: ConfigService) {
-    this.enabled = this.configService.get<string>('WAHA_ENABLED') === 'true';
-    this.apiUrl = this.configService.get<string>('WAHA_API_URL') || 'http://waha:3000';
-    this.session = this.configService.get<string>('WAHA_SESSION') || 'default';
-    this.apiKey = this.configService.get<string>('WAHA_API_KEY') || '';
+  // Cached config from DB (refreshed on each write via WahaConfigService)
+  private cachedConfig: WahaConfig | null = null;
+  private cacheTime = 0;
+  private readonly CACHE_TTL_MS = 5_000; // 5s — avoid stale reads, stay fast
+
+  constructor(
+    private configService: ConfigService,
+    private prisma: PrismaService,
+  ) {
+    this.envEnabled = this.configService.get<string>('WAHA_ENABLED') === 'true';
+    this.envUrl = this.configService.get<string>('WAHA_API_URL') || 'http://waha:3000';
+    this.envSession = this.configService.get<string>('WAHA_SESSION') || 'default';
+    this.envApiKey = this.configService.get<string>('WAHA_API_KEY') || '';
     this.swaggerUsername = this.configService.get<string>('WHATSAPP_SWAGGER_USERNAME') || '';
     this.swaggerPassword = this.configService.get<string>('WHATSAPP_SWAGGER_PASSWORD') || '';
-    this.gowsPath = this.configService.get<string>('WAHA_GOWS_PATH') || '';
-    this.gowsSocket = this.configService.get<string>('WAHA_GOWS_SOCKET') || '';
-    this.mediaStorage = this.configService.get<string>('WAHA_MEDIA_STORAGE') || '';
-    this.zipper = this.configService.get<string>('WAHA_ZIPPER') || '';
-    this.whatsappApiSchema = this.configService.get<string>('WHATSAPP_API_SCHEMA') || 'http';
-    this.whatsappDefaultEngine = this.configService.get<string>('WHATSAPP_DEFAULT_ENGINE') || 'WEBJS';
+  }
+
+  /** Returns the effective runtime config — DB value wins over env fallback. */
+  private async getConfig(): Promise<WahaConfig> {
+    const now = Date.now();
+    if (this.cachedConfig && now - this.cacheTime < this.CACHE_TTL_MS) {
+      return this.cachedConfig;
+    }
+    const db = await this.prisma.wahaConfig.findFirst();
+    this.cachedConfig = {
+      enabled: db?.enabled ?? this.envEnabled,
+      wahaUrl: db?.wahaUrl ?? this.envUrl,
+      wahaSession: db?.wahaSession ?? this.envSession,
+      wahaApiKey: db?.wahaApiKey ?? this.envApiKey,
+    };
+    this.cacheTime = now;
+    return this.cachedConfig;
+  }
+
+  /** Clear cache so the next request picks up fresh DB values. */
+  clearCache() {
+    this.cachedConfig = null;
   }
 
   /** Normalize phone number to 62 format (no +, no 0 prefix) */
   normalizeNumber(num: string): string {
-    // Strip all non-digits
     let cleaned = num.replace(/[^0-9]/g, '');
-    // Replace leading 0 with 62 (Indonesia country code)
     if (cleaned.startsWith('0')) {
       cleaned = '62' + cleaned.slice(1);
     }
@@ -43,33 +68,29 @@ export class WhatsAppService {
   }
 
   async sendText(to: string, text: string): Promise<void> {
-    if (!this.enabled) {
+    const config = await this.getConfig();
+    if (!config.enabled) {
       console.log('[WhatsApp] Message would have been sent (disabled):', { to, text });
       return;
     }
 
     try {
-      // Normalize number: strip +, convert 0→62, remove non-digits
       const normalized = this.normalizeNumber(to);
       const chatId = `${normalized}@c.us`;
+      const apiUrl = config.wahaUrl || this.envUrl;
+      const session = config.wahaSession || this.envSession;
+      const apiKey = config.wahaApiKey || this.envApiKey;
 
-      const response = await fetch(
-        `${this.apiUrl}/api/sendText`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Api-Key': this.apiKey,
-            'X-Api-Username': this.swaggerUsername,
-            'X-Api-Password': this.swaggerPassword,
-          },
-          body: JSON.stringify({
-            chatId: chatId,
-            text,
-            session: this.session,
-          }),
+      const response = await fetch(`${apiUrl}/api/sendText`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Api-Key': apiKey,
+          'X-Api-Username': this.swaggerUsername,
+          'X-Api-Password': this.swaggerPassword,
         },
-      );
+        body: JSON.stringify({ chatId, text, session }),
+      });
 
       if (!response.ok) {
         console.error('[WhatsApp] WAHA sendText failed:', response.status, await response.text());
@@ -77,12 +98,11 @@ export class WhatsAppService {
         const data = await response.json();
         console.log('[WhatsApp] Message sent to', chatId, ':', data);
       }
-    } catch (err: any) {
-      console.error('[WhatsApp] Failed to send message:', err.message);
+    } catch (err: unknown) {
+      console.error('[WhatsApp] Failed to send message:', (err as Error).message);
     }
   }
 
-  // Implement other message types using sendText or other WAHA API endpoints as needed
   async sendBookingConfirmation(to: string, bookingTitle: string, roomName: string, startTime: Date, endTime: Date): Promise<void> {
     const text = `✅ *Booking Confirmed*\n\n` +
       `Room: ${roomName}\n` +
@@ -90,26 +110,23 @@ export class WhatsAppService {
       `Start: ${startTime.toLocaleString()}\n` +
       `End: ${endTime.toLocaleString()}\n\n` +
       `RoomFlow Workspace Booking Engine`;
-
     await this.sendText(to, text);
   }
 
   async sendPaymentApproved(to: string, amount: number): Promise<void> {
     const text = `✅ *Payment Approved*\n\n` +
-      `Amount: $${amount.toFixed(2)}\n` +
+      `Amount: Rp${amount.toLocaleString('id-ID')}\n` +
       `Your payment has been approved. Thank you!\n\n` +
       `RoomFlow`;
-
     await this.sendText(to, text);
   }
 
   async sendPaymentRejected(to: string, amount: number, reason?: string): Promise<void> {
     const text = `❌ *Payment Rejected*\n\n` +
-      `Amount: $${amount.toFixed(2)}\n` +
-      (reason ? `Reason: ${reason}\n\n` : '') +
+      `Amount: Rp${amount.toLocaleString('id-ID')}\n` +
+      (reason ? `Reason: ${reason}\n\n` : '\n') +
       `Please review and resubmit.\n\n` +
       `RoomFlow`;
-
     await this.sendText(to, text);
   }
 
@@ -118,7 +135,6 @@ export class WhatsAppService {
       `Title: ${bookingTitle}\n` +
       `Your booking has been cancelled.\n\n` +
       `RoomFlow`;
-
     await this.sendText(to, text);
   }
 
@@ -127,7 +143,6 @@ export class WhatsAppService {
       `From: ${senderName}\n` +
       `Message: ${content}\n\n` +
       `Tap to reply in RoomFlow.`;
-
     await this.sendText(to, text);
   }
 }

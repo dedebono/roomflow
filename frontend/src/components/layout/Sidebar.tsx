@@ -17,10 +17,11 @@ import {
   MessageSquare,
   Home,
   DollarSign,
-  Bell,
+  Phone,
   X,
   LayoutDashboard,
   Wallet,
+  Settings,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -184,6 +185,10 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
             <Link href="/system/payment-gateways" className={getLinkClass('/system/payment-gateways')} onClick={handleLinkClick}>
               <Wallet className="w-4 h-4" />
               <span>Payment Gateways</span>
+            </Link>
+            <Link href="/system/waha-settings" className={getLinkClass('/system/waha-settings')} onClick={handleLinkClick}>
+              <Settings className="w-4 h-4" />
+              <span>WAHA Settings</span>
             </Link>
           </>
         )}

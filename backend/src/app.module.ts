@@ -23,6 +23,7 @@ import { ChatModule } from './chat/chat.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { WebSocketModule } from './websocket/websocket.module';
 import { WhatsAppModule } from './whatsapp/whatsapp.module';
+import { WahaConfigModule } from './waha-config/waha-config.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
@@ -47,6 +48,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     NotificationsModule,
     WebSocketModule,
     WhatsAppModule,
+    WahaConfigModule,
   ],
   controllers: [AppController],
   providers: [

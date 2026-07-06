@@ -68,16 +68,16 @@ enum NotificationType {
 }
 
 model User {
-  id           String @id @default(uuid())
-  name         String
-  email        String @unique
-  whatsappNumber String?
-  whatsappVerified Boolean @default(false)
-  whatsappOtpCode String?
+  id                   String    @id @default(uuid())
+  name                 String
+  email                String    @unique
+  whatsappNumber       String?
+  whatsappVerified     Boolean   @default(false)
+  whatsappOtpCode      String?
   whatsappOtpExpiresAt DateTime?
-  passwordHash String
-  refreshToken String?
-  role         Role   @default(USER)
+  passwordHash         String
+  refreshToken         String?
+  role                 Role      @default(USER)
 
   bookings              Booking[]
   bookingChangeRequests BookingChangeRequest[]
@@ -102,16 +102,16 @@ model Building {
 }
 
 model Room {
-  id              String     @id @default(uuid())
+  id              String        @id @default(uuid())
   buildingId      String
-  building        Building   @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  building        Building      @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   name            String
   capacity        Int
   description     String?
   imageUrl        String?
-  status          RoomStatus @default(ACTIVE)
+  status          RoomStatus    @default(ACTIVE)
   amenities       String?
-  isRentable      Boolean    @default(false)
+  isRentable      Boolean       @default(false)
   maxBookingHours Int?
   category        RoomCategory?
 
@@ -134,13 +134,13 @@ model Booking {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  title     String
-  notes     String?
-  startTime DateTime
-  endTime   DateTime
-  status    BookingStatus @default(BOOKED)
-  isRental  Boolean       @default(false)
-  bookingHoldId String?  // Links to the hold that created this booking
+  title         String
+  notes         String?
+  startTime     DateTime
+  endTime       DateTime
+  status        BookingStatus @default(BOOKED)
+  isRental      Boolean       @default(false)
+  bookingHoldId String? // Links to the hold that created this booking
 
   payment        Payment[]
   changeRequests BookingChangeRequest[]
@@ -178,27 +178,27 @@ model BookingChangeRequest {
 }
 
 model Payment {
-  id              String         @id @default(uuid())
-  bookingId       String
-  booking         Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  bookingHoldId   String?
-  bookingHold     BookingHold?   @relation(fields: [bookingHoldId], references: [id])
-  userId          String
-  user            User           @relation(fields: [userId], references: [id])
-  amount          Float
-  status          PaymentStatus  @default(PENDING)
-  paymentMethod   String? // e.g., "qris", "bank_transfer", "manual_transfer"
-  proofImageUrl   String?
-  fileUrl         String? // Kept for manual proof upload compatibility
-  managerId       String?
-  manager         User?          @relation("ApprovedPayments", fields: [managerId], references: [id])
-  approvedAt      DateTime?
-  notes           String?
-  externalId      String?        @unique // For linking to external payment gateway transactions
+  id               String          @id @default(uuid())
+  bookingId        String
+  booking          Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingHoldId    String?
+  bookingHold      BookingHold?    @relation(fields: [bookingHoldId], references: [id])
+  userId           String
+  user             User            @relation(fields: [userId], references: [id])
+  amount           Float
+  status           PaymentStatus   @default(PENDING)
+  paymentMethod    String? // e.g., "qris", "bank_transfer", "manual_transfer"
+  proofImageUrl    String?
+  fileUrl          String? // Kept for manual proof upload compatibility
+  managerId        String?
+  manager          User?           @relation("ApprovedPayments", fields: [managerId], references: [id])
+  approvedAt       DateTime?
+  notes            String?
+  externalId       String?         @unique // For linking to external payment gateway transactions
   paymentGatewayId String?
-  paymentGateway  PaymentGateway? @relation(fields: [paymentGatewayId], references: [id])
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  paymentGateway   PaymentGateway? @relation(fields: [paymentGatewayId], references: [id])
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   @@index([userId])
   @@index([status])
@@ -207,13 +207,13 @@ model Payment {
 }
 
 model PaymentGateway {
-  id        String    @id @default(uuid())
-  name      String    @unique // e.g., "Pakasir", "Ipaymu"
-  logo      String?   // Optional: URL to logo for display in frontend
-  config    Json?     // Store gateway-specific config (API keys, slugs etc.)
-  enabled   Boolean   @default(false)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id        String   @id @default(uuid())
+  name      String   @unique // e.g., "Pakasir", "Ipaymu"
+  logo      String? // Optional: URL to logo for display in frontend
+  config    Json? // Store gateway-specific config (API keys, slugs etc.)
+  enabled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   payments Payment[]
 }
@@ -261,7 +261,7 @@ model BookingHold {
   startTime DateTime
   endTime   DateTime
   expiresAt DateTime
-  price     Float             // Rental price for this hold
+  price     Float // Rental price for this hold
   status    BookingHoldStatus @default(ACTIVE)
   paymentId String?           @unique
 
@@ -290,4 +290,14 @@ model Notification {
 
   @@index([userId, isRead])
   @@index([createdAt])
+}
+
+model WahaConfig {
+  id          String   @id @default(uuid())
+  enabled     Boolean  @default(false)
+  wahaUrl     String?
+  wahaSession String   @default("default")
+  wahaApiKey  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
