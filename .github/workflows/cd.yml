@@ -26,7 +26,10 @@ jobs:
             export SHA=${{ github.event.workflow_run.head_sha }}
             docker compose pull
             
-            # Roll rolling restart
+            # Apply DB migration (exec into running backend container)
+            docker compose exec backend npx prisma migrate deploy || true
+
+            # Rolling restart
             docker compose up -d --no-deps backend frontend nginx
             
             # Health check backend
