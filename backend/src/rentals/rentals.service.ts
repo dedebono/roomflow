@@ -1,11 +1,23 @@
-import { Injectable, NotFoundException, ConflictException, OnModuleInit, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  OnModuleInit,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CheckAvailabilityDto } from './dto/check-availability.dto';
 import { CreateHoldDto } from './dto/create-hold.dto';
 import { CreateRentalSlotDto } from './dto/create-rental-slot.dto';
 import { UpdateRentalSlotDto } from './dto/update-rental-slot.dto';
-import { BookingHoldStatus, BookingStatus, PaymentStatus, RoomCategory } from '@prisma/client';
+import {
+  BookingHoldStatus,
+  BookingStatus,
+  PaymentStatus,
+  RoomStatus,
+  RoomCategory,
+} from '@prisma/client';
 import { getPrismaPagination } from '../common/dto/pagination.dto';
 
 @Injectable()
@@ -52,19 +64,26 @@ export class RentalsService implements OnModuleInit {
     }
 
     if (expiredHolds.length > 0) {
-      this.logger.log(`Auto-cancelled ${expiredHolds.length} expired BookingHolds`);
+      this.logger.log(
+        `Auto-cancelled ${expiredHolds.length} expired BookingHolds`,
+      );
     }
   }
 
   /**
    * Get all rentable rooms (NEW: returns ALL rooms, no date filtering).
-   * 
+   *
    * The calendar-based booking flow fetches rooms here, then checks
    * availability per-date on the room detail page via getRoomAvailability().
    *
    * Date params (date, startDate, endDate) are ignored for backward compatibility.
    */
-  async getAvailableRooms(date?: string, startDate?: string, endDate?: string, category?: RoomCategory) {
+  async getAvailableRooms(
+    date?: string,
+    startDate?: string,
+    endDate?: string,
+    category?: RoomCategory,
+  ) {
     // NEW BEHAVIOR: Ignore all date params. Return ALL rentable rooms.
     // Date filtering moved to getRoomAvailability() endpoint on room detail page.
 
@@ -84,13 +103,14 @@ export class RentalsService implements OnModuleInit {
     });
 
     // Return all rooms with price info
-    const availableRooms: any[] = rentableRooms.map(room => ({
+    const availableRooms: any[] = rentableRooms.map((room) => ({
       ...room,
       category: room.category,
       // Show price range from available slots
-      price: room.rentalSlots.length > 0
-        ? Math.min(...room.rentalSlots.map(s => s.price))
-        : 0,
+      price:
+        room.rentalSlots.length > 0
+          ? Math.min(...room.rentalSlots.map((s) => s.price))
+          : 0,
     }));
 
     return availableRooms;
@@ -102,15 +122,16 @@ export class RentalsService implements OnModuleInit {
     startTime: string,
     endTime: string,
   ) {
-    const startDate = new Date(date);
+    // Parse date string as UTC midnight to avoid local TZ day-shift
+    const startDate = new Date(date + 'T00:00:00.000Z');
     const [startHour, startMin] = startTime.split(':').map(Number);
     const [endHour, endMin] = endTime.split(':').map(Number);
 
     const startTimeDate = new Date(startDate);
-    startTimeDate.setHours(startHour, startMin, 0, 0);
+    startTimeDate.setUTCHours(startHour, startMin, 0, 0);
 
     const endTimeDate = new Date(startDate);
-    endTimeDate.setHours(endHour, endMin, 0, 0);
+    endTimeDate.setUTCHours(endHour, endMin, 0, 0);
 
     if (startTimeDate >= endTimeDate) {
       throw new ConflictException('Start time must be before end time');
@@ -136,7 +157,10 @@ export class RentalsService implements OnModuleInit {
     });
 
     if (bookingConflict) {
-      return { available: false, reason: 'Room is booked for this time period' };
+      return {
+        available: false,
+        reason: 'Room is booked for this time period',
+      };
     }
 
     // Check for active booking holds
@@ -163,15 +187,16 @@ export class RentalsService implements OnModuleInit {
     startTime: string,
     endTime: string,
   ) {
-    const startDate = new Date(date);
+    // Parse date string as UTC midnight to avoid local TZ day-shift
+    const startDate = new Date(date + 'T00:00:00.000Z');
     const [startHour, startMin] = startTime.split(':').map(Number);
     const [endHour, endMin] = endTime.split(':').map(Number);
 
     const startTimeDate = new Date(startDate);
-    startTimeDate.setHours(startHour, startMin, 0, 0);
+    startTimeDate.setUTCHours(startHour, startMin, 0, 0);
 
     const endTimeDate = new Date(startDate);
-    endTimeDate.setHours(endHour, endMin, 0, 0);
+    endTimeDate.setUTCHours(endHour, endMin, 0, 0);
 
     if (startTimeDate >= endTimeDate) {
       throw new ConflictException('Start time must be before end time');
@@ -201,7 +226,9 @@ export class RentalsService implements OnModuleInit {
     });
 
     if (existingHold) {
-      throw new ConflictException('You already have an active hold for this time period');
+      throw new ConflictException(
+        'You already have an active hold for this time period',
+      );
     }
 
     const slotDayOfWeek = ((startTimeDate.getUTCDay() + 6) % 7) + 1;
@@ -215,7 +242,9 @@ export class RentalsService implements OnModuleInit {
     });
 
     // Find the slot that contains the requested time range
-    const slot = allDaySlots.find(s => s.startTime <= startTime && s.endTime >= endTime);
+    const slot = allDaySlots.find(
+      (s) => s.startTime <= startTime && s.endTime >= endTime,
+    );
     const price = slot?.price || 0;
 
     // Create hold that expires in 1 hour from now
@@ -395,7 +424,10 @@ export class RentalsService implements OnModuleInit {
   // Get all holds for a renter (for renter bookings page)
   async getMyHolds(userId: string) {
     return this.prisma.bookingHold.findMany({
-      where: { userId },
+      where: {
+        userId,
+        status: { in: [BookingHoldStatus.ACTIVE, BookingHoldStatus.CONVERTED] },
+      },
       include: {
         room: { include: { building: true } },
         payments: {
@@ -448,24 +480,33 @@ export class RentalsService implements OnModuleInit {
       throw new NotFoundException('Booking hold not found');
     }
 
-    if (hold.status !== BookingHoldStatus.ACTIVE) {
-      throw new ConflictException('Only active holds can be cancelled');
+    if (
+      hold.status !== BookingHoldStatus.ACTIVE &&
+      hold.status !== BookingHoldStatus.EXPIRED &&
+      hold.status !== BookingHoldStatus.CANCELLED
+    ) {
+      throw new ConflictException('Hold cannot be cancelled');
     }
 
-    const cancelled = await this.prisma.bookingHold.update({
-      where: { id },
-      data: { status: BookingHoldStatus.CANCELLED },
-    });
+    // Update to CANCELLED only if not already cancelled
+    if (hold.status !== BookingHoldStatus.CANCELLED) {
+      const cancelled = await this.prisma.bookingHold.update({
+        where: { id },
+        data: { status: BookingHoldStatus.CANCELLED },
+      });
 
-    await this.notificationsService.create(
-      userId,
-      'BOOKING_CANCELLED',
-      'Booking Hold Cancelled',
-      `Your hold for ${hold.room.name} has been cancelled.`,
-      JSON.stringify({ holdId: id, roomId: hold.roomId }),
-    );
+      await this.notificationsService.create(
+        userId,
+        'BOOKING_CANCELLED',
+        'Booking Hold Cancelled',
+        `Your hold for ${hold.room.name} has been cancelled.`,
+        JSON.stringify({ holdId: id, roomId: hold.roomId }),
+      );
 
-    return cancelled;
+      return cancelled;
+    }
+
+    return hold; // already cancelled
   }
 
   // Get available time slots for a room on a given date
@@ -475,7 +516,9 @@ export class RentalsService implements OnModuleInit {
     // This is stored in DB and must match for all slot queries.
     const dateObj = new Date(date + 'T00:00:00');
     const dayOfWeek = ((dateObj.getUTCDay() + 6) % 7) + 1; // 1-7 (Mon=1)
-    this.logger.log(`[getAvailableSlots] roomId=${roomId}, date=${date}, utcDay=${dateObj.getUTCDay()}, dayOfWeek=${dayOfWeek}`);
+    this.logger.log(
+      `[getAvailableSlots] roomId=${roomId}, date=${date}, utcDay=${dateObj.getUTCDay()}, dayOfWeek=${dayOfWeek}`,
+    );
 
     // Get all active rental slots for this room on this day
     const slots = await this.prisma.rentalSlot.findMany({
@@ -545,7 +588,7 @@ export class RentalsService implements OnModuleInit {
       slotEndTime.setHours(slotEndH, slotEndM, 0, 0);
 
       // Expand into hourly sub-slots
-      let currentHour = new Date(slotStartTime);
+      const currentHour = new Date(slotStartTime);
       while (currentHour < slotEndTime) {
         const subStart = new Date(currentHour);
         const subEnd = new Date(currentHour);
@@ -571,7 +614,9 @@ export class RentalsService implements OnModuleInit {
         currentHour.setHours(currentHour.getHours() + 1);
       }
     }
-    this.logger.log(`[getAvailableSlots] returning ${result.length} hourly slots`);
+    this.logger.log(
+      `[getAvailableSlots] returning ${result.length} hourly slots`,
+    );
     return result;
   }
 
@@ -658,12 +703,22 @@ export class RentalsService implements OnModuleInit {
     const daysInMonth = new Date(Date.UTC(year, monthNum - 1, 0)).getUTCDate();
 
     // Build availability map for each day in month
-    const availability: Record<string, { available: boolean; hasSlots: boolean }> = {};
+    const availability: Record<
+      string,
+      { available: boolean; hasSlots: boolean }
+    > = {};
 
     // DEBUG: log DB dayOfWeek values for MLB Hall
     if (room.name.includes('MLB')) {
-      const dbDays = [...new Set(room.rentalSlots.map(s => s.dayOfWeek))].sort((a,b)=>a-b);
-      console.log('[DEBUG] MLB Hall DB dayOfWeek:', dbDays, '-> names:', dbDays.map(d => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]));
+      const dbDays = [
+        ...new Set(room.rentalSlots.map((s) => s.dayOfWeek)),
+      ].sort((a, b) => a - b);
+      console.log(
+        '[DEBUG] MLB Hall DB dayOfWeek:',
+        dbDays,
+        '-> names:',
+        dbDays.map((d) => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d]),
+      );
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
@@ -675,7 +730,9 @@ export class RentalsService implements OnModuleInit {
       const dayOfWeek = ((dateObj.getUTCDay() + 6) % 7) + 1;
 
       // Get slots for this day-of-week
-      const daySlots = room.rentalSlots.filter(s => s.dayOfWeek === dayOfWeek);
+      const daySlots = room.rentalSlots.filter(
+        (s) => s.dayOfWeek === dayOfWeek,
+      );
 
       if (daySlots.length === 0) {
         availability[dateStr] = { available: false, hasSlots: false };
@@ -685,7 +742,12 @@ export class RentalsService implements OnModuleInit {
       // Check if at least one slot has no conflicts
       let hasAvailableSlot = false;
       for (const slot of daySlots) {
-        const availCheck = await this.checkAvailability(roomId, dateStr, slot.startTime, slot.endTime);
+        const availCheck = await this.checkAvailability(
+          roomId,
+          dateStr,
+          slot.startTime,
+          slot.endTime,
+        );
         if (availCheck.available) {
           hasAvailableSlot = true;
           break;
@@ -700,5 +762,39 @@ export class RentalsService implements OnModuleInit {
       month,
       availability,
     };
+  }
+
+  async getRenterStats(userId: string) {
+    const [totalBookings, activeBookings, pendingPayments, availableRooms] = await Promise.all([
+      // Total completed rentals (approved/confirmation paid)
+      this.prisma.booking.count({
+        where: { userId, status: BookingStatus.BOOKED },
+      }),
+      // Active bookings (approved but not yet past endTime)
+      this.prisma.booking.count({
+        where: {
+          userId,
+          status: BookingStatus.BOOKED,
+          endTime: { gte: new Date() },
+        },
+      }),
+      // Pending holds (ACTIVE)
+      this.prisma.bookingHold.count({
+        where: { userId, status: BookingHoldStatus.ACTIVE },
+      }),
+      // Available rooms count
+      this.prisma.room.count({
+        where: { status: RoomStatus.ACTIVE },
+      }),
+    ]);
+
+    // Recent activity: latest 5 notifications
+    const recentActivity = await this.prisma.notification.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
+
+    return { totalBookings, activeBookings, pendingPayments, availableRooms, recentActivity };
   }
 }
