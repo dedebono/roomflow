@@ -30,7 +30,9 @@ export class NotificationsService {
     });
 
     // Send real-time notification via WebSocket (non-blocking)
-    this.webSocketService.sendNotification(userId, notification).catch(err => console.error('WebSocket notification failed:', err));
+    this.webSocketService
+      .sendNotification(userId, notification)
+      .catch((err) => console.error('WebSocket notification failed:', err));
 
     // Send WhatsApp notification via WAHA when user has WhatsApp number
     const user = await this.prisma.user.findUnique({
@@ -39,7 +41,9 @@ export class NotificationsService {
     });
 
     if (user?.whatsappNumber) {
-      this.whatsAppService.sendText(user.whatsappNumber, `*${title}*\n\n${message}`).catch(err => console.error('WhatsApp failed:', err));
+      this.whatsAppService
+        .sendText(user.whatsappNumber, `*${title}*\n\n${message}`)
+        .catch((err) => console.error('WhatsApp failed:', err));
     }
 
     return notification;

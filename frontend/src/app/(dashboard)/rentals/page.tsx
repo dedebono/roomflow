@@ -136,8 +136,8 @@ export default function RentalsDashboardPage() {
     {
       header: 'Date',
       cell: (h: RentalHold) => {
-        const parsedDate = new Date(h.holdDate as string);
-        const d: Date = !isNaN(parsedDate.getTime()) ? parsedDate : new Date(h.holdDate as string);
+        const s = typeof h.holdDate === 'string' ? h.holdDate : String(h.holdDate);
+        const d = new Date(s.substring(0, 10) + 'T00:00:00');
         return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString();
       },
     },
@@ -331,8 +331,8 @@ export default function RentalsDashboardPage() {
                 <p className="text-xs text-slate-500">Date</p>
                 <p className="text-slate-800 font-medium">
                   {(() => {
-                    const parsedD = new Date(selectedHold.holdDate as string);
-                    const d: Date = !isNaN(parsedD.getTime()) ? parsedD : new Date(selectedHold.holdDate as string);
+                    const s = typeof selectedHold.holdDate === 'string' ? selectedHold.holdDate : String(selectedHold.holdDate);
+                    const d = new Date(s.substring(0, 10) + 'T00:00:00');
                     return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString();
                   })()}
                 </p>

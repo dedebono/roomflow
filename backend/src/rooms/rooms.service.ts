@@ -29,7 +29,12 @@ export class RoomsService {
     });
   }
 
-  async findAll(buildingId?: string, status?: RoomStatus, page?: number, limit?: number) {
+  async findAll(
+    buildingId?: string,
+    status?: RoomStatus,
+    page?: number,
+    limit?: number,
+  ) {
     const { skip, take } = getPrismaPagination(page, limit);
     return this.prisma.room.findMany({
       where: {
@@ -70,7 +75,11 @@ export class RoomsService {
     return room;
   }
 
-  async update(id: string, updateRoomDto: UpdateRoomDto, imageFile?: Express.Multer.File) {
+  async update(
+    id: string,
+    updateRoomDto: UpdateRoomDto,
+    imageFile?: Express.Multer.File,
+  ) {
     const room = await this.findOne(id);
 
     let imageUrl = room.imageUrl;

@@ -1,4 +1,13 @@
-import { IsNotEmpty, IsUUID, IsNumber, IsOptional, IsString, Min, Max, MaxLength } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsUUID,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  Max,
+  MaxLength,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UploadPaymentDto {

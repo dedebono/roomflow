@@ -194,7 +194,7 @@ export default function RenterChatPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <p className="font-semibold text-slate-800 truncate">
-                            {conv.userName || 'Manager'}
+                            {conv.participant2?.name || conv.participant1?.name || 'Manager'}
                           </p>
                           <span className="text-xs text-slate-500">
                             {conv.lastMessageAt && formatTime(conv.lastMessageAt)}
@@ -202,7 +202,7 @@ export default function RenterChatPage() {
                         </div>
                         {conv.lastMessage && (
                           <p className="text-xs text-slate-500 truncate mt-0.5">
-                            {conv.lastMessage}
+                            {conv.lastMessage.content}
                           </p>
                         )}
                       </div>
@@ -229,7 +229,7 @@ export default function RenterChatPage() {
                   </div>
                   <div>
                     <CardTitle className="text-base">
-                      {selectedConversation.userName || 'Room Manager'}
+                      {selectedConversation.participant2?.name || selectedConversation.participant1?.name || 'Room Manager'}
                     </CardTitle>
                     <CardDescription className="text-xs">Room Manager</CardDescription>
                   </div>

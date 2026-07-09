@@ -15,7 +15,9 @@ import { JwtService } from '@nestjs/jwt';
     credentials: true,
   },
 })
-export class RoomFlowWebSocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class RoomFlowWebSocketGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   private readonly logger = new Logger('RoomFlowWebSocketGateway');
 
   @WebSocketServer()
@@ -32,7 +34,9 @@ export class RoomFlowWebSocketGateway implements OnGatewayConnection, OnGatewayD
       const token = url.searchParams.get('token');
 
       if (!token) {
-        this.logger.warn(`Client ${client.id || 'unknown'} connected without token`);
+        this.logger.warn(
+          `Client ${client.id || 'unknown'} connected without token`,
+        );
         client.disconnect(true);
         return;
       }
@@ -103,12 +107,18 @@ export class RoomFlowWebSocketGateway implements OnGatewayConnection, OnGatewayD
   }
 
   sendBookingUpdate(userId: string, bookingData: any) {
-    const payload = JSON.stringify({ type: 'booking_update', data: bookingData });
+    const payload = JSON.stringify({
+      type: 'booking_update',
+      data: bookingData,
+    });
     this.sendToUser(userId, payload);
   }
 
   sendPaymentUpdate(userId: string, paymentData: any) {
-    const payload = JSON.stringify({ type: 'payment_update', data: paymentData });
+    const payload = JSON.stringify({
+      type: 'payment_update',
+      data: paymentData,
+    });
     this.sendToUser(userId, payload);
   }
 
@@ -123,7 +133,10 @@ export class RoomFlowWebSocketGateway implements OnGatewayConnection, OnGatewayD
   }
 
   sendNotification(userId: string, notification: any) {
-    const payload = JSON.stringify({ type: 'notification', data: notification });
+    const payload = JSON.stringify({
+      type: 'notification',
+      data: notification,
+    });
     this.sendToUser(userId, payload);
   }
 }

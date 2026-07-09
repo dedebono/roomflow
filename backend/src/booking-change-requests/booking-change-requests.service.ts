@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { EmailService } from '../email/email.service';
@@ -21,14 +26,17 @@ export class BookingChangeRequestsService {
       include: { room: true, user: true },
     });
     if (!booking) throw new NotFoundException('Booking not found');
-    if (booking.userId !== userId) throw new ForbiddenException('Not your booking');
+    if (booking.userId !== userId)
+      throw new ForbiddenException('Not your booking');
 
     const request = await this.prisma.bookingChangeRequest.create({
       data: {
         bookingId: dto.bookingId,
         requestedById: userId,
         requestedRoomId: dto.requestedRoomId,
-        requestedStart: dto.requestedStart ? new Date(dto.requestedStart) : null,
+        requestedStart: dto.requestedStart
+          ? new Date(dto.requestedStart)
+          : null,
         requestedEnd: dto.requestedEnd ? new Date(dto.requestedEnd) : null,
         reason: dto.reason,
       },
@@ -96,7 +104,8 @@ export class BookingChangeRequestsService {
     const newStart = request.requestedStart || request.booking.startTime;
     const newEnd = request.requestedEnd || request.booking.endTime;
 
-    const hasChanges = request.requestedRoomId || request.requestedStart || request.requestedEnd;
+    const hasChanges =
+      request.requestedRoomId || request.requestedStart || request.requestedEnd;
     const isCancellation = !hasChanges;
 
     if (!isCancellation) {
@@ -108,7 +117,9 @@ export class BookingChangeRequestsService {
       );
 
       if (hasConflict) {
-        throw new BadRequestException('Requested changes conflict with existing bookings');
+        throw new BadRequestException(
+          'Requested changes conflict with existing bookings',
+        );
       }
     }
 

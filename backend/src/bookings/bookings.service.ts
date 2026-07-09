@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { BookingStatus, Role, BookingHoldStatus } from '@prisma/client';
@@ -24,10 +29,7 @@ export class BookingsService {
         roomId,
         status: BookingStatus.BOOKED,
         id: excludeBookingId ? { not: excludeBookingId } : undefined,
-        AND: [
-          { startTime: { lt: endTime } },
-          { endTime: { gt: startTime } },
-        ],
+        AND: [{ startTime: { lt: endTime } }, { endTime: { gt: startTime } }],
       },
     });
 
@@ -36,10 +38,7 @@ export class BookingsService {
       where: {
         roomId,
         status: BookingHoldStatus.ACTIVE,
-        AND: [
-          { startTime: { lt: endTime } },
-          { endTime: { gt: startTime } },
-        ],
+        AND: [{ startTime: { lt: endTime } }, { endTime: { gt: startTime } }],
       },
     });
 
@@ -54,9 +53,12 @@ export class BookingsService {
       throw new BadRequestException('Start time must be before end time');
     }
 
-    const room = await this.prisma.room.findUnique({ where: { id: createBookingDto.roomId } });
+    const room = await this.prisma.room.findUnique({
+      where: { id: createBookingDto.roomId },
+    });
     if (!room) throw new NotFoundException('Room not found');
-    if (room.status === 'MAINTENANCE') throw new BadRequestException('Room is under maintenance');
+    if (room.status === 'MAINTENANCE')
+      throw new BadRequestException('Room is under maintenance');
 
     const hasConflict = await this.validateBookingConflict(
       createBookingDto.roomId,
@@ -65,7 +67,9 @@ export class BookingsService {
     );
 
     if (hasConflict) {
-      throw new BadRequestException('Room is already booked or has a pending rental hold for this time period');
+      throw new BadRequestException(
+        'Room is already booked or has a pending rental hold for this time period',
+      );
     }
 
     const booking = await this.prisma.booking.create({
@@ -95,7 +99,12 @@ export class BookingsService {
     return booking;
   }
 
-  async findAll(roomId?: string, userId?: string, page?: number, limit?: number) {
+  async findAll(
+    roomId?: string,
+    userId?: string,
+    page?: number,
+    limit?: number,
+  ) {
     const { skip, take } = getPrismaPagination(page, limit);
     return this.prisma.booking.findMany({
       where: {
@@ -116,17 +125,23 @@ export class BookingsService {
   }
 
   async cancel(bookingId: string, userId: string, userRole: Role) {
-    const booking = await this.prisma.booking.findUnique({ 
+    const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: { room: true, user: { select: { email: true, name: true } } },
     });
     if (!booking) throw new NotFoundException('Booking not found');
 
     if (userRole === Role.USER) {
-      throw new ForbiddenException('USER role cannot directly cancel bookings. Please submit a cancellation request instead.');
+      throw new ForbiddenException(
+        'USER role cannot directly cancel bookings. Please submit a cancellation request instead.',
+      );
     }
 
-    if (userRole !== Role.ADMIN_IT && userRole !== Role.ROOM_ADMIN && booking.userId !== userId) {
+    if (
+      userRole !== Role.ADMIN_IT &&
+      userRole !== Role.ROOM_ADMIN &&
+      booking.userId !== userId
+    ) {
       throw new ForbiddenException('You can only cancel your own bookings');
     }
 
@@ -145,13 +160,28 @@ export class BookingsService {
     });
   }
 
-  async update(bookingId: string, updateDto: { title?: string; notes?: string; roomId?: string; startTime?: string; endTime?: string }) {
-    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } });
+  async update(
+    bookingId: string,
+    updateDto: {
+      title?: string;
+      notes?: string;
+      roomId?: string;
+      startTime?: string;
+      endTime?: string;
+    },
+  ) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+    });
     if (!booking) throw new NotFoundException('Booking not found');
 
     const roomId = updateDto.roomId || booking.roomId;
-    const startTime = updateDto.startTime ? new Date(updateDto.startTime) : booking.startTime;
-    const endTime = updateDto.endTime ? new Date(updateDto.endTime) : booking.endTime;
+    const startTime = updateDto.startTime
+      ? new Date(updateDto.startTime)
+      : booking.startTime;
+    const endTime = updateDto.endTime
+      ? new Date(updateDto.endTime)
+      : booking.endTime;
 
     if (startTime >= endTime) {
       throw new BadRequestException('Start time must be before end time');
@@ -165,7 +195,9 @@ export class BookingsService {
     );
 
     if (hasConflict) {
-      throw new BadRequestException('Room is already booked or has a pending rental hold for this time period');
+      throw new BadRequestException(
+        'Room is already booked or has a pending rental hold for this time period',
+      );
     }
 
     return this.prisma.booking.update({

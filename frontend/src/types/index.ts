@@ -135,19 +135,17 @@ export interface ChatMessage {
 }
 
 // API response shapes from /chat/conversations endpoints
-// getConversationsForUser returns flat shape (list items)
+// getConversationsForUser returns same shape as createOrGetConversation
 export interface Conversation {
-  userId: string;
-  userName: string;
-  userEmail: string;
-  lastMessage: string;
-  lastMessageAt: string;
-  unreadCount?: number;
-  // For selected conversation (from createOrGetConversation):
   id?: string;
+  userId: string;
   participant1Id?: string;
   participant2Id?: string;
+  participant1?: { id: string; name: string; email: string; role: string };
   participant2?: { id: string; name: string; email: string; role: string };
+  lastMessage?: { content: string; createdAt: string };
+  lastMessageAt?: string;
+  unreadCount?: number;
 }
 
 export interface Notification {

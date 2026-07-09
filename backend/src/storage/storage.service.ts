@@ -11,7 +11,8 @@ export class StorageService {
 
   constructor(private configService: ConfigService) {
     this.uploadDir = path.resolve(__dirname, '..', '..', 'uploads');
-    this.storageType = this.configService.get<string>('STORAGE_TYPE') || 'LOCAL';
+    this.storageType =
+      this.configService.get<string>('STORAGE_TYPE') || 'LOCAL';
     if (!fs.existsSync(this.uploadDir)) {
       fs.mkdirSync(this.uploadDir, { recursive: true });
     }

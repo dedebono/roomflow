@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import type { WahaConfig } from '@prisma/client';
 
 @Injectable()
 export class WahaConfigService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async get(): Promise<Prisma.WahaConfigGetPayload<object>> {
+  async get(): Promise<WahaConfig> {
     let config = await this.prisma.wahaConfig.findFirst();
     if (!config) {
       config = await this.prisma.wahaConfig.create({
@@ -39,7 +39,9 @@ export class WahaConfigService {
       data: {
         ...(data.enabled !== undefined && { enabled: data.enabled }),
         ...(data.wahaUrl !== undefined && { wahaUrl: data.wahaUrl }),
-        ...(data.wahaSession !== undefined && { wahaSession: data.wahaSession }),
+        ...(data.wahaSession !== undefined && {
+          wahaSession: data.wahaSession,
+        }),
         ...(data.wahaApiKey !== undefined && { wahaApiKey: data.wahaApiKey }),
       },
     });

@@ -31,7 +31,12 @@ export class RentalsController {
     @Query('endDate') endDate: string,
     @Query('category') category?: string,
   ) {
-    return this.rentalsService.getAvailableRooms(date, startDate, endDate, category as RoomCategory);
+    return this.rentalsService.getAvailableRooms(
+      date,
+      startDate,
+      endDate,
+      category as RoomCategory,
+    );
   }
 
   @Get('rooms/:id')
@@ -45,7 +50,10 @@ export class RentalsController {
   @Header('Cache-Control', 'no-cache, no-store, must-revalidate')
   @Header('Pragma', 'no-cache')
   @Header('Expires', '0')
-  getRoomAvailability(@Param('id') roomId: string, @Query('month') month: string) {
+  getRoomAvailability(
+    @Param('id') roomId: string,
+    @Query('month') month: string,
+  ) {
     return this.rentalsService.getRoomAvailability(roomId, month);
   }
 
@@ -75,9 +83,7 @@ export class RentalsController {
   }
 
   @Post('book-from-hold/:holdId')
-  bookFromHold(
-    @Param('holdId') holdId: string,
-  ) {
+  bookFromHold(@Param('holdId') holdId: string) {
     return this.rentalsService.bookFromHold(holdId);
   }
 
@@ -88,10 +94,7 @@ export class RentalsController {
 
   @Get('holds')
   @Roles(Role.ADMIN_IT, Role.ROOM_ADMIN)
-  getAllHolds(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
+  getAllHolds(@Query('page') page?: number, @Query('limit') limit?: number) {
     return this.rentalsService.getAllHolds(page, limit);
   }
 
@@ -105,11 +108,13 @@ export class RentalsController {
     return this.rentalsService.getMyHolds(userId);
   }
 
+  @Get('stats')
+  getStats(@CurrentUser('userId') userId: string) {
+    return this.rentalsService.getRenterStats(userId);
+  }
+
   @Get('holds/:id')
-  getHoldById(
-    @CurrentUser('userId') userId: string,
-    @Param('id') id: string,
-  ) {
+  getHoldById(@CurrentUser('userId') userId: string, @Param('id') id: string) {
     return this.rentalsService.getHoldById(id, userId);
   }
 
@@ -129,12 +134,18 @@ export class RentalsController {
   }
 
   @Get('available-slots')
-  getAvailableSlots(@Query('roomId') roomId: string, @Query('date') date: string) {
+  getAvailableSlots(
+    @Query('roomId') roomId: string,
+    @Query('date') date: string,
+  ) {
     return this.rentalsService.getAvailableSlots(roomId, date);
   }
 
   @Get('active-hold')
-  getActiveHold(@CurrentUser('userId') userId: string, @Query('roomId') roomId: string) {
+  getActiveHold(
+    @CurrentUser('userId') userId: string,
+    @Query('roomId') roomId: string,
+  ) {
     return this.rentalsService.getActiveHoldForRoom(userId, roomId);
   }
 
@@ -146,10 +157,7 @@ export class RentalsController {
 
   @Patch('slots/:id')
   @Roles(Role.ADMIN_IT, Role.ROOM_ADMIN)
-  updateSlot(
-    @Param('id') id: string,
-    @Body() dto: UpdateRentalSlotDto,
-  ) {
+  updateSlot(@Param('id') id: string, @Body() dto: UpdateRentalSlotDto) {
     return this.rentalsService.updateSlot(id, dto);
   }
 

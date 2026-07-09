@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  backend:
+    image: roomflow-backend:latest
+    container_name: backend
+    restart: always
+    networks:
+      - roomflow_default
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://roomflow:roomflow@9e08476566dd_roomflow-postgres:5432/roomflow?schema=public
+      PORT: "3000"
+      NODE_ENV: production
+      STORAGE_TYPE: LOCAL
+      ALLOWED_ORIGINS: "*"
+      EMAIL_ENABLED: "false"
+      WAHA_ENABLED: "true"
+      JWT_SECRET: "roomflow123!"
+networks:
+  roomflow_default:
+    external: true

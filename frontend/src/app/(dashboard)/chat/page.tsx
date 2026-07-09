@@ -181,7 +181,7 @@ export default function ManagerChatPage() {
   };
 
   const getRenterName = (conv: Conversation) => {
-    return conv.userName || 'Renter';
+    return conv.participant2?.name || conv.participant1?.name || 'Renter';
   };
 
   return (
@@ -255,7 +255,7 @@ export default function ManagerChatPage() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between">
                                   <p className="font-semibold text-slate-800 truncate">
-                                    {conv.userName || 'Renter'}
+                                    {conv.participant2?.name || conv.participant1?.name || 'Renter'}
                                   </p>
                                   <span className="text-xs text-slate-500">
                                     {conv.lastMessageAt && formatTime(conv.lastMessageAt)}
@@ -263,7 +263,7 @@ export default function ManagerChatPage() {
                                 </div>
                                 {conv.lastMessage && (
                                   <p className="text-xs text-slate-500 truncate mt-0.5">
-                                    {conv.lastMessage}
+                                    {conv.lastMessage.content}
                                   </p>
                                 )}
                               </div>
@@ -296,10 +296,10 @@ export default function ManagerChatPage() {
                   </div>
                   <div>
                     <CardTitle className="text-base">
-                      {selectedConversation.participant2?.name || selectedConversation.userName || 'Renter'}
+                      {selectedConversation.participant2?.name || selectedConversation.participant1?.name || 'Renter'}
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      {selectedConversation.participant2?.email || selectedConversation.userEmail}
+                      {selectedConversation.participant2?.email || selectedConversation.participant1?.email}
                     </CardDescription>
                   </div>
                 </div>

@@ -24,7 +24,7 @@ const formatRupiah = (amount: number | undefined) =>
     ? 'Rp ' + amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
     : 'Rp -';
 
-const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+const formatDate = (dateStr: string) => new Date(dateStr.substring(0, 10) + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 const formatTimeDisplay = (isoStr: string) => isoStr.substring(11, 16);  // "2026-06-23T09:00:00.000Z" -> "09:00"
 
 interface TimeSlot {

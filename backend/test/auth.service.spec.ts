@@ -1,5 +1,9 @@
 import { JwtService } from '@nestjs/jwt';
-import { BadRequestException, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  BadRequestException,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { AuthService } from '../src/auth/auth.service';
 import * as bcrypt from 'bcrypt';
 
@@ -30,7 +34,9 @@ describe('AuthService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    jest.spyOn(bcrypt, 'compare').mockImplementation(() => Promise.resolve(true));
+    jest
+      .spyOn(bcrypt, 'compare')
+      .mockImplementation(() => Promise.resolve(true));
     jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed-password');
 
     service = new AuthService(
@@ -58,7 +64,10 @@ describe('AuthService', () => {
       };
       mockPrisma.user.findUnique.mockResolvedValue(user);
 
-      const result = await service.login({ email: 'test@test.com', password: 'password123' });
+      const result = await service.login({
+        email: 'test@test.com',
+        password: 'password123',
+      });
 
       expect(result.access_token).toBeDefined();
       expect(result.user.email).toBe('test@test.com');
@@ -68,8 +77,9 @@ describe('AuthService', () => {
     it('should throw UnauthorizedException when user not found', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.login({ email: 'notfound@test.com', password: 'password123' }))
-        .rejects.toThrow(UnauthorizedException);
+      await expect(
+        service.login({ email: 'notfound@test.com', password: 'password123' }),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException on wrong password', async () => {
@@ -85,8 +95,9 @@ describe('AuthService', () => {
       mockPrisma.user.findUnique.mockResolvedValue(user);
       (bcrypt.compare as jest.Mock).mockResolvedValueOnce(false);
 
-      await expect(service.login({ email: 'test@test.com', password: 'wrongpassword' }))
-        .rejects.toThrow(UnauthorizedException);
+      await expect(
+        service.login({ email: 'test@test.com', password: 'wrongpassword' }),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 
@@ -108,20 +119,25 @@ describe('AuthService', () => {
         email: 'new@test.com',
         name: 'New User',
         password: 'password123',
-      } as any);
+      });
 
       expect(result.user.email).toBe('new@test.com');
       expect(mockPrisma.user.create).toHaveBeenCalled();
     });
 
     it('should throw ConflictException when email already exists', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ id: 'existing', email: 'existing@test.com' });
-
-      await expect(service.register({
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'existing',
         email: 'existing@test.com',
-        name: 'Existing User',
-        password: 'password123',
-      } as any)).rejects.toThrow(ConflictException);
+      });
+
+      await expect(
+        service.register({
+          email: 'existing@test.com',
+          name: 'Existing User',
+          password: 'password123',
+        } as any),
+      ).rejects.toThrow(ConflictException);
     });
   });
 });

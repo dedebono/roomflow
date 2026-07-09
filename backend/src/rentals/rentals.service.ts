@@ -122,16 +122,16 @@ export class RentalsService implements OnModuleInit {
     startTime: string,
     endTime: string,
   ) {
-    // Parse date string as UTC midnight to avoid local TZ day-shift
-    const startDate = new Date(date + 'T00:00:00.000Z');
+    // Parse date string as LOCAL midnight so the selected date stays correct in UTC+7
+    const startDate = new Date(date + 'T00:00:00');
     const [startHour, startMin] = startTime.split(':').map(Number);
     const [endHour, endMin] = endTime.split(':').map(Number);
 
     const startTimeDate = new Date(startDate);
-    startTimeDate.setUTCHours(startHour, startMin, 0, 0);
+    startTimeDate.setHours(startHour, startMin, 0, 0);
 
     const endTimeDate = new Date(startDate);
-    endTimeDate.setUTCHours(endHour, endMin, 0, 0);
+    endTimeDate.setHours(endHour, endMin, 0, 0);
 
     if (startTimeDate >= endTimeDate) {
       throw new ConflictException('Start time must be before end time');
@@ -187,16 +187,16 @@ export class RentalsService implements OnModuleInit {
     startTime: string,
     endTime: string,
   ) {
-    // Parse date string as UTC midnight to avoid local TZ day-shift
-    const startDate = new Date(date + 'T00:00:00.000Z');
+    // Parse date string as LOCAL midnight so the selected date stays correct in UTC+7
+    const startDate = new Date(date + 'T00:00:00');
     const [startHour, startMin] = startTime.split(':').map(Number);
     const [endHour, endMin] = endTime.split(':').map(Number);
 
     const startTimeDate = new Date(startDate);
-    startTimeDate.setUTCHours(startHour, startMin, 0, 0);
+    startTimeDate.setHours(startHour, startMin, 0, 0);
 
     const endTimeDate = new Date(startDate);
-    endTimeDate.setUTCHours(endHour, endMin, 0, 0);
+    endTimeDate.setHours(endHour, endMin, 0, 0);
 
     if (startTimeDate >= endTimeDate) {
       throw new ConflictException('Start time must be before end time');
@@ -231,7 +231,7 @@ export class RentalsService implements OnModuleInit {
       );
     }
 
-    const slotDayOfWeek = ((startTimeDate.getUTCDay() + 6) % 7) + 1;
+    const slotDayOfWeek = ((startTimeDate.getDay() + 6) % 7) + 1;
     // Get rental slots for the day
     const allDaySlots = await this.prisma.rentalSlot.findMany({
       where: {

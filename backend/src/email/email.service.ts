@@ -15,7 +15,8 @@ export class EmailService {
 
   constructor(private configService: ConfigService) {
     this.enabled = this.configService.get<string>('EMAIL_ENABLED') === 'true';
-    this.fromAddress = this.configService.get<string>('EMAIL_FROM') || 'noreply@roomflow.local';
+    this.fromAddress =
+      this.configService.get<string>('EMAIL_FROM') || 'noreply@roomflow.local';
   }
 
   async sendEmail(data: EmailData): Promise<void> {
@@ -49,10 +50,16 @@ export class EmailService {
     // });
   }
 
-  async sendBookingConfirmation(to: string, bookingTitle: string, roomName: string, startTime: Date, endTime: Date): Promise<void> {
+  async sendBookingConfirmation(
+    to: string,
+    bookingTitle: string,
+    roomName: string,
+    startTime: Date,
+    endTime: Date,
+  ): Promise<void> {
     const subject = 'RoomFlow - Booking Confirmation';
     const text = `Your booking "${bookingTitle}" has been confirmed for ${roomName} from ${startTime.toLocaleString()} to ${endTime.toLocaleString()}.`;
-    
+
     const html = `
       <h2>Booking Confirmation</h2>
       <p>Your booking <strong>"${bookingTitle}"</strong> has been confirmed.</p>
@@ -68,11 +75,16 @@ export class EmailService {
     await this.sendEmail({ to, subject, text, html });
   }
 
-  async sendChangeRequestStatus(to: string, bookingTitle: string, status: string, reason?: string): Promise<void> {
+  async sendChangeRequestStatus(
+    to: string,
+    bookingTitle: string,
+    status: string,
+    reason?: string,
+  ): Promise<void> {
     const subject = `RoomFlow - Change Request ${status}`;
     const statusText = status === 'APPROVED' ? 'approved' : 'rejected';
     const text = `Your change request for "${bookingTitle}" has been ${statusText}.${reason ? ` Reason: ${reason}` : ''}`;
-    
+
     const html = `
       <h2>Change Request ${status}</h2>
       <p>Your change request for <strong>"${bookingTitle}"</strong> has been <strong>${statusText}</strong>.</p>
@@ -83,10 +95,14 @@ export class EmailService {
     await this.sendEmail({ to, subject, text, html });
   }
 
-  async sendBookingCancellation(to: string, bookingTitle: string, roomName: string): Promise<void> {
+  async sendBookingCancellation(
+    to: string,
+    bookingTitle: string,
+    roomName: string,
+  ): Promise<void> {
     const subject = 'RoomFlow - Booking Cancellation';
     const text = `Your booking "${bookingTitle}" for ${roomName} has been cancelled.`;
-    
+
     const html = `
       <h2>Booking Cancelled</h2>
       <p>Your booking <strong>"${bookingTitle}"</strong> for <strong>${roomName}</strong> has been cancelled.</p>

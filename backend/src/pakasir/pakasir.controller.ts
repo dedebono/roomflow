@@ -1,7 +1,11 @@
 import { Controller, Post, Body, Logger, HttpCode } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { PaymentStatus, BookingStatus, BookingHoldStatus } from '@prisma/client';
+import {
+  PaymentStatus,
+  BookingStatus,
+  BookingHoldStatus,
+} from '@prisma/client';
 import { Public } from '../common/decorators/public.decorator';
 
 @Controller('pakasir')

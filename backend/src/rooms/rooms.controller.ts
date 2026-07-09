@@ -17,7 +17,10 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { Role, RoomStatus } from '@prisma/client';
-import { imageFileFilter, MAX_FILE_SIZE } from '../common/validators/file.validator';
+import {
+  imageFileFilter,
+  MAX_FILE_SIZE,
+} from '../common/validators/file.validator';
 
 @Controller('rooms')
 export class RoomsController {
@@ -25,10 +28,12 @@ export class RoomsController {
 
   @Post()
   @Roles(Role.ADMIN_IT, Role.ROOM_ADMIN)
-  @UseInterceptors(FileInterceptor('image', {
-    limits: { fileSize: MAX_FILE_SIZE },
-    fileFilter: imageFileFilter,
-  }))
+  @UseInterceptors(
+    FileInterceptor('image', {
+      limits: { fileSize: MAX_FILE_SIZE },
+      fileFilter: imageFileFilter,
+    }),
+  )
   create(
     @Body() createRoomDto: CreateRoomDto,
     @UploadedFile() file?: Express.Multer.File,
@@ -65,10 +70,12 @@ export class RoomsController {
 
   @Patch(':id')
   @Roles(Role.ADMIN_IT, Role.ROOM_ADMIN)
-  @UseInterceptors(FileInterceptor('image', {
-    limits: { fileSize: MAX_FILE_SIZE },
-    fileFilter: imageFileFilter,
-  }))
+  @UseInterceptors(
+    FileInterceptor('image', {
+      limits: { fileSize: MAX_FILE_SIZE },
+      fileFilter: imageFileFilter,
+    }),
+  )
   update(
     @Param('id') id: string,
     @Body() updateRoomDto: UpdateRoomDto,

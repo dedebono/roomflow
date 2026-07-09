@@ -1,32 +1,84 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
+import api from '@/lib/api';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Home, CalendarDays, CreditCard, Bell, DoorOpen, MessageSquare } from 'lucide-react';
 
+interface Stats {
+  totalBookings: number;
+  activeBookings: number;
+  pendingPayments: number;
+  availableRooms: number;
+  recentActivity: {
+    id: string;
+    type: string;
+    title: string;
+    message: string | null;
+    createdAt: string;
+  }[];
+}
+
+const BADGE_VARIANTS: Record<string, string> = {
+  PAYMENT_APPROVED: 'success',
+    PAYMENT_REJECTED: 'danger',
+    PAYMENT_PROOF_UPLOADED: 'warning',
+    BOOKING_CONFIRMED: 'success',
+    BOOKING_CREATED: 'info',
+    BOOKING_CANCELLED: 'danger',
+    BOOKING_EXPIRED: 'neutral',
+    NEW_MESSAGE: 'info',
+    HOLD_EXPIRED: 'neutral',
+    RENTAL_BOOKED: 'success',
+    default: 'neutral',
+  };
+
+function getActivityBadge(type: string): string {
+  return BADGE_VARIANTS[type] || BADGE_VARIANTS.default;
+}
+
+function timeAgo(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diff = (now.getTime() - date.getTime()) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
 export default function RenterDashboard() {
   const { user } = useAuth();
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/rentals/stats')
+      .then((res) => setStats(res.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   const statsCards = [
     {
       title: 'Total Rentals',
-      value: '0',
+      value: loading ? '...' : String(stats?.totalBookings ?? 0),
       icon: <CalendarDays className="w-5 h-5 text-indigo-400" />,
       variant: 'info' as const,
     },
     {
       title: 'Active Bookings',
-      value: '0',
+      value: loading ? '...' : String(stats?.activeBookings ?? 0),
       icon: <DoorOpen className="w-5 h-5 text-emerald-400" />,
       variant: 'success' as const,
     },
     {
       title: 'Pending Payments',
-      value: '0',
+      value: loading ? '...' : String(stats?.pendingPayments ?? 0),
       icon: <CreditCard className="w-5 h-5 text-amber-400" />,
       variant: 'warning' as const,
     },
@@ -85,7 +137,9 @@ export default function RenterDashboard() {
                 <Home className="w-5 h-5 text-indigo-400" />
                 Available Rooms
               </CardTitle>
-              <Badge variant="info">Browse</Badge>
+              <Badge variant="info">
+                {loading ? '...' : stats?.availableRooms ?? 0} rooms
+              </Badge>
             </CardHeader>
             <CardContent className="p-0">
               <p className="text-sm text-slate-500">View all rentable rooms and book your preferred space</p>
@@ -132,7 +186,28 @@ export default function RenterDashboard() {
             <Badge variant="neutral">Updates</Badge>
           </CardHeader>
           <CardContent className="p-0">
-            <p className="text-sm text-slate-500 italic">No recent activity</p>
+            {loading ? (
+              <p className="text-sm text-slate-500 italic">Loading...</p>
+            ) : !stats?.recentActivity?.length ? (
+              <p className="text-sm text-slate-500 italic">No recent activity</p>
+            ) : (
+              <div className="space-y-3">
+                {stats.recentActivity.map((item) => (
+                  <div key={item.id} className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-800 truncate">{item.title}</p>
+                      {item.message && (
+                        <p className="text-xs text-slate-500 truncate">{item.message}</p>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <Badge variant={getActivityBadge(item.type) as any}>{item.type.replace(/_/g, ' ')}</Badge>
+                      <span className="text-xs text-slate-400">{timeAgo(item.createdAt)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

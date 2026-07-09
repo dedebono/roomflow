@@ -1,4 +1,12 @@
-import { IsNotEmpty, IsString, IsInt, IsOptional, IsUUID, IsEnum, IsBoolean } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsInt,
+  IsOptional,
+  IsUUID,
+  IsEnum,
+  IsBoolean,
+} from 'class-validator';
 import { RoomStatus, RoomCategory } from '@prisma/client';
 import { Type, Transform } from 'class-transformer';
 

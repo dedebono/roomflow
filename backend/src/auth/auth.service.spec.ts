@@ -80,7 +80,10 @@ describe('AuthService', () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.login({ email: 'wrong@roomflow.local', password: 'password123' }),
+        service.login({
+          email: 'wrong@roomflow.local',
+          password: 'password123',
+        }),
       ).rejects.toThrow(UnauthorizedException);
     });
 

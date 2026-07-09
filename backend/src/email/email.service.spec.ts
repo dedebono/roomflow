@@ -34,7 +34,7 @@ describe('EmailService', () => {
   describe('sendEmail', () => {
     it('should log when disabled', async () => {
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+
       await service.sendEmail({
         to: 'test@example.com',
         subject: 'Test Subject',

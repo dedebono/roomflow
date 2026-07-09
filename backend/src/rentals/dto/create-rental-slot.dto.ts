@@ -1,4 +1,12 @@
-import { IsInt, IsNumber, IsOptional, IsString, IsBoolean, Min, Max } from 'class-validator';
+import {
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsBoolean,
+  Min,
+  Max,
+} from 'class-validator';
 
 export class CreateRentalSlotDto {
   @IsString()

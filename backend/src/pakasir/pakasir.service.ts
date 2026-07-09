@@ -26,11 +26,15 @@ export class PakasirService {
     });
 
     if (!gateway) {
-      throw new BadRequestException(`Payment gateway '${gatewayId}' not found.`);
+      throw new BadRequestException(
+        `Payment gateway '${gatewayId}' not found.`,
+      );
     }
 
     if (!gateway.enabled) {
-      throw new BadRequestException(`Payment gateway '${gateway.name}' is disabled.`);
+      throw new BadRequestException(
+        `Payment gateway '${gateway.name}' is disabled.`,
+      );
     }
 
     const config = (gateway.config || {}) as Record<string, string>;
@@ -69,14 +73,16 @@ export class PakasirService {
         throw new Error(`Pakasir API error ${response.status}: ${errBody}`);
       }
 
-      const data = await response.json() as any;
+      const data = await response.json();
       return {
         gateway: gateway.name,
         gatewayId: gateway.id,
         ...data,
       };
     } catch (error: any) {
-      this.logger.error(`Pakasir API error for ${params.orderId}: ${error.message}`);
+      this.logger.error(
+        `Pakasir API error for ${params.orderId}: ${error.message}`,
+      );
       throw new BadRequestException(
         `Payment gateway error: ${error.response?.data?.message || error.message}`,
       );
@@ -86,7 +92,15 @@ export class PakasirService {
   /**
    * Generate a payment URL for redirect-based integration.
    */
-  getPaymentUrl(config: Record<string, string>, params: { amount: number; orderId: string; redirect?: string; qrisOnly?: boolean }): string {
+  getPaymentUrl(
+    config: Record<string, string>,
+    params: {
+      amount: number;
+      orderId: string;
+      redirect?: string;
+      qrisOnly?: boolean;
+    },
+  ): string {
     const apiUrl = config.apiUrl || this.BASE_URL;
     const projectSlug = config.projectSlug;
 
@@ -120,10 +134,14 @@ export class PakasirService {
       where: { id: gatewayId },
     });
     if (!gateway) {
-      throw new BadRequestException(`Payment gateway '${gatewayId}' not found.`);
+      throw new BadRequestException(
+        `Payment gateway '${gatewayId}' not found.`,
+      );
     }
     if (!gateway.enabled) {
-      throw new BadRequestException(`Payment gateway '${gateway.name}' is disabled.`);
+      throw new BadRequestException(
+        `Payment gateway '${gateway.name}' is disabled.`,
+      );
     }
 
     const config = (gateway.config || {}) as Record<string, string>;
@@ -156,7 +174,7 @@ export class PakasirService {
         throw new Error(`Pakasir API error ${response.status}: ${errBody}`);
       }
 
-      const data = await response.json() as any;
+      const data = await response.json();
       const tx = data.transaction || data;
       return {
         status: tx.status || 'unknown',
@@ -164,7 +182,9 @@ export class PakasirService {
         amount: tx.amount,
       };
     } catch (error: any) {
-      this.logger.error(`Pakasir getStatus error for ${orderId}: ${error.message}`);
+      this.logger.error(
+        `Pakasir getStatus error for ${orderId}: ${error.message}`,
+      );
       throw new BadRequestException(
         `Failed to check payment status: ${error.message}`,
       );

@@ -18,7 +18,10 @@ import { Role } from '@prisma/client';
 import * as express from 'express';
 import { UploadPaymentDto } from './dto/upload-payment.dto';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
-import { paymentFileFilter, MAX_FILE_SIZE } from '../common/validators/file.validator';
+import {
+  paymentFileFilter,
+  MAX_FILE_SIZE,
+} from '../common/validators/file.validator';
 import { Public } from '../common/decorators/public.decorator';
 
 @Controller('payments')
@@ -26,10 +29,12 @@ export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @Post('upload')
-  @UseInterceptors(FileInterceptor('file', {
-    limits: { fileSize: MAX_FILE_SIZE },
-    fileFilter: paymentFileFilter,
-  }))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_FILE_SIZE },
+      fileFilter: paymentFileFilter,
+    }),
+  )
   upload(
     @CurrentUser('userId') userId: string,
     @Req() req: express.Request,
@@ -42,7 +47,7 @@ export class PaymentsController {
     } catch (e) {
       throw new Error('Invalid payment data format');
     }
-    
+
     if (!dto || !dto.bookingHoldId) {
       throw new Error('Missing bookingHoldId in payment data');
     }
@@ -113,9 +118,7 @@ export class PaymentsController {
    */
   @Get('confirm-callback')
   @Public()
-  confirmCallback(
-    @Req() req: express.Request,
-  ) {
+  confirmCallback(@Req() req: express.Request) {
     const { order_id, status } = req.query as Record<string, string>;
     return this.paymentsService.confirmPaymentCallback(order_id, status);
   }

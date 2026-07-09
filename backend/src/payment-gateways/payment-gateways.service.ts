@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePaymentGatewayDto } from './dto/create-payment-gateway.dto';
 import { UpdatePaymentGatewayDto } from './dto/update-payment-gateway.dto';

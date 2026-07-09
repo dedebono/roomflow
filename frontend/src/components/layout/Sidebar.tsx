@@ -12,6 +12,7 @@ import {
   Building2,
   FolderLock,
   LogOut,
+  Bell,
   BellRing,
   CreditCard,
   MessageSquare,
@@ -129,10 +130,6 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
             <Link href="/renter/payments" className={getLinkClass('/renter/payments')} onClick={handleLinkClick}>
               <CreditCard className="w-4 h-4" />
               <span>Payments</span>
-            </Link>
-            <Link href="/renter/chat" className={getLinkClass('/renter/chat')} onClick={handleLinkClick}>
-              <MessageSquare className="w-4 h-4" />
-              <span>Messages</span>
             </Link>
           </>
         )}

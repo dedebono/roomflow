@@ -102,8 +102,9 @@ describe('RentalsService', () => {
         status: BookingHoldStatus.ACTIVE,
       });
 
-      await expect(service.createHold(userId, roomId, '2026-06-25', '09:00', '10:00'))
-        .rejects.toThrow(ConflictException);
+      await expect(
+        service.createHold(userId, roomId, '2026-06-25', '09:00', '10:00'),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
@@ -111,8 +112,9 @@ describe('RentalsService', () => {
     it('should throw NotFoundException when hold does not exist', async () => {
       mockPrisma.bookingHold.findUnique.mockResolvedValue(null);
 
-      await expect(service.bookFromHold('nonexistent-hold'))
-        .rejects.toThrow('Booking hold not found');
+      await expect(service.bookFromHold('nonexistent-hold')).rejects.toThrow(
+        'Booking hold not found',
+      );
     });
 
     it('should throw ConflictException when hold is not ACTIVE', async () => {
@@ -121,8 +123,9 @@ describe('RentalsService', () => {
         status: BookingHoldStatus.EXPIRED,
       });
 
-      await expect(service.bookFromHold('hold-1'))
-        .rejects.toThrow('Booking hold is no longer active');
+      await expect(service.bookFromHold('hold-1')).rejects.toThrow(
+        'Booking hold is no longer active',
+      );
     });
   });
 });

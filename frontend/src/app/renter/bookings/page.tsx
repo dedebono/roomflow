@@ -79,7 +79,7 @@ export default function RenterBookingsPage() {
 
   // Format date and time
   const formatDateTime = (dateStr: string) => {
-    const d = new Date(dateStr);
+    const d = new Date(dateStr.substring(0, 10) + 'T00:00:00');
     return d.toLocaleString([], {
       month: 'short',
       day: 'numeric',
@@ -95,8 +95,8 @@ export default function RenterBookingsPage() {
   };
 
   const displayDateTime = (dateStr: string, timeStr: string) => {
-    const date = new Date(dateStr);
-    return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${formatTime(timeStr)}`;
+    const d = new Date(dateStr.substring(0, 10) + 'T00:00:00');
+    return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${formatTime(timeStr)}`;
   };
 
   const getStatusBadge = (booking: RentalBooking) => {

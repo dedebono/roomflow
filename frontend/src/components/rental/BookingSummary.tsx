@@ -21,7 +21,7 @@ interface BookingSummaryProps {
 }
 
 const formatDate = (dateStr: string) =>
-  new Date(dateStr).toLocaleDateString(undefined, {
+  new Date(dateStr.substring(0, 10) + 'T00:00:00').toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',

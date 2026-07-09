@@ -22,14 +22,22 @@ describe('PaymentsService', () => {
   const mockPrisma = {
     bookingHold: { findUnique: jest.fn(), findFirst: jest.fn() },
     booking: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
-    payment: { create: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), update: jest.fn() },
+    payment: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+    },
     paymentGateway: { findUnique: jest.fn() },
     user: { findUnique: jest.fn() },
   };
   const mockStorage = { upload: jest.fn() };
   const mockNotifications = { create: jest.fn() };
   const mockGateways = { findOne: jest.fn() };
-  const mockPakasir = { createTransaction: jest.fn(), getPaymentUrl: jest.fn() };
+  const mockPakasir = {
+    createTransaction: jest.fn(),
+    getPaymentUrl: jest.fn(),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -102,7 +110,12 @@ describe('PaymentsService', () => {
         bookingHoldId: holdId,
       });
 
-      const result = await service.initiatePayment(userId, holdId, gatewayId, 50000);
+      const result = await service.initiatePayment(
+        userId,
+        holdId,
+        gatewayId,
+        50000,
+      );
       expect(result.payment.id).toBeDefined();
       expect(mockPakasir.createTransaction).toHaveBeenCalled();
     });
@@ -110,15 +123,20 @@ describe('PaymentsService', () => {
     it('should throw NotFoundException when hold not found', async () => {
       mockPrisma.bookingHold.findUnique.mockResolvedValue(null);
 
-      await expect(service.initiatePayment(userId, holdId, gatewayId, 50000))
-        .rejects.toThrow(NotFoundException);
+      await expect(
+        service.initiatePayment(userId, holdId, gatewayId, 50000),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ForbiddenException when hold belongs to different user', async () => {
-      mockPrisma.bookingHold.findUnique.mockResolvedValue({ ...activeHold, userId: 'other-user' });
+      mockPrisma.bookingHold.findUnique.mockResolvedValue({
+        ...activeHold,
+        userId: 'other-user',
+      });
 
-      await expect(service.initiatePayment(userId, holdId, gatewayId, 50000))
-        .rejects.toThrow(ForbiddenException);
+      await expect(
+        service.initiatePayment(userId, holdId, gatewayId, 50000),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw BadRequestException when hold is inactive', async () => {
@@ -127,8 +145,9 @@ describe('PaymentsService', () => {
         status: BookingHoldStatus.EXPIRED,
       });
 
-      await expect(service.initiatePayment(userId, holdId, gatewayId, 50000))
-        .rejects.toThrow(BadRequestException);
+      await expect(
+        service.initiatePayment(userId, holdId, gatewayId, 50000),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when hold is expired', async () => {
@@ -137,8 +156,9 @@ describe('PaymentsService', () => {
         expiresAt: new Date(Date.now() - 1000),
       });
 
-      await expect(service.initiatePayment(userId, holdId, gatewayId, 50000))
-        .rejects.toThrow(BadRequestException);
+      await expect(
+        service.initiatePayment(userId, holdId, gatewayId, 50000),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

@@ -67,8 +67,9 @@ export default function RenterLayout({ children }: RenterLayoutProps) {
 
   // Mark messages as read
   const markAsRead = useCallback(async (participantId: string) => {
+    if (!participantId) return;
     try {
-      await api.post(`/chat/read/${participantId}`);
+      await api.post(`/chat/mark-read/${participantId}`);
       fetchConversations();
     } catch {
       // Silently fail
@@ -84,7 +85,7 @@ export default function RenterLayout({ children }: RenterLayoutProps) {
   // Handle selecting a conversation
   const handleSelectConversation = async (conv: any) => {
     setSelectedConversation(conv);
-    const participantId = conv.participant1Id || conv.participant2Id;
+    const participantId = conv.participant1Id || conv.participant2Id || conv.userId;
     await fetchMessages(participantId);
     await markAsRead(participantId);
   };
@@ -95,7 +96,7 @@ export default function RenterLayout({ children }: RenterLayoutProps) {
 
     setIsSending(true);
     try {
-      const participantId = selectedConversation.participant1Id || selectedConversation.participant2Id;
+      const participantId = selectedConversation.participant1Id || selectedConversation.participant2Id || selectedConversation.userId;
       await api.post('/chat/send', {
         receiverId: participantId,
         content: newMessage.trim(),

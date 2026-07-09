@@ -9,7 +9,7 @@ import api, { paymentGatewaysApi } from '@/lib/api';
 import { BookingHold, Payment } from '@/types';
 import type { PaymentGatewayPublic } from '@/types/payment-gateway';
 import toast from 'react-hot-toast';
-import { Upload, CreditCard, CheckCircle, Clock, XCircle, FileText, Calendar, DollarSign, Timer, ExternalLink, Wallet } from 'lucide-react';
+import { Upload, CreditCard, CheckCircle, Clock, XCircle, FileText, Calendar, DollarSign, Timer, ExternalLink, Wallet, Trash2 } from 'lucide-react';
 
 const formatRupiah = (amount: number) =>
   'Rp ' + amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -251,6 +251,17 @@ export default function RenterPaymentsPage() {
     setGateways([]);
   };
 
+  const handleCancelHold = async (holdId: string) => {
+    if (!confirm('Remove this expired hold? You can book again later.')) return;
+    try {
+      await api.delete(`/rentals/holds/${holdId}`);
+      toast.success('Hold removed');
+      fetchPayments();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to remove hold');
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PENDING':
@@ -268,7 +279,7 @@ export default function RenterPaymentsPage() {
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
-    return new Date(dateStr).toLocaleDateString([], {
+    return new Date(dateStr.substring(0, 10) + 'T00:00:00').toLocaleDateString([], {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -377,7 +388,17 @@ export default function RenterPaymentsPage() {
                       )}
 
                       {isExpired && (
-                        <Badge variant="neutral">Hold Expired</Badge>
+                        <>
+                          <Badge variant="neutral">Hold Expired</Badge>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => handleCancelHold(hold.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Remove
+                          </Button>
+                        </>
                       )}
 
                       <div className="flex items-center gap-2">
@@ -459,7 +480,7 @@ export default function RenterPaymentsPage() {
                             {(payment as any).booking?.room?.name || (payment as any).booking?.title || 'Room Rental'}
                           </p>
                           <p className="text-xs text-slate-500">
-                            {formatDate((payment as any).booking?.startTime)} at {formatTime((payment as any).booking?.startTime)}
+                            {formatDate((payment as any).booking?.startTime)} at {(payment as any).bookingStartTime} - {(payment as any).bookingEndTime}
                           </p>
                         </div>
                       </div>

@@ -22,7 +22,9 @@ async function bootstrap() {
 
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3001,http://localhost:3000')
+  const allowedOrigins = (
+    process.env.ALLOWED_ORIGINS || 'http://localhost:3001,http://localhost:3000'
+  )
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean);

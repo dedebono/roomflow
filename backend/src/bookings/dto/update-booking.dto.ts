@@ -1,4 +1,10 @@
-import { IsOptional, IsString, IsUUID, IsDateString, MaxLength } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsUUID,
+  IsDateString,
+  MaxLength,
+} from 'class-validator';
 
 export class UpdateBookingDto {
   @IsString()

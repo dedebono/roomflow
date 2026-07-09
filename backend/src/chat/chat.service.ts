@@ -50,85 +50,90 @@ export class ChatService {
     console.log('Message created in DB:', message.id);
 
     // Send WebSocket notification to receiver (non-blocking)
-    this.webSocketService.sendNewMessage({
-      id: message.id,
-      senderId: message.senderId,
-      senderName: message.sender.name,
-      content: message.content,
-      roomId: message.roomId ?? undefined,
-      bookingId: message.bookingId ?? undefined,
-      isRead: message.isRead,
-      createdAt: message.createdAt,
-    }).catch(err => console.error('WebSocket send failed:', err));
-
-    // Create notification for receiver (non-blocking)
-    this.notificationsService.create(
-      receiverId,
-      'NEW_MESSAGE',
-      'New Message',
-      `You have a new message from ${message.sender.name}.`,
-      JSON.stringify({
-        messageId: message.id,
+    this.webSocketService
+      .sendNewMessage({
+        id: message.id,
         senderId: message.senderId,
         senderName: message.sender.name,
         content: message.content,
-      }),
-    ).catch(err => console.error('Notification create failed:', err));
+        roomId: message.roomId ?? undefined,
+        bookingId: message.bookingId ?? undefined,
+        isRead: message.isRead,
+        createdAt: message.createdAt,
+      })
+      .catch((err) => console.error('WebSocket send failed:', err));
+
+    // Create notification for receiver (non-blocking)
+    this.notificationsService
+      .create(
+        receiverId,
+        'NEW_MESSAGE',
+        'New Message',
+        `You have a new message from ${message.sender.name}.`,
+        JSON.stringify({
+          messageId: message.id,
+          senderId: message.senderId,
+          senderName: message.sender.name,
+          content: message.content,
+        }),
+      )
+      .catch((err) => console.error('Notification create failed:', err));
 
     return message;
   }
 
   async getConversations(userId: string) {
-    // Get all messages for this user
+    // Get all distinct conversation partners
     const allMessages = await this.prisma.chatMessage.findMany({
       where: {
-        OR: [
-          { senderId: userId },
-          { receiverId: userId },
-        ],
+        OR: [{ senderId: userId }, { receiverId: userId }],
       },
       orderBy: { createdAt: 'desc' },
       include: {
-        sender: {
-          select: { id: true, name: true },
-        },
+        sender: { select: { id: true, name: true } },
       },
     });
 
-    // Group by conversation partner
-    const conversations = new Map();
-    
-    for (const message of allMessages) {
-      const partnerId = message.senderId === userId ? message.receiverId : message.senderId;
-      
-      if (!conversations.has(partnerId)) {
-        const partner = await this.prisma.user.findUnique({
-          where: { id: partnerId },
-          select: { id: true, name: true, email: true },
-        });
-        
-        if (!partner) continue;
-        
-        const unreadCount = await this.prisma.chatMessage.count({
-          where: {
-            senderId: partnerId,
-            receiverId: userId,
-            isRead: false,
-          },
-        });
-        
-        conversations.set(partnerId, {
-          userId: partner.id,
-          userName: partner.name,
-          userEmail: partner.email,
-          lastMessage: message.content,
-          lastMessageAt: message.createdAt,
-          unreadCount,
-        });
+    // Group by partner, keep latest message per partner
+    const latestByPartner = new Map<string, typeof allMessages[number]>();
+    for (const msg of allMessages) {
+      const partnerId = msg.senderId === userId ? msg.receiverId : msg.senderId;
+      if (!latestByPartner.has(partnerId)) {
+        latestByPartner.set(partnerId, msg);
       }
     }
-    
-    return Array.from(conversations.values());
+
+    const result = [];
+    for (const [partnerId, message] of latestByPartner) {
+      const partner = await this.prisma.user.findUnique({
+        where: { id: partnerId },
+        select: { id: true, name: true, email: true, role: true },
+      });
+      if (!partner) continue;
+
+      const unreadCount = await this.prisma.chatMessage.count({
+        where: { senderId: partnerId, receiverId: userId, isRead: false },
+      });
+
+      const currentUser = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, name: true, email: true, role: true },
+      });
+
+      result.push({
+        id: `conv_${partnerId}`,
+        userId: partnerId,
+        participant1Id: userId,
+        participant2Id: partnerId,
+        participant1: currentUser ? { id: currentUser.id, name: currentUser.name, email: currentUser.email, role: currentUser.role } : null,
+        participant2: { id: partner.id, name: partner.name, email: partner.email, role: partner.role },
+        lastMessage: { content: message.content, createdAt: message.createdAt },
+        lastMessageAt: message.createdAt,
+        unreadCount,
+      });
+    }
+
+    return result;
   }
 
   async createOrGetConversation(userId: string, participantId: string) {
@@ -228,5 +233,12 @@ export class ChatService {
     });
 
     return { marked: result.count };
+  }
+
+  async getUnreadCount(userId: string) {
+    const count = await this.prisma.chatMessage.count({
+      where: { receiverId: userId, isRead: false },
+    });
+    return { unreadCount: count };
   }
 }

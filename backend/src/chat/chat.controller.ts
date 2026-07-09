@@ -66,4 +66,9 @@ export class ChatController {
   ) {
     return this.chatService.markAsRead(userId, participantId);
   }
+
+  @Get('unread-count')
+  getUnreadCount(@CurrentUser('userId') userId: string) {
+    return this.chatService.getUnreadCount(userId);
+  }
 }

@@ -7,7 +7,12 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { PaymentStatus, BookingHoldStatus, Role, BookingStatus } from '@prisma/client';
+import {
+  PaymentStatus,
+  BookingHoldStatus,
+  Role,
+  BookingStatus,
+} from '@prisma/client';
 import { PakasirService } from '../pakasir/pakasir.service';
 import { PaymentGatewaysService } from '../payment-gateways/payment-gateways.service';
 
@@ -65,7 +70,7 @@ export class PaymentsService {
     // Create payment record - we need a booking first, or link to hold
     // Actually, looking at the schema, Payment has bookingId which is a required unique relation
     // We need to create the booking first, then the payment
-    // But the hold hasn't been confirmed yet... 
+    // But the hold hasn't been confirmed yet...
     // Looking at the schema: Payment references Booking, so we need a booking.
     // The flow should be: hold -> payment upload -> manager approves -> hold converted -> booking created
     // But Payment.bookingId is required. Let's create a temporary booking first.
@@ -74,7 +79,7 @@ export class PaymentsService {
     // This means payment is one-to-one with booking.
     // The booking should be created from the hold when payment is approved.
     // But the Payment model needs a bookingId...
-    
+
     // Let me re-check the schema... Yes, Payment.bookingId is required and unique.
     // This means we need a booking to create a payment.
     // But the task says: "upload(paymentId, bookingHoldId, file, amount): Create payment record linked to booking hold"
@@ -83,14 +88,14 @@ export class PaymentsService {
     // Actually, the flow makes more sense as:
     // 1. Create hold
     // 2. Upload payment (we create a booking first? No...)
-    
+
     // Let me re-read the task: "upload(userId, bookingHoldId, file, amount): Create payment record linked to booking hold"
     // "approve(paymentId, managerId): Set status=APPROVED, update booking hold status=CONVERTED, create booking from hold"
-    
+
     // So the payment is linked to the hold, but the schema links payment to booking via bookingId.
     // Since we need a booking to create a payment, let me create a temporary booking here
     // that will be confirmed later. Or better yet, create the booking right away with PENDING status.
-    
+
     // Wait - looking more carefully at the schema, there's no direct hold-payment link.
     // Payment connects to Booking via bookingId.
     // So I need to create the booking first, then the payment.
@@ -236,7 +241,9 @@ export class PaymentsService {
       payment.status !== PaymentStatus.PENDING &&
       payment.status !== PaymentStatus.PAYMENT_PROOF_UPLOADED
     ) {
-      throw new BadRequestException('Payment is not in PENDING or PROOF_UPLOADED status');
+      throw new BadRequestException(
+        'Payment is not in PENDING or PROOF_UPLOADED status',
+      );
     }
 
     // Update payment status
@@ -257,7 +264,10 @@ export class PaymentsService {
     }
 
     // Convert the associated booking hold if present
-    if (payment.bookingHold && payment.bookingHold.status === BookingHoldStatus.ACTIVE) {
+    if (
+      payment.bookingHold &&
+      payment.bookingHold.status === BookingHoldStatus.ACTIVE
+    ) {
       await this.prisma.bookingHold.update({
         where: { id: payment.bookingHold.id },
         data: { status: BookingHoldStatus.CONVERTED },
@@ -298,7 +308,9 @@ export class PaymentsService {
       payment.status !== PaymentStatus.PENDING &&
       payment.status !== PaymentStatus.PAYMENT_PROOF_UPLOADED
     ) {
-      throw new BadRequestException('Payment is not in PENDING or PROOF_UPLOADED status');
+      throw new BadRequestException(
+        'Payment is not in PENDING or PROOF_UPLOADED status',
+      );
     }
 
     // Update payment status
@@ -352,7 +364,7 @@ export class PaymentsService {
   }
 
   async getMyPayments(userId: string) {
-    return this.prisma.payment.findMany({
+    const payments = await this.prisma.payment.findMany({
       where: { userId },
       include: {
         booking: {
@@ -365,6 +377,20 @@ export class PaymentsService {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    return payments.map((p) => ({
+      ...p,
+      bookingStartTime: p.booking?.startTime
+        ? String(p.booking.startTime.getHours()).padStart(2, '0') +
+          ':' +
+          String(p.booking.startTime.getMinutes()).padStart(2, '0')
+        : null,
+      bookingEndTime: p.booking?.endTime
+        ? String(p.booking.endTime.getHours()).padStart(2, '0') +
+          ':' +
+          String(p.booking.endTime.getMinutes()).padStart(2, '0')
+        : null,
+    }));
   }
 
   async initiatePayment(
@@ -424,10 +450,13 @@ export class PaymentsService {
 
     // Build payment URL if available
     let paymentUrl: string | undefined;
-    const gateway = await this.prisma.paymentGateway.findUnique({ where: { id: gatewayId } });
+    const gateway = await this.prisma.paymentGateway.findUnique({
+      where: { id: gatewayId },
+    });
     if (gateway) {
       const config = (gateway.config || {}) as Record<string, string>;
-      const frontendBase = process.env.FRONTEND_BASE_URL || 'https://room.ytcb.org';
+      const frontendBase =
+        process.env.FRONTEND_BASE_URL || 'https://room.ytcb.org';
       paymentUrl = this.pakasirService.getPaymentUrl(config, {
         amount: finalAmount,
         orderId,
@@ -443,7 +472,7 @@ export class PaymentsService {
         userId,
         amount: finalAmount,
         status: PaymentStatus.PENDING,
-        paymentMethod: (result as any).payment?.payment_method || finalMethod,
+        paymentMethod: result.payment?.payment_method || finalMethod,
         externalId: orderId,
         paymentGatewayId: gatewayId,
       },
@@ -467,7 +496,10 @@ export class PaymentsService {
     });
 
     if (!payment) {
-      return { status: 'not_found', message: 'Payment not found for this order' };
+      return {
+        status: 'not_found',
+        message: 'Payment not found for this order',
+      };
     }
 
     let newStatus: PaymentStatus;
@@ -519,6 +551,10 @@ export class PaymentsService {
       );
     }
 
-    return { status: 'processed', paymentId: payment.id, bookingStatus: bookingNewStatus };
+    return {
+      status: 'processed',
+      paymentId: payment.id,
+      bookingStatus: bookingNewStatus,
+    };
   }
 }

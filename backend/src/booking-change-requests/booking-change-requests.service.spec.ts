@@ -4,7 +4,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { ChangeRequestStatus, Role } from '@prisma/client';
 
 describe('BookingChangeRequestsService', () => {
@@ -52,7 +56,9 @@ describe('BookingChangeRequestsService', () => {
       ],
     }).compile();
 
-    service = module.get<BookingChangeRequestsService>(BookingChangeRequestsService);
+    service = module.get<BookingChangeRequestsService>(
+      BookingChangeRequestsService,
+    );
     prisma = module.get<PrismaService>(PrismaService);
     bookingsService = module.get<BookingsService>(BookingsService);
     emailService = module.get<EmailService>(EmailService);
@@ -109,7 +115,11 @@ describe('BookingChangeRequestsService', () => {
       mockPrisma.bookingChangeRequest.create.mockResolvedValue(createdRequest);
       mockPrisma.user.findMany.mockResolvedValue([
         { id: 'admin-1', email: 'admin@roomflow.local', role: Role.ADMIN_IT },
-        { id: 'admin-2', email: 'manager@roomflow.local', role: Role.ROOM_ADMIN },
+        {
+          id: 'admin-2',
+          email: 'manager@roomflow.local',
+          role: Role.ROOM_ADMIN,
+        },
       ]);
 
       const result = await service.create('user-1', {
@@ -167,14 +177,21 @@ describe('BookingChangeRequestsService', () => {
         booking: { id: 'booking-1' },
       });
 
-      await expect(service.approve('req-1')).rejects.toThrow(BadRequestException);
+      await expect(service.approve('req-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException when conflict detected', async () => {
       mockPrisma.bookingChangeRequest.findUnique.mockResolvedValue({
         id: 'req-1',
         status: ChangeRequestStatus.PENDING,
-        booking: { id: 'booking-1', roomId: 'room-1', startTime: new Date(), endTime: new Date() },
+        booking: {
+          id: 'booking-1',
+          roomId: 'room-1',
+          startTime: new Date(),
+          endTime: new Date(),
+        },
         requestedRoomId: 'room-2',
         requestedStart: new Date('2024-01-15T10:00:00Z'),
         requestedEnd: new Date('2024-01-15T11:00:00Z'),
@@ -182,7 +199,9 @@ describe('BookingChangeRequestsService', () => {
       });
       mockBookingsService.validateBookingConflict.mockResolvedValue(true);
 
-      await expect(service.approve('req-1')).rejects.toThrow(BadRequestException);
+      await expect(service.approve('req-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 });

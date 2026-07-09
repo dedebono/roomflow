@@ -1,4 +1,10 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
@@ -22,7 +28,11 @@ export class AuthService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  private async generateTokens(user: { id: string; email: string; role: string }) {
+  private async generateTokens(user: {
+    id: string;
+    email: string;
+    role: string;
+  }) {
     const payload = { sub: user.id, email: user.email, role: user.role };
     const access_token = this.jwtService.sign(payload);
 
@@ -36,7 +46,11 @@ export class AuthService {
       data: { refreshToken: refresh_token },
     });
 
-    return { access_token, refresh_token, refresh_expires_in: this.REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 };
+    return {
+      access_token,
+      refresh_token,
+      refresh_expires_in: this.REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60,
+    };
   }
 
   async login(loginDto: LoginDto) {
@@ -44,7 +58,10 @@ export class AuthService {
       where: { email: loginDto.email },
     });
 
-    if (!user || !(await bcrypt.compare(loginDto.password, user.passwordHash))) {
+    if (
+      !user ||
+      !(await bcrypt.compare(loginDto.password, user.passwordHash))
+    ) {
       throw new UnauthorizedException('Invalid credentials');
     }
 

@@ -29,11 +29,15 @@ export class WhatsAppService {
     private prisma: PrismaService,
   ) {
     this.envEnabled = this.configService.get<string>('WAHA_ENABLED') === 'true';
-    this.envUrl = this.configService.get<string>('WAHA_API_URL') || 'http://waha:3000';
-    this.envSession = this.configService.get<string>('WAHA_SESSION') || 'default';
+    this.envUrl =
+      this.configService.get<string>('WAHA_API_URL') || 'http://waha:3000';
+    this.envSession =
+      this.configService.get<string>('WAHA_SESSION') || 'default';
     this.envApiKey = this.configService.get<string>('WAHA_API_KEY') || '';
-    this.swaggerUsername = this.configService.get<string>('WHATSAPP_SWAGGER_USERNAME') || '';
-    this.swaggerPassword = this.configService.get<string>('WHATSAPP_SWAGGER_PASSWORD') || '';
+    this.swaggerUsername =
+      this.configService.get<string>('WHATSAPP_SWAGGER_USERNAME') || '';
+    this.swaggerPassword =
+      this.configService.get<string>('WHATSAPP_SWAGGER_PASSWORD') || '';
   }
 
   /** Returns the effective runtime config — DB value wins over env fallback. */
@@ -70,7 +74,10 @@ export class WhatsAppService {
   async sendText(to: string, text: string): Promise<void> {
     const config = await this.getConfig();
     if (!config.enabled) {
-      console.log('[WhatsApp] Message would have been sent (disabled):', { to, text });
+      console.log('[WhatsApp] Message would have been sent (disabled):', {
+        to,
+        text,
+      });
       return;
     }
 
@@ -93,18 +100,32 @@ export class WhatsAppService {
       });
 
       if (!response.ok) {
-        console.error('[WhatsApp] WAHA sendText failed:', response.status, await response.text());
+        console.error(
+          '[WhatsApp] WAHA sendText failed:',
+          response.status,
+          await response.text(),
+        );
       } else {
         const data = await response.json();
         console.log('[WhatsApp] Message sent to', chatId, ':', data);
       }
     } catch (err: unknown) {
-      console.error('[WhatsApp] Failed to send message:', (err as Error).message);
+      console.error(
+        '[WhatsApp] Failed to send message:',
+        (err as Error).message,
+      );
     }
   }
 
-  async sendBookingConfirmation(to: string, bookingTitle: string, roomName: string, startTime: Date, endTime: Date): Promise<void> {
-    const text = `✅ *Booking Confirmed*\n\n` +
+  async sendBookingConfirmation(
+    to: string,
+    bookingTitle: string,
+    roomName: string,
+    startTime: Date,
+    endTime: Date,
+  ): Promise<void> {
+    const text =
+      `✅ *Booking Confirmed*\n\n` +
       `Room: ${roomName}\n` +
       `Title: ${bookingTitle}\n` +
       `Start: ${startTime.toLocaleString()}\n` +
@@ -114,15 +135,21 @@ export class WhatsAppService {
   }
 
   async sendPaymentApproved(to: string, amount: number): Promise<void> {
-    const text = `✅ *Payment Approved*\n\n` +
+    const text =
+      `✅ *Payment Approved*\n\n` +
       `Amount: Rp${amount.toLocaleString('id-ID')}\n` +
       `Your payment has been approved. Thank you!\n\n` +
       `RoomFlow`;
     await this.sendText(to, text);
   }
 
-  async sendPaymentRejected(to: string, amount: number, reason?: string): Promise<void> {
-    const text = `❌ *Payment Rejected*\n\n` +
+  async sendPaymentRejected(
+    to: string,
+    amount: number,
+    reason?: string,
+  ): Promise<void> {
+    const text =
+      `❌ *Payment Rejected*\n\n` +
       `Amount: Rp${amount.toLocaleString('id-ID')}\n` +
       (reason ? `Reason: ${reason}\n\n` : '\n') +
       `Please review and resubmit.\n\n` +
@@ -130,16 +157,25 @@ export class WhatsAppService {
     await this.sendText(to, text);
   }
 
-  async sendBookingCancellation(to: string, bookingTitle: string): Promise<void> {
-    const text = `❌ *Booking Cancelled*\n\n` +
+  async sendBookingCancellation(
+    to: string,
+    bookingTitle: string,
+  ): Promise<void> {
+    const text =
+      `❌ *Booking Cancelled*\n\n` +
       `Title: ${bookingTitle}\n` +
       `Your booking has been cancelled.\n\n` +
       `RoomFlow`;
     await this.sendText(to, text);
   }
 
-  async sendNewMessage(to: string, senderName: string, content: string): Promise<void> {
-    const text = `💬 *New Message*\n\n` +
+  async sendNewMessage(
+    to: string,
+    senderName: string,
+    content: string,
+  ): Promise<void> {
+    const text =
+      `💬 *New Message*\n\n` +
       `From: ${senderName}\n` +
       `Message: ${content}\n\n` +
       `Tap to reply in RoomFlow.`;
