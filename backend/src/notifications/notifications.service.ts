@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType } from '@prisma/client';
 import { WebSocketService } from '../websocket/websocket.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class NotificationsService {
@@ -10,6 +11,7 @@ export class NotificationsService {
     private prisma: PrismaService,
     private webSocketService: WebSocketService,
     private whatsAppService: WhatsAppService,
+    private emailService: EmailService,
   ) {}
 
   async create(
@@ -37,7 +39,7 @@ export class NotificationsService {
     // Send WhatsApp notification via WAHA when user has WhatsApp number
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { whatsappNumber: true },
+      select: { whatsappNumber: true, email: true },
     });
 
     if (user?.whatsappNumber) {
@@ -46,14 +48,23 @@ export class NotificationsService {
         .catch((err) => console.error('WhatsApp failed:', err));
     }
 
+    // Send email notification using the SAME message body as WhatsApp
+    if (user?.email) {
+      this.emailService
+        .sendNotification(user.email, title, message)
+        .catch((err) => console.error('Email failed:', err));
+    }
+
     return notification;
   }
 
   async getUserNotifications(userId: string) {
-    return this.prisma.notification.findMany({
+    const notifications = await this.prisma.notification.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
+    // ponytail: frontend expects `read` not `isRead` — add alias
+    return notifications.map((n) => ({ ...n, read: n.isRead }));
   }
 
   async getUnreadCount(userId: string) {

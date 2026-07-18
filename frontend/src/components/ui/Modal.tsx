@@ -48,25 +48,25 @@ export const Modal = ({ isOpen, onClose, title, children, size = 'md' }: ModalPr
   return (
     <div
       onClick={handleBackdropClick}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-100/80 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#143258]/30 dark:bg-black/60 backdrop-blur-md animate-fade-in"
     >
       <div
         ref={modalRef}
-        className={`w-full ${sizes[size]} glass border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-scale-up`}
+        className={`w-full ${sizes[size]} bg-[#fefefe] dark:bg-[#2a2a2a] border border-[#cbe2f0] dark:border-[#3a3a3a] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-scale-up`}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white">
-          <h2 className="text-lg font-bold text-slate-900 tracking-tight">{title}</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#cbe2f0] dark:border-[#3a3a3a] bg-[#fefefe] dark:bg-[#2a2a2a]">
+          <h2 className="text-lg font-bold text-[#143258] dark:text-[#cbe2f0] tracking-tight">{title}</h2>
           <button
             onClick={onClose}
-            className="text-slate-500 hover:text-slate-800 hover:bg-slate-100/60 p-1.5 rounded-lg transition-colors cursor-pointer"
+            className="text-[#747474] hover:text-[#143258] hover:bg-[#cbe2f0] dark:hover:bg-[#3a3a3a] p-1.5 rounded-lg transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-6 text-sm text-slate-600">
+        <div className="flex-1 overflow-y-auto p-6 text-sm text-[#474547] dark:text-[#e8e8e8]">
           {children}
         </div>
       </div>

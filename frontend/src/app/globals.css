@@ -1,16 +1,69 @@
+/* Tailwind v4: class-based dark mode — must come BEFORE @import */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @import "tailwindcss";
 
+/* ============================================================
+   RoomFlow Design System — Navy / Gold Palette
+   Primary Navy: #143258 | Secondary Blue: #264da1
+   Light Blue: #cbe2f0 | Golden Yellow: #f7b917
+   Beige Background: #f1dece | Dark Gray: #474547
+   ============================================================ */
+
 :root {
-  --background: #fefefe;
-  --foreground: #0f172a;
+  --background: #f1dece;
+  --foreground: #474547;
+  --card: #fefefe;
+  --card-foreground: #474547;
+  --primary: #143258;
+  --primary-foreground: #fefefe;
+  --secondary: #264da1;
+  --secondary-foreground: #fefefe;
+  --accent: #f7b917;
+  --accent-foreground: #143258;
+  --muted: #cbe2f0;
+  --muted-foreground: #474547;
+  --destructive: #ef4444;
+  --destructive-foreground: #fefefe;
+  --border: #cbe2f0;
+  --input: #cbe2f0;
+  --ring: #143258;
+  --sidebar: #143258;
+  --sidebar-foreground: #fefefe;
+  --sidebar-primary: #f7b917;
+  --sidebar-border: #264da1;
+  --sidebar-accent: #f7b917;
+  --sidebar-accent-foreground: #143258;
+
   --font-sans: var(--font-karla), Arial, Helvetica, sans-serif;
   --font-heading: var(--font-playfair), Georgia, serif;
   --font-mono: var(--font-geist-mono), monospace;
-  --color-primary: #143258;
-  --color-secondary: #3B82F6;
-  --color-cta: #CA8A04;
-  --color-accent-blue: #264da1;
-  --color-accent-gold: #cbe2f0;
+}
+
+.dark {
+  --background: #1a1a1a;
+  --foreground: #e8e8e8;
+  --card: #2a2a2a;
+  --card-foreground: #e8e8e8;
+  --primary: #143258;
+  --primary-foreground: #fefefe;
+  --secondary: #264da1;
+  --secondary-foreground: #fefefe;
+  --accent: #f7b917;
+  --accent-foreground: #143258;
+  --muted: #3a3a3a;
+  --muted-foreground: #e8e8e8;
+  --destructive: #ef4444;
+  --destructive-foreground: #fefefe;
+  --border: #3a3a3a;
+  --input: #3a3a3a;
+  --ring: #264da1;
+  --sidebar: #143258;
+  --sidebar-foreground: #fefefe;
+  --sidebar-primary: #f7b917;
+  --sidebar-border: #264da1;
+  --sidebar-accent: #f7b917;
+  --sidebar-accent-foreground: #143258;
 }
 
 body {
@@ -21,47 +74,122 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
-  color: #000000;
+  color: #143258;
 }
 
-/* Glassmorphism Styles (Light Mode) */
+/* Heading color is light-mode only — in dark mode let utility classes
+   (dark:text-[#e8e8e8], text-white, etc.) win so navy text doesn't
+   render dark-on-dark. Fallback light heading color for dark mode. */
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+  color: #e8e8e8;
+}
+
+/* Glassmorphism — Beige glass for light, dark glass for dark */
 .glass {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(254, 254, 254, 0.92);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 0, 0, 0.03);
+  border: 1px solid #cbe2f0;
 }
 
-.glass-indigo {
-  background: rgba(240, 240, 255, 0.8);
+.dark .glass {
+  background: rgba(42, 42, 42, 0.92);
+  border: 1px solid #3a3a3a;
+}
+
+/* Dark mode text: fix all hardcoded slate colors that lack dark: variants */
+.dark .text-slate-400 { color: #9ca3af; }
+.dark .text-slate-500 { color: #a8a8a8; }
+.dark .text-slate-600 { color: #cbe2f0; }
+.dark .text-slate-700 { color: #d4dae0; }
+.dark .text-slate-800 { color: #e8e8e8; }
+.dark .text-slate-900 { color: #cbe2f0; }
+.dark .text-slate-950 { color: #e8e8e8; }
+
+/* Dark mode backgrounds */
+.dark .bg-slate-50  { background-color: #1a1a1a; }
+.dark .bg-slate-100 { background-color: #2a2a2a; }
+.dark .bg-slate-200 { background-color: #333333; }
+
+/* Dark mode borders */
+.dark .border-slate-100 { border-color: #3a3a3a; }
+.dark .border-slate-200 { border-color: #4a4a4a; }
+.dark .border-slate-300 { border-color: #555555; }
+
+/* Dark mode select/input */
+.dark select,
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"],
+.dark input[type="search"] {
+  background-color: #2a2a2a;
+  color: #e8e8e8;
+  border-color: #4a4a4a;
+}
+
+/* Dark mode notification dropdown */
+.dark [class*="bg-white border-slate-200"][class*="rounded-xl"][class*="shadow-2xl"] {
+  background-color: #2a2a2a !important;
+  border-color: #4a4a4a !important;
+}
+.dark [class*="shadow-2xl"][class*="rounded-xl"] .text-indigo-200 { color: #93c5fd !important; }
+.dark [class*="shadow-2xl"][class*="rounded-xl"] .text-indigo-400 { color: #818cf8 !important; }
+.dark [class*="shadow-2xl"][class*="rounded-xl"] .text-slate-800 { color: #e8e8e8 !important; }
+.dark [class*="shadow-2xl"][class*="rounded-xl"] .text-slate-700 { color: #d4dae0 !important; }
+.dark [class*="shadow-2xl"][class*="rounded-xl"] .text-slate-600 { color: #cbe2f0 !important; }
+.dark [class*="shadow-2xl"][class*="rounded-xl"] .text-slate-500 { color: #a8a8a8 !important; }
+.dark [class*="shadow-2xl"][class*="rounded-xl"] .bg-slate-100 { background-color: #333333 !important; }
+.dark [class*="shadow-2xl"][class*="rounded-xl"] .bg-slate-50  { background-color: #2a2a2a !important; }
+.dark [class*="shadow-2xl"][class*="rounded-xl"] .bg-white   { background-color: #2a2a2a !important; }
+.dark [class*="shadow-2xl"][class*="rounded-xl"] .border-slate-200 { border-color: #4a4a4a !important; }
+.dark [class*="shadow-2xl"][class*="rounded-xl"] .border-slate-300 { border-color: #555555 !important; }
+.dark [class*="shadow-2xl"][class*="rounded-xl"] .border-white { border-color: #4a4a4a !important; }
+.dark [class*="shadow-2xl"][class*="rounded-xl"] .text-rose-500 { color: #f87171 !important; }
+
+/* Dark mode: Quick links "Go" arrow text-[#264da1] on dark bg */
+.dark .text-\[\#264da1\] { color: #93c5fd !important; }
+
+/* Dark mode: SectionCard badges - light blue bg on dark bg = low contrast */
+.dark .bg-\[\#cbe2f0\] { background-color: #1a3a5c !important; color: #e8e8e8 !important; border-color: #264da1 !important; }
+
+/* Dark mode: SectionCard icon - light blue gradient invisible on dark bg */
+.dark .rounded-xl.p-2\.5.flex.items-center.justify-center svg { color: #cbe2f0 !important; }
+
+.glass-navy {
+  background: rgba(20, 50, 88, 0.85);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(20, 50, 88, 0.1);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(38, 77, 161, 0.4);
 }
 
-.glass-glow {
-  box-shadow: 0 0 20px 0 rgba(38, 77, 161, 0.1);
-}
-
-/* Scrollbar styling */
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #f1dece;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1a1a1a;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #cbe2f0;
   border-radius: 3px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #3a3a3a;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: #264da1;
 }
 
-/* Keyframe Animations */
+/* Mobile */
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -82,44 +210,37 @@ h1, h2, h3, h4, h5, h6 {
 .animate-fade-in { animation: fade-in 0.2s ease-out; }
 .animate-scale-up { animation: scale-up 0.2s ease-out; }
 
-/* Viewport meta fix (for Next.js head) */
-viewport-fix { content: width=device-width, initial-scale=1; }
-
-/* Mobile touch improvements */
+/* Mobile */
 * {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Better mobile scrolling */
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
 }
 
-/* Mobile input zoom prevention */
 input, select, textarea {
-  font-size: 16px; /* Prevents iOS zoom on focus */
+  font-size: 16px; /* Prevent iOS zoom on focus */
 }
 
-/* Mobile: prevent horizontal overflow */
 .overflow-x-auto {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-/* Safe area for notched devices */
 @supports (padding: env(safe-area-inset-bottom)) {
   body {
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
-/* FullCalendar Custom Theme Overrides */
+/* FullCalendar — Navy theme */
 .fc {
-  --fc-border-color: rgba(0, 0, 0, 0.05) !important;
+  --fc-border-color: #cbe2f0 !important;
   --fc-daygrid-event-dot-width: 8px !important;
-  --fc-event-bg-color: rgba(20, 50, 88, 0.1) !important;
-  --fc-event-border-color: rgba(20, 50, 88, 0.2) !important;
+  --fc-event-bg-color: rgba(20, 50, 88, 0.15) !important;
+  --fc-event-border-color: rgba(20, 50, 88, 0.3) !important;
   --fc-event-text-color: #143258 !important;
   --fc-page-bg-color: transparent !important;
   font-family: var(--font-sans) !important;
@@ -129,7 +250,7 @@ input, select, textarea {
   font-size: 1.25rem !important;
   font-weight: 700 !important;
   letter-spacing: -0.025em !important;
-  color: #000000 !important;
+  color: #143258 !important;
 }
 
 .fc .fc-button {
@@ -139,14 +260,14 @@ input, select, textarea {
   font-weight: 500 !important;
   font-size: 0.875rem !important;
   padding: 0.5rem 0.75rem !important;
-  border-radius: 0.5rem !important; /* Larger border-radius */
+  border-radius: 0.5rem !important;
   text-transform: capitalize !important;
   transition: all 0.2s !important;
 }
 
 .fc .fc-button:hover {
-  background-color: #0a1f3a !important;
-  border-color: #0a1f3a !important;
+  background-color: #0f2744 !important;
+  border-color: #0f2744 !important;
   color: #fefefe !important;
 }
 
@@ -157,14 +278,14 @@ input, select, textarea {
 }
 
 .fc .fc-col-header-cell-cushion {
-  color: #333333 !important;
+  color: #143258 !important;
   font-weight: 600 !important;
   font-size: 0.875rem !important;
   padding: 8px 0 !important;
 }
 
 .fc .fc-timegrid-slot-label-cushion {
-  color: #555555 !important;
+  color: #747474 !important;
   font-size: 0.75rem !important;
 }
 
@@ -172,8 +293,16 @@ input, select, textarea {
   background-color: rgba(20, 50, 88, 0.05) !important;
 }
 
+.dark .fc-day-today {
+  background-color: rgba(20, 50, 88, 0.15) !important;
+}
+
 .fc-theme-standard td, .fc-theme-standard th {
-  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid #cbe2f0 !important;
+}
+
+.dark .fc-theme-standard td, .dark .fc-theme-standard th {
+  border: 1px solid #3a3a3a !important;
 }
 
 .fc-v-event {

@@ -23,6 +23,7 @@ import {
   LayoutDashboard,
   Wallet,
   Settings,
+  Mail,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -39,10 +40,10 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
   const isActive = (path: string) => pathname === path;
 
   const getLinkClass = (path: string) =>
-    `flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+    `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
       isActive(path)
         ? 'bg-white/15 text-white shadow-sm'
-        : 'text-white/60 hover:bg-white/8 hover:text-white/80'
+        : 'text-white/60 hover:bg-[#f7b917] hover:text-[#143258]'
     }`;
 
   const getRoleBadgeVariant = (role: string) => {
@@ -64,12 +65,15 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
   };
 
   const sidebarContent = (
-    <aside className="w-64 bg-[#143258] flex flex-col h-full">
+    <aside className="w-56 bg-[#143258] flex flex-col h-full">
       {/* Brand logo */}
-      <div className="p-5 border-b border-white/8 flex flex-col gap-2">
+      <div className="p-4 border-b border-[#264da1] flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-white/15 flex items-center justify-center font-bold text-white tracking-wider text-base">
+            <div
+              className="h-8 w-8 rounded-lg flex items-center justify-center font-bold text-white tracking-wider text-base"
+              style={{ background: 'linear-gradient(135deg, #f7b917 0%, #f4a006 100%)' }}
+            >
               RF
             </div>
             <span className="font-bold text-base tracking-tight text-white/90">
@@ -94,9 +98,9 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-3 flex flex-col gap-0.5 overflow-y-auto">
         {/* Section heading */}
-        <div className="px-3 py-2 text-[10px] uppercase tracking-widest text-white/30 font-semibold">Main</div>
+        <div className="px-3 py-1.5 text-[10px] uppercase tracking-widest text-white/30 font-semibold">Main</div>
 
         {/* Regular USER Links */}
         {hasRole(['USER']) && (
@@ -139,7 +143,7 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
         {/* ROOM_ADMIN Links */}
         {hasRole(['ROOM_ADMIN']) && (
           <>
-            <div className="px-3 py-2 mt-2 text-[10px] uppercase tracking-widest text-white/30 font-semibold">Projects</div>
+            <div className="px-3 py-1.5 mt-1.5 text-[10px] uppercase tracking-widest text-white/30 font-semibold">Projects</div>
             <Link href="/admin/bookings" className={getLinkClass('/admin/bookings')} onClick={handleLinkClick}>
               <Calendar className="w-4 h-4" />
               <span>Master Calendar</span>
@@ -170,7 +174,7 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
         {/* Members section */}
         {hasRole(['ADMIN_IT']) && (
           <>
-            <div className="px-3 py-2 mt-2 text-[10px] uppercase tracking-widest text-white/30 font-semibold">Members</div>
+            <div className="px-3 py-1.5 mt-1.5 text-[10px] uppercase tracking-widest text-white/30 font-semibold">Members</div>
             <Link href="/system/users" className={getLinkClass('/system/users')} onClick={handleLinkClick}>
               <Users className="w-4 h-4" />
               <span>User Control</span>
@@ -183,6 +187,10 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
               <Wallet className="w-4 h-4" />
               <span>Payment Gateways</span>
             </Link>
+            <Link href="/system/email-settings" className={getLinkClass('/system/email-settings')} onClick={handleLinkClick}>
+              <Mail className="w-4 h-4" />
+              <span>Email Settings</span>
+            </Link>
             <Link href="/system/waha-settings" className={getLinkClass('/system/waha-settings')} onClick={handleLinkClick}>
               <Settings className="w-4 h-4" />
               <span>WAHA Settings</span>
@@ -192,8 +200,8 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
       </nav>
 
       {/* Footer / User Profile section */}
-      <div className="p-4 border-t border-white/8">
-        <div className="flex items-center gap-2.5 mb-3 px-1">
+      <div className="p-3 border-t border-[#264da1]">
+        <div className="flex items-center gap-2.5 mb-2 px-1">
           <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center font-bold text-white/70 text-sm flex-shrink-0">
             {user.name.charAt(0)}
           </div>
@@ -204,7 +212,7 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
         </div>
         <button
           onClick={logout}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white/50 hover:text-white/80 hover:bg-white/8 transition-all cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white/50 hover:text-[#143258] hover:bg-[#f7b917] transition-all cursor-pointer"
         >
           <LogOut className="w-4 h-4" />
           <span>Sign Out</span>
@@ -215,8 +223,8 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
 
   return (
     <>
-      {/* Desktop sidebar — always visible on lg+ */}
-      <div className="hidden lg:flex w-64 min-h-screen flex-shrink-0">
+      {/* Desktop sidebar — always visible on lg+, locked to viewport height */}
+      <div className="hidden lg:flex w-56 h-screen flex-shrink-0">
         {sidebarContent}
       </div>
 
@@ -231,7 +239,7 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
             onClick={onClose}
           />
           <div 
-            className={`relative z-10 flex h-full w-64 flex-shrink-0 transition-transform duration-300 transform ${
+            className={`relative z-10 flex h-full w-56 flex-shrink-0 transition-transform duration-300 transform ${
               open ? 'translate-x-0' : '-translate-x-full'
             }`}
           >

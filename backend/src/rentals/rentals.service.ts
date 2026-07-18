@@ -255,7 +255,7 @@ export class RentalsService implements OnModuleInit {
       data: {
         userId,
         roomId,
-        holdDate: startTimeDate,
+        holdDate: startDate,
         startTime: startTimeDate,
         endTime: endTimeDate,
         expiresAt,
@@ -739,20 +739,9 @@ export class RentalsService implements OnModuleInit {
         continue;
       }
 
-      // Check if at least one slot has no conflicts
-      let hasAvailableSlot = false;
-      for (const slot of daySlots) {
-        const availCheck = await this.checkAvailability(
-          roomId,
-          dateStr,
-          slot.startTime,
-          slot.endTime,
-        );
-        if (availCheck.available) {
-          hasAvailableSlot = true;
-          break;
-        }
-      }
+      // Check if at least one sub-slot is available (per-hour resolution)
+      const slots = await this.getAvailableSlots(roomId, dateStr);
+      const hasAvailableSlot = slots.some((s: any) => s.available);
 
       availability[dateStr] = { available: hasAvailableSlot, hasSlots: true };
     }

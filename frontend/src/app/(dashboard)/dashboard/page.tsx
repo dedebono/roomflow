@@ -228,10 +228,10 @@ export default function EmployeeDashboard() {
     <DashboardLayout title="Employee Portal" description="Browse meeting rooms, view schedules, and book instantly.">
       {/* Filters & Information Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="border border-slate-900 glass">
+        <Card className="border border-[#cbe2f0] dark:border-[#3a3a3a]">
           <CardHeader className="p-0 mb-4">
             <CardTitle className="flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-indigo-400" />
+              <Building2 className="w-5 h-5 text-[#264da1] dark:text-[#93c5fd]" />
               <span>Select Location</span>
             </CardTitle>
             <CardDescription>Choose which room calendar to browse</CardDescription>
@@ -260,16 +260,16 @@ export default function EmployeeDashboard() {
             (() => {
               const room = rooms.find((r: Room) => r.id === selectedRoomId)!;
               return (
-                <Card key={room.id} className="border border-indigo-500/30 bg-indigo-500/5 glass">
+                <Card key={room.id} className="border border-[#cbe2f0] dark:border-[#3a3a3a] bg-[#fefefe] dark:bg-[#2a2a2a]">
                   <CardHeader className="p-0 flex items-center justify-between">
                     <CardTitle className="text-sm truncate pr-2">{room.name}</CardTitle>
                     <Badge variant={room.status === 'ACTIVE' ? 'success' : 'warning'}>
                       {room.status}
                     </Badge>
                   </CardHeader>
-                  <CardContent className="p-0 mt-3 flex items-center justify-between text-xs text-slate-500">
+                  <CardContent className="p-0 mt-3 flex items-center justify-between text-xs text-[#747474] dark:text-[#a8a8a8]">
                     <span className="flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5 text-indigo-400" />
+                      <Users className="w-3.5 h-3.5 text-[#264da1] dark:text-[#93c5fd]" />
                       Max: {room.capacity} people
                     </span>
                     <span className="flex items-center gap-1 font-medium italic truncate max-w-[150px]">
@@ -280,7 +280,7 @@ export default function EmployeeDashboard() {
               );
             })()
           ) : (
-            <div className="col-span-3 flex items-center justify-center p-8 border border-slate-900/60 rounded-xl glass text-slate-500 text-sm font-medium">
+            <div className="col-span-3 flex items-center justify-center p-8 border border-[#cbe2f0] dark:border-[#3a3a3a] rounded-2xl bg-[#fefefe] dark:bg-[#2a2a2a] text-[#747474] dark:text-[#a8a8a8] text-sm font-medium">
               Select a room to view its calendar.
             </div>
           )}
@@ -289,8 +289,8 @@ export default function EmployeeDashboard() {
 
       {/* Booking Calendar Pane */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2 text-xs text-indigo-300 font-semibold px-2">
-          <Info className="w-4 h-4 text-indigo-400" />
+        <div className="flex items-center gap-2 text-xs text-[#264da1] dark:text-[#93c5fd] font-semibold px-2">
+          <Info className="w-4 h-4 text-[#264da1] dark:text-[#93c5fd]" />
           <span>Tip: Click and drag any empty blocks on the calendar below to instantly open the booking form!</span>
         </div>
         <BookingCalendar
@@ -299,13 +299,13 @@ export default function EmployeeDashboard() {
           onEventClick={handleEventClick}
         />
         {/* Color Legend */}
-        <div className="flex items-center gap-6 px-2 text-xs text-slate-500">
+        <div className="flex items-center gap-6 px-2 text-xs text-[#747474] dark:text-[#a8a8a8]">
           <span className="flex items-center gap-2">
-            <span className="inline-block w-3 h-3 rounded bg-blue-500 border border-blue-400"></span>
+            <span className="inline-block w-3 h-3 rounded border-2" style={{ background: '#264da1', borderColor: '#143258' }}></span>
             Employee Booking
           </span>
           <span className="flex items-center gap-2">
-            <span className="inline-block w-3 h-3 rounded bg-red-500 border border-red-400"></span>
+            <span className="inline-block w-3 h-3 rounded" style={{ background: '#ef4444', border: '1px solid #f87171' }}></span>
             Rental Booking
           </span>
         </div>
@@ -360,7 +360,7 @@ export default function EmployeeDashboard() {
             leftIcon={<AlignLeft className="w-4 h-4" />}
           />
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/40">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#cbe2f0] dark:border-[#3a3a3a]">
             <Button type="button" variant="secondary" onClick={() => setIsBookModalOpen(false)}>
               Cancel
             </Button>

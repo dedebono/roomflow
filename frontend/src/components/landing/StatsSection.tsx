@@ -32,7 +32,7 @@ const Counter = ({ value, suffix }: { value: number, suffix: string }) => {
 
 export const StatsSection = () => {
   return (
-    <section id="why-us" className="py-24 bg-white border-y border-slate-200">
+    <section id="why-us" className="py-24 bg-[#fefefe] border-y border-[#cbe2f0]">
       <div className="container mx-auto px-4 max-w-7xl">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
           {stats.map((item, i) => (
@@ -44,10 +44,10 @@ export const StatsSection = () => {
               transition={{ delay: i * 0.1 }}
               className="text-center"
             >
-              <p className="text-4xl md:text-6xl font-bold text-slate-900 mb-2 font-playfair">
+              <p className="text-4xl md:text-6xl font-bold text-[#143258] mb-2 font-playfair">
                 <Counter value={item.value} suffix={item.suffix} />
               </p>
-              <p className="text-slate-500 font-medium">{item.label}</p>
+              <p className="text-[#747474] font-medium">{item.label}</p>
             </motion.div>
           ))}
         </div>

@@ -9,12 +9,8 @@ import { DataTable } from '@/components/ui/DataTable';
 import api from '@/lib/api';
 import { Booking, BookingHold } from '@/types';
 import toast from 'react-hot-toast';
+import { formatRupiah, formatTime, formatDateTime } from '@/lib/format';
 import { Calendar, Clock, MapPin, CreditCard, CheckCircle, XCircle, Timer, DoorOpen } from 'lucide-react';
-
-const formatRupiah = (amount: number | undefined) =>
-  amount !== undefined
-    ? 'Rp ' + amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-    : 'Rp -';
 
 interface RentalBooking {
   id: string;
@@ -77,28 +73,6 @@ export default function RenterBookingsPage() {
     fetchBookings();
   }, [fetchBookings]);
 
-  // Format date and time
-  const formatDateTime = (dateStr: string) => {
-    const d = new Date(dateStr.substring(0, 10) + 'T00:00:00');
-    return d.toLocaleString([], {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const formatTime = (timeStr: string) => {
-    if (!timeStr) return '';
-    // Extract HH:MM from ISO format (e.g., "2026-07-27T09:00:00.000Z" -> "09:00")
-    return timeStr.substring(11, 16);
-  };
-
-  const displayDateTime = (dateStr: string, timeStr: string) => {
-    const d = new Date(dateStr.substring(0, 10) + 'T00:00:00');
-    return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${formatTime(timeStr)}`;
-  };
-
   const getStatusBadge = (booking: RentalBooking) => {
     if (booking.type === 'booking_hold') {
       const status = booking.holdStatus;
@@ -123,12 +97,12 @@ export default function RenterBookingsPage() {
       header: 'Room',
       cell: (b: RentalBooking) => (
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center">
-            <DoorOpen className="w-5 h-5 text-indigo-400" />
+          <div className="h-10 w-10 rounded-lg bg-[#cbe2f0] flex items-center justify-center">
+            <DoorOpen className="w-5 h-5 text-[#264da1] dark:text-[#93c5fd]" />
           </div>
           <div>
-            <p className="font-bold text-slate-900">{b.room?.name || 'Room'}</p>
-            <p className="text-xs text-slate-500 flex items-center gap-1">
+            <p className="font-bold text-[#143258] dark:text-[#e8e8e8]">{b.room?.name || 'Room'}</p>
+            <p className="text-xs text-[#747474] dark:text-[#a8a8a8] flex items-center gap-1">
               <MapPin className="w-3 h-3" />
               {b.room?.building?.name || 'Building'}
             </p>
@@ -140,11 +114,11 @@ export default function RenterBookingsPage() {
       header: 'Scheduled Time',
       cell: (b: RentalBooking) => (
         <div className="flex flex-col gap-0.5">
-          <span className="text-xs text-indigo-400 font-semibold flex items-center gap-1">
+          <span className="text-xs text-[#264da1] dark:text-[#93c5fd] font-semibold flex items-center gap-1">
             <Calendar className="w-3.5 h-3.5" />
-            {b.holdDate ? displayDateTime(b.holdDate, b.holdStartTime || '') : 'N/A'}
+            {b.holdDate ? formatDateTime(b.holdDate, formatTime(b.holdStartTime || '')) : 'N/A'}
           </span>
-          <span className="text-xs text-slate-500 flex items-center gap-1">
+          <span className="text-xs text-[#747474] dark:text-[#a8a8a8] flex items-center gap-1">
             <Clock className="w-3.5 h-3.5" />
             {formatTime(b.holdStartTime || '')} - {formatTime(b.holdEndTime || '')}
           </span>
@@ -154,7 +128,7 @@ export default function RenterBookingsPage() {
     {
       header: 'Price',
       cell: (b: RentalBooking) => (
-        <span className="font-semibold text-slate-800">{formatRupiah(b.price)}</span>
+        <span className="font-semibold text-[#474547] dark:text-[#e8e8e8]">{formatRupiah(b.price)}</span>
       ),
     },
     {
@@ -175,7 +149,7 @@ export default function RenterBookingsPage() {
           };
           return <Badge variant={variants[b.paymentStatus] || 'neutral'}>{b.paymentStatus}</Badge>;
         }
-        return <span className="text-slate-500 text-xs">-</span>;
+        return <span className="text-[#747474] dark:text-[#a8a8a8] text-xs">-</span>;
       },
     },
     {
@@ -221,37 +195,37 @@ export default function RenterBookingsPage() {
     <>
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border border-slate-900 glass">
+        <Card className="border border-[#cbe2f0] dark:border-[#3a3a3a] glass">
           <CardHeader className="p-0 mb-2">
-            <CardTitle className="text-sm text-slate-500">Active Rentals</CardTitle>
+            <CardTitle className="text-sm text-[#747474] dark:text-[#a8a8a8]">Active Rentals</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <p className="text-3xl font-bold text-slate-900 flex items-center gap-2">
-              <DoorOpen className="w-7 h-7 text-emerald-400" />
+            <p className="text-3xl font-bold text-[#143258] dark:text-[#e8e8e8] flex items-center gap-2">
+              <DoorOpen className="w-7 h-7 text-emerald-500" />
               {activeBookings}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border border-slate-900 glass">
+        <Card className="border border-[#cbe2f0] dark:border-[#3a3a3a] glass">
           <CardHeader className="p-0 mb-2">
-            <CardTitle className="text-sm text-slate-500">Pending Payments</CardTitle>
+            <CardTitle className="text-sm text-[#747474] dark:text-[#a8a8a8]">Pending Payments</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <p className="text-3xl font-bold text-slate-900 flex items-center gap-2">
-              <Timer className="w-7 h-7 text-amber-400" />
+            <p className="text-3xl font-bold text-[#143258] dark:text-[#e8e8e8] flex items-center gap-2">
+              <Timer className="w-7 h-7 text-[#f7b917]" />
               {pendingPayments}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border border-slate-900 glass">
+        <Card className="border border-[#cbe2f0] dark:border-[#3a3a3a] glass">
           <CardHeader className="p-0 mb-2">
-            <CardTitle className="text-sm text-slate-500">Total Spent</CardTitle>
+            <CardTitle className="text-sm text-[#747474] dark:text-[#a8a8a8]">Total Spent</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <p className="text-3xl font-bold text-slate-900 flex items-center gap-2">
-              <CreditCard className="w-7 h-7 text-indigo-400" />
+            <p className="text-3xl font-bold text-[#143258] dark:text-[#e8e8e8] flex items-center gap-2">
+              <CreditCard className="w-7 h-7 text-[#264da1]" />
               {formatRupiah(totalSpent)}
             </p>
           </CardContent>
@@ -259,7 +233,7 @@ export default function RenterBookingsPage() {
       </div>
 
       {/* Bookings Table */}
-      <Card className="border border-slate-900 glass">
+      <Card className="border border-[#cbe2f0] dark:border-[#3a3a3a] glass">
         <CardHeader className="p-0 mb-4 flex-row items-center justify-between">
           <div>
             <CardTitle>Rental Bookings</CardTitle>

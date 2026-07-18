@@ -39,8 +39,8 @@ export function TimeSlotSelector({
 
   if (slots.length === 0) {
     return (
-      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-        <p className="text-sm text-amber-800">No available time slots for this date.</p>
+      <div className="p-4 bg-[#f7b917]/10 border border-[#f7b917]/30 rounded-lg">
+        <p className="text-sm font-semibold text-[#143258] dark:text-[#e8e8e8]">No available time slots for this date.</p>
       </div>
     );
   }
@@ -63,7 +63,7 @@ export function TimeSlotSelector({
                   ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-500/30 scale-105'
                   : isDisabled
                   ? 'bg-white/40 border-slate-200 text-slate-600 cursor-not-allowed opacity-60 line-through'
-                  : 'bg-slate-100/40 border-slate-300/50 text-slate-800 hover:border-indigo-500/50 hover:bg-slate-100 hover:scale-[1.02]'
+                  : 'bg-[#f8f8f8] dark:bg-[#2a2a2a] border border-slate-300 dark:border-[#3a3a3a] text-[#143258] dark:text-[#e8e8e8] hover:border-indigo-500/50 dark:hover:border-indigo-400 hover:bg-slate-100 dark:hover:bg-[#3a3a3a] hover:scale-[1.02]'
               }`}
             >
               <div className="flex items-center gap-1.5">

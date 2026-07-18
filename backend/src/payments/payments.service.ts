@@ -168,7 +168,7 @@ export class PaymentsService {
       userId,
       'PAYMENT_PROOF_UPLOADED',
       'Payment Proof Uploaded',
-      `Your payment proof of $${amount} for ${payment.booking.room.name} has been submitted for review.`,
+      `Your payment proof of Rp ${amount.toLocaleString('id-ID')} for ${payment.booking.room.name} has been submitted for review.`,
       JSON.stringify({
         paymentId: payment.id,
         bookingId: payment.bookingId,
@@ -187,7 +187,7 @@ export class PaymentsService {
         manager.id,
         'PAYMENT_PROOF_UPLOADED',
         'New Payment Proof Submitted',
-        `${payment.booking.room.name}: $${amount} payment proof uploaded. Review it now.`,
+        `${payment.booking.room.name}: Rp ${amount.toLocaleString('id-ID')} payment proof uploaded. Review it now.`,
         JSON.stringify({
           paymentId: payment.id,
           bookingId: payment.bookingId,
@@ -279,7 +279,7 @@ export class PaymentsService {
       payment.userId,
       'PAYMENT_APPROVED',
       'Payment Approved',
-      `Your payment of $${payment.amount} for ${payment.booking.room.name} has been approved. Your rental is confirmed!`,
+      `Your payment of Rp ${(payment.amount || 0).toLocaleString('id-ID')} for ${payment.booking.room.name} has been approved. Your rental is confirmed!`,
       JSON.stringify({
         paymentId: payment.id,
         bookingId: payment.booking.id,
@@ -352,7 +352,7 @@ export class PaymentsService {
       payment.userId,
       'PAYMENT_REJECTED',
       'Payment Rejected',
-      `Your payment of $${payment.amount} for ${payment.booking.room.name} has been rejected.${notes ? ` Reason: ${notes}` : ''}`,
+      `Your payment of Rp ${(payment.amount || 0).toLocaleString('id-ID')} for ${payment.booking.room.name} has been rejected.${notes ? ` Reason: ${notes}` : ''}`,
       JSON.stringify({
         paymentId: payment.id,
         bookingId: payment.booking.id,

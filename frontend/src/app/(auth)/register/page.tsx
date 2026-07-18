@@ -89,7 +89,7 @@ export default function RegisterPage() {
               />
 
               <Input
-                label="WhatsApp Number (Optional)"
+                label="WhatsApp number"
                 type="tel"
                 placeholder="+628123456789"
                 value={whatsappNumber}

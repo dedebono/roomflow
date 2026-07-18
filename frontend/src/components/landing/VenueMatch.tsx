@@ -18,7 +18,7 @@ export const VenueMatch = () => {
   const router = useRouter();
 
   return (
-    <section id="venues" className="py-24 bg-white relative">
+    <section id="venues" className="py-24 bg-[#fefefe] relative">
       <div className="container mx-auto px-4 max-w-5xl">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -26,10 +26,10 @@ export const VenueMatch = () => {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl md:text-5xl font-playfair font-bold text-slate-900 mb-4">
+          <h2 className="text-4xl md:text-5xl font-playfair font-bold text-[#143258] mb-4">
             What are you <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-amber-300">planning?</span>
           </h2>
-          <p className="text-slate-500 text-lg max-w-xl mx-auto">
+          <p className="text-[#747474] text-lg max-w-xl mx-auto">
             Tell us about your event and we'll find the perfect venue for you.
           </p>
         </motion.div>
@@ -44,12 +44,12 @@ export const VenueMatch = () => {
             <button
               key={type.id}
               onClick={() => router.push('/login')}
-              className="p-4 rounded-2xl border transition-all duration-300 flex flex-col items-center gap-3 bg-slate-50 border-slate-200 hover:border-amber-500/50 hover:bg-white hover:scale-105 cursor-pointer"
+              className="p-4 rounded-2xl border transition-all duration-300 flex flex-col items-center gap-3 bg-[#f1dece] border-[#cbe2f0] hover:border-amber-500/50 hover:bg-[#fefefe] hover:scale-105 cursor-pointer"
             >
               <div className="text-amber-400">
                 {iconMap[type.icon]}
               </div>
-              <span className="text-sm font-semibold text-slate-600">
+              <span className="text-sm font-semibold text-[#474547]">
                 {type.label}
               </span>
             </button>

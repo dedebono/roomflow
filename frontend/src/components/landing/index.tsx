@@ -37,7 +37,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <main className="bg-slate-50 min-h-screen overflow-x-hidden">
+    <main className="bg-[#f1dece] min-h-screen overflow-x-hidden">
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar {
           display: none;

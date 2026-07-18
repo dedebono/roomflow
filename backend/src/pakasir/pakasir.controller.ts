@@ -97,7 +97,7 @@ export class PakasirController {
         payment.userId,
         'PAYMENT_APPROVED',
         'Payment Approved',
-        `Your payment of $${amount || payment.amount} for ${payment.booking.room.name} has been confirmed.`,
+        `Your payment of Rp ${Number(amount || payment.amount || 0).toLocaleString('id-ID')} for ${payment.booking.room.name} has been confirmed.`,
         JSON.stringify({ paymentId: payment.id, bookingId: payment.bookingId }),
       );
     } else if (newStatus === PaymentStatus.REJECTED) {

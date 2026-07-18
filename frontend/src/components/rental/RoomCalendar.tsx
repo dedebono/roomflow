@@ -175,7 +175,7 @@ export function RoomCalendar({ roomId, onDateSelect, selectedDate }: RoomCalenda
                   const isClickable = day.date && day.available;
 
                   return (
-                    <div key={dayIdx} className="aspect-square p-1 sm:p-2 flex items-center justify-center min-h-16">
+                    <div className="p-0.5 sm:p-2 flex items-center justify-center min-h-14 sm:min-h-16">
                       {day.dayOfMonth > 0 && (
                         <button
                           onClick={() => isClickable && onDateSelect(day.date)}

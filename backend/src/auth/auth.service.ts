@@ -13,6 +13,7 @@ import * as bcrypt from 'bcrypt';
 import { v4 as uuid4 } from 'uuid';
 import { Role } from '@prisma/client';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class AuthService {
@@ -22,6 +23,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private whatsAppService: WhatsAppService,
+    private emailService: EmailService,
   ) {}
 
   private generateOtp(): string {
@@ -104,8 +106,8 @@ export class AuthService {
       },
     });
 
-    // Generate and send OTP if WhatsApp number provided
-    if (user.whatsappNumber) {
+    // Generate and send OTP if WhatsApp number or email provided
+    if (user.whatsappNumber || user.email) {
       const otp = this.generateOtp();
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
 
@@ -117,10 +119,19 @@ export class AuthService {
         },
       });
 
-      await this.whatsAppService.sendText(
-        user.whatsappNumber,
-        `*RoomFlow - Account Verification*\n\nYour OTP code is: *${otp}*\n\nCode expires in 5 minutes.\n\nIf you didn't create an account, ignore this message.`,
-      );
+      if (user.whatsappNumber) {
+        await this.whatsAppService.sendText(
+          user.whatsappNumber,
+          `*RoomFlow - Account Verification*\n\nYour OTP code is: *${otp}*\n\nCode expires in 5 minutes.\n\nIf you didn't create an account, ignore this message.`,
+        );
+      }
+
+      // Also send OTP via email (same message) when email is present
+      if (user.email) {
+        this.emailService
+          .sendOtp(user.email, otp)
+          .catch((err) => console.error('Email OTP failed:', err));
+      }
     }
 
     const payload = { sub: user.id, email: user.email, role: user.role };
@@ -222,6 +233,13 @@ export class AuthService {
       user.whatsappNumber,
       `*RoomFlow - Account Verification*\n\nYour new OTP code is: *${otp}*\n\nCode expires in 5 minutes.`,
     );
+
+    // Also resend OTP via email (same message)
+    if (user.email) {
+      this.emailService
+        .sendOtp(user.email, otp, true)
+        .catch((err) => console.error('Email OTP failed:', err));
+    }
 
     return { message: 'OTP resent' };
   }

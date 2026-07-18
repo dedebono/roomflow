@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import api, { getImageUrl } from '@/lib/api';
 import { paymentGatewaysApi } from '@/lib/api';
+import { formatRupiah, formatDate } from '@/lib/format';
 import { Room, BookingHold } from '@/types';
 import toast from 'react-hot-toast';
 import {
@@ -19,12 +20,6 @@ import { RoomCalendar } from '@/components/rental/RoomCalendar';
 import { TimeSlotSelector } from '@/components/rental/TimeSlotSelector';
 import { BookingSummary } from '@/components/rental/BookingSummary';
 
-const formatRupiah = (amount: number | undefined) =>
-  amount !== undefined
-    ? 'Rp ' + amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-    : 'Rp -';
-
-const formatDate = (dateStr: string) => new Date(dateStr.substring(0, 10) + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 const formatTimeDisplay = (isoStr: string) => isoStr.substring(11, 16);  // "2026-06-23T09:00:00.000Z" -> "09:00"
 
 interface TimeSlot {
@@ -316,9 +311,9 @@ export default function RoomDetailPage() {
 
   if (!room) {
     return (
-      <Card className="border border-slate-900 glass text-center py-12">
+      <Card className="border border-[#cbe2f0] dark:border-[#3a3a3a] glass text-center py-12">
         <CardContent>
-          <p className="text-slate-500">Room not found.</p>
+          <p className="text-[#747474] dark:text-[#a8a8a8]">Room not found.</p>
           <Link href="/renter/rooms" className="mt-4 inline-block">
             <Button variant="secondary">Back to Rooms</Button>
           </Link>
@@ -332,7 +327,7 @@ export default function RoomDetailPage() {
   return (
     <>
       {/* Back Button */}
-      <Link href="/renter/rooms" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 mb-4">
+      <Link href="/renter/rooms" className="inline-flex items-center gap-2 text-[#747474] dark:text-[#a8a8a8] hover:text-[#143258] dark:hover:text-[#e8e8e8] mb-4">
         <ArrowLeft className="w-4 h-4" />
         <span className="text-sm font-semibold">Back to Rooms</span>
       </Link>
@@ -341,12 +336,12 @@ export default function RoomDetailPage() {
         {/* Room Details & Calendar */}
         <div className="lg:col-span-2 space-y-6">
           {/* Room Image */}
-          <Card className="border border-slate-900 glass overflow-hidden">
-            <div className="relative h-64 bg-white">
+          <Card className="border border-[#cbe2f0] dark:border-[#3a3a3a] glass overflow-hidden">
+            <div className="relative h-64 bg-[#fefefe] dark:bg-[#2a2a2a]">
               {room.imageUrl ? (
                 <img src={room.imageUrl} alt={room.name} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-slate-600">
+                <div className="w-full h-full flex items-center justify-center text-[#747474] dark:text-[#a8a8a8]">
                   <MapPin className="w-16 h-16" />
                 </div>
               )}
@@ -358,27 +353,27 @@ export default function RoomDetailPage() {
           </Card>
 
           {/* Room Info */}
-          <Card className="border border-slate-900 glass">
+          <Card className="border border-[#cbe2f0] dark:border-[#3a3a3a] glass">
             <CardHeader className="p-0 mb-4">
               <CardTitle className="text-xl">{room.name}</CardTitle>
               <CardDescription>{room.building?.name || 'Building'}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-4 text-sm text-slate-500">
+              <div className="flex items-center gap-4 text-sm text-[#747474] dark:text-[#a8a8a8]">
                 <span className="flex items-center gap-1.5">
-                  <Users className="w-4 h-4 text-indigo-400" />
+                  <Users className="w-4 h-4 text-[#264da1] dark:text-[#93c5fd]" />
                   Up to {room.capacity} guests
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <MapPin className="w-4 h-4 text-indigo-400" />
+                  <MapPin className="w-4 h-4 text-[#264da1] dark:text-[#93c5fd]" />
                   {room.building?.name || 'Building'}
                 </span>
               </div>
-              {room.description && <p className="text-slate-600 text-sm">{room.description}</p>}
+              {room.description && <p className="text-[#474547] dark:text-[#e8e8e8] text-sm">{room.description}</p>}
               {amenities.length > 0 && (
                 <div className="flex flex-wrap gap-2 pt-2">
                   {amenities.map((amenity: string, idx: number) => (
-                    <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/60 text-slate-600 text-xs rounded-full">
+                    <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#cbe2f0] dark:bg-[#1a3a5c] text-[#474547] dark:text-[#cbe2f0] text-xs rounded-full">
                       {getAmenityIcon(amenity)}
                       {amenity}
                     </span>
@@ -392,10 +387,10 @@ export default function RoomDetailPage() {
           {!activeHold ? (
             <>
               {/* Calendar */}
-              <Card className="border border-slate-900 glass">
+              <Card className="border border-[#cbe2f0] dark:border-[#3a3a3a] glass">
                 <CardHeader className="p-0 mb-4">
                   <CardTitle className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-indigo-400" />
+                    <Calendar className="w-5 h-5 text-[#264da1] dark:text-[#93c5fd]" />
                     Select Rental Date
                   </CardTitle>
                   <CardDescription>Choose your preferred date</CardDescription>
@@ -411,10 +406,10 @@ export default function RoomDetailPage() {
 
               {/* Time Slots */}
               {selectedDate && (
-                <Card className="border border-slate-900 glass">
+                <Card className="border border-[#cbe2f0] dark:border-[#3a3a3a] glass">
                   <CardHeader className="p-0 mb-4">
                     <CardTitle className="flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-indigo-400" />
+                      <Clock className="w-5 h-5 text-[#264da1] dark:text-[#93c5fd]" />
                       Select Time Slot
                     </CardTitle>
                     <CardDescription>Choose your preferred time for {selectedDate}</CardDescription>
@@ -436,29 +431,29 @@ export default function RoomDetailPage() {
         {/* Sidebar: Booking Status or Summary */}
         <div className="space-y-6">
           {activeHold ? (
-            <Card className="border border-emerald-500/20 bg-emerald-500/5">
+            <Card className="border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-500/10">
               <CardHeader className="p-0 mb-4">
-                <CardTitle className="flex items-center gap-2 text-emerald-400">
+                <CardTitle className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                   <CheckCircle className="w-5 h-5" />
                   Booking Hold Active
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2 text-sm">
-                  <p className="text-slate-500">
-                    <span className="font-semibold text-slate-600">Date:</span> {formatDate(activeHold.holdDate)}
+                  <p className="text-[#747474] dark:text-[#a8a8a8]">
+                    <span className="font-semibold text-[#474547] dark:text-[#e8e8e8]">Date:</span> {formatDate(activeHold.holdDate)}
                   </p>
-                  <p className="text-slate-500">
-                    <span className="font-semibold text-slate-600">Time:</span> {formatTimeDisplay(activeHold.startTime)} - {formatTimeDisplay(activeHold.endTime)}
+                  <p className="text-[#747474] dark:text-[#a8a8a8]">
+                    <span className="font-semibold text-[#474547] dark:text-[#e8e8e8]">Time:</span> {formatTimeDisplay(activeHold.startTime)} - {formatTimeDisplay(activeHold.endTime)}
                   </p>
-                  <p className="text-slate-500">
-                    <span className="font-semibold text-slate-600">Amount:</span> {formatRupiah(activeHold.price)}
+                  <p className="text-[#747474] dark:text-[#a8a8a8]">
+                    <span className="font-semibold text-[#474547] dark:text-[#e8e8e8]">Amount:</span> {formatRupiah(activeHold.price)}
                   </p>
-                  <p className="text-slate-500">
-                    <span className="font-semibold text-slate-600">Status:</span> {activeHold.status}
+                  <p className="text-[#747474] dark:text-[#a8a8a8]">
+                    <span className="font-semibold text-[#474547] dark:text-[#e8e8e8]">Status:</span> {activeHold.status}
                   </p>
                   {countdown && (
-                    <p className="text-amber-400 flex items-center gap-1">
+                    <p className="text-[#f7b917] flex items-center gap-1">
                       <Timer className="w-4 h-4" />
                       Expires in: {countdown}
                     </p>

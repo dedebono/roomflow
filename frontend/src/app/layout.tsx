@@ -46,17 +46,17 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${playfairDisplay.variable} ${karla.variable} h-full antialiased dark`}
+      className={`${geistSans.variable} ${geistMono.variable} ${playfairDisplay.variable} ${karla.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-white text-slate-900 selection:bg-indigo-500/30 selection:text-indigo-900">
+      <body className="min-h-full flex flex-col bg-[#f1dece] dark:bg-[#1a1a1a] text-[#474547] dark:text-[#e8e8e8] selection:bg-[#f7b917]/30 selection:text-[#143258]">
         <AuthProvider>
           <Toaster
             position="top-right"
             toastOptions={{
               style: {
-                background: '#1e293b',
-                color: '#f8fafc',
-                border: '1px solid rgba(99, 102, 241, 0.15)',
+                background: '#2a2a2a',
+                color: '#e8e8e8',
+                border: '1px solid #3a3a3a',
               },
             }}
           />

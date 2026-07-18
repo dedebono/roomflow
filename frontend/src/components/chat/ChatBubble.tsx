@@ -16,7 +16,7 @@ export const ChatBubble = ({ onClick }: ChatBubbleProps) => {
     <div className="fixed bottom-6 right-6 z-40">
       <button
         onClick={onClick}
-        className="relative h-14 w-14 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-200 active:scale-95 flex items-center justify-center"
+        className="relative h-14 w-14 rounded-full bg-gradient-to-r from-[#143258] to-[#264da1] hover:from-[#0f2744] hover:to-[#143258] text-white shadow-lg shadow-[#143258]/30 hover:shadow-[#143258]/50 transition-all duration-200 active:scale-95 flex items-center justify-center"
       >
         <MessageSquare className="w-6 h-6" />
         
@@ -44,7 +44,7 @@ export const ChatPanel = ({ isOpen, onClose, children }: ChatPanelProps) => {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200/40 bg-white/40">
         <div className="flex items-center gap-2">
-          <MessageSquare className="w-5 h-5 text-indigo-400" />
+          <MessageSquare className="w-5 h-5 text-[#264da1] dark:text-[#93c5fd]" />
           <h3 className="font-bold text-slate-900">Messages</h3>
         </div>
         <button

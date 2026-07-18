@@ -301,3 +301,16 @@ model WahaConfig {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+model EmailConfig {
+  id          String   @id @default(uuid())
+  enabled     Boolean  @default(false)
+  host        String?
+  port        Int      @default(587)
+  secure      Boolean  @default(false)
+  user        String?
+  pass        String?
+  fromAddress String   @default("noreply@roomflow.local")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

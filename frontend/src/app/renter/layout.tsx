@@ -1,9 +1,9 @@
 'use client';
 
-import React, { ReactNode, useState, useCallback } from 'react';
+import React, { ReactNode, useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { Header } from '@/components/layout/Header';
+import { Sun, Moon } from 'lucide-react';
 import { ChatBubble, ChatPanel } from '@/components/chat/ChatBubble';
 import api from '@/lib/api';
 import { useWebSocket } from '@/lib/useWebSocket';
@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/auth';
 import { NotificationBell } from '@/components/layout/RenterNotificationBell';
 import { ChatMessage } from '@/types';
 import toast from 'react-hot-toast';
+import ThemeInit from '@/components/ThemeInit';
 
 interface RenterLayoutProps {
   children: ReactNode;
@@ -23,8 +24,26 @@ export default function RenterLayout({ children }: RenterLayoutProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  // Dark mode: default follows saved theme (false = light until ThemeInit/effect sets it)
+  // Toggle flips it.
+  const [isDark, setIsDark] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
+
+  // Restore saved theme from localStorage on first client render only.
+  // NEVER touch the DOM here — let the second effect handle class toggling.
+  useEffect(() => {
+    const saved = localStorage.getItem('theme');
+    setIsDark(saved !== 'light'); // anything except 'light' → dark
+  }, []);
+
+  // Keep DOM class in sync with state — ONE place for all DOM updates.
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark);
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
+
+  const toggleTheme = () => setIsDark(prev => !prev);
 
   // WebSocket for real-time messaging & notifications
   const { sendMessage } = useWebSocket({
@@ -120,15 +139,28 @@ export default function RenterLayout({ children }: RenterLayoutProps) {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-900 overflow-hidden">
+    <div className="flex h-screen bg-slate-50 text-slate-900 overflow-hidden">
+      <ThemeInit />
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar with notification bell */}
-        <div className="sticky top-0 z-30 flex items-center justify-between px-4 md:px-8 py-3 border-b border-slate-200 bg-white backdrop-blur-md">
+        <div className="sticky top-0 z-30 flex items-center justify-between px-4 md:px-8 py-3 border-b border-slate-200 dark:border-[#3a3a3a] bg-white dark:bg-[#1a1a1a] backdrop-blur-md">
           <div>
-            <p className="text-sm font-semibold text-slate-500">Renter Portal</p>
+            <p className="text-sm font-semibold text-[#474547] dark:text-[#a8a8a8]">Renter Portal</p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Theme toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-xl hover:bg-[#cbe2f0] dark:hover:bg-slate-700 transition-colors"
+              aria-label="Toggle dark mode"
+            >
+              {isDark ? (
+                <Sun className="w-5 h-5 text-[#f7b917]" />
+              ) : (
+                <Moon className="w-5 h-5 text-[#143258]" />
+              )}
+            </button>
             <NotificationBell />
           </div>
         </div>

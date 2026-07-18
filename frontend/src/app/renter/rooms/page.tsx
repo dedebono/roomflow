@@ -5,34 +5,23 @@ import { useAuth } from '@/lib/auth';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Badge } from '@/components/ui/Badge';
 import api, { getImageUrl } from '@/lib/api';
 import { Room } from '@/types';
 import toast from 'react-hot-toast';
 import { Calendar, MapPin, Users, LayoutGrid } from 'lucide-react';
 import { RoomCategory } from '@/types';
 import Link from 'next/link';
-
-const Badge = ({ children, variant = 'neutral' }: { children: React.ReactNode; variant?: 'info' | 'success' | 'warning' | 'danger' | 'neutral' }) => {
-  const variants: Record<string, string> = {
-    info: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
-    success: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    warning: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    danger: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-    neutral: 'bg-slate-100 text-slate-500 border-slate-300/50',
-  };
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold tracking-wide border ${variants[variant]}`}>
-      {children}
-    </span>
-  );
-};
+import { useSearchParams } from 'next/navigation';
 
 export default function AvailableRoomsPage() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState<string>('')
+  const [searchTerm, setSearchTerm] = useState(initialQuery);
+  const [categoryFilter, setCategoryFilter] = useState<string>('');
 
   useEffect(() => {
     fetchAvailableRooms();
@@ -85,7 +74,7 @@ export default function AvailableRoomsPage() {
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <Card className="border border-slate-900 glass">
+      <Card className="border border-[#cbe2f0] dark:border-[#3a3a3a] glass">
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
             <div className="flex-1">
@@ -98,9 +87,9 @@ export default function AvailableRoomsPage() {
               />
             </div>
             <div className="w-full sm:w-44">
-              <label className="text-xs font-semibold text-slate-500 mb-1 block">Category</label>
+              <label className="text-xs font-semibold text-[#747474] dark:text-[#a8a8a8] mb-1 block">Category</label>
               <select
-                className="w-full h-10 px-3 rounded-lg bg-slate-100 border border-slate-300 text-slate-800 text-sm focus:outline-none focus:border-indigo-500"
+                className="w-full h-10 px-3 rounded-lg bg-white dark:bg-[#2a2a2a] border border-[#cbe2f0] dark:border-[#3a3a3a] text-[#474547] dark:text-[#e8e8e8] text-sm focus:outline-none focus:border-[#264da1]"
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
               >
@@ -110,7 +99,6 @@ export default function AvailableRoomsPage() {
               </select>
             </div>
             <Button variant="secondary" onClick={async () => {
-              setSearchTerm('');
               await fetchAvailableRooms(categoryFilter);
             }}>
               Refresh
@@ -118,6 +106,7 @@ export default function AvailableRoomsPage() {
             {categoryFilter && (
               <Button variant="secondary" onClick={() => {
                 setCategoryFilter('');
+                setSearchTerm('');
                 fetchAvailableRooms('');
               }}>
                 Clear
@@ -129,12 +118,12 @@ export default function AvailableRoomsPage() {
 
       {/* Room Cards */}
       {loading ? (
-        <div className="text-center py-12 text-slate-500">
-          <div className="animate-spin inline-block w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full mb-2" />
+        <div className="text-center py-12 text-[#747474] dark:text-[#a8a8a8]">
+        <div className="animate-spin inline-block w-6 h-6 border-2 border-[#264da1] border-t-transparent rounded-full mb-2" />
           <p>Loading rooms...</p>
         </div>
       ) : filteredRooms.length === 0 ? (
-        <Card className="border border-slate-900 glass text-center py-12">
+        <Card className="border border-[#cbe2f0] dark:border-[#3a3a3a] glass text-center py-12">
           <CardContent>
             <p className="text-slate-500">No rooms available for the selected criteria.</p>
           </CardContent>
@@ -142,17 +131,17 @@ export default function AvailableRoomsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredRooms.map((room) => (
-            <Card key={room.id} className="border border-slate-900 glass flex flex-col overflow-hidden group hover:border-indigo-500/40 transition-all">
-              {/* Room Image */}
-              <div className="relative h-48 bg-white overflow-hidden">
-                {room.imageUrl ? (
+            <Card key={room.id} className="border border-[#cbe2f0] dark:border-[#3a3a3a] glass flex flex-col overflow-hidden group hover:border-[#264da1]/40 transition-all">
+            {/* Room Image */}
+            <div className="relative h-48 bg-[#fefefe] dark:bg-[#2a2a2a] overflow-hidden">
+              {room.imageUrl ? (
                   <img
                     src={room.imageUrl}
                     alt={room.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-600">
+                  <div className="w-full h-full flex items-center justify-center text-[#747474] dark:text-[#a8a8a8]">
                     <MapPin className="w-12 h-12" />
                   </div>
                 )}
@@ -170,12 +159,12 @@ export default function AvailableRoomsPage() {
 
               {/* Room Info */}
               <div className="p-4 flex flex-col flex-1">
-                <h3 className="text-lg font-bold text-slate-900">{room.name}</h3>
+                <h3 className="text-lg font-bold text-[#143258] dark:text-[#e8e8e8]">{room.name}</h3>
                 {room.description && (
-                  <p className="text-sm text-slate-500 mt-1 line-clamp-2">{room.description}</p>
+                  <p className="text-sm text-[#747474] dark:text-[#a8a8a8] mt-1 line-clamp-2">{room.description}</p>
                 )}
 
-                <div className="mt-3 flex items-center gap-4 text-xs text-slate-500">
+                <div className="mt-3 flex items-center gap-4 text-xs text-[#747474] dark:text-[#a8a8a8]">
                   <span className="flex items-center gap-1">
                     <Users className="w-3.5 h-3.5" />
                     {room.capacity} people
@@ -198,13 +187,13 @@ export default function AvailableRoomsPage() {
                     {room.amenities.slice(0, 4).map((amenity, idx) => (
                       <span
                         key={idx}
-                        className="px-2 py-0.5 bg-slate-100/60 text-slate-500 text-xs rounded-full"
+                        className="px-2 py-0.5 bg-[#cbe2f0] text-[#474547] dark:bg-[#1a3a5c] dark:text-[#cbe2f0] text-xs rounded-full"
                       >
                         {amenity}
                       </span>
                     ))}
                     {room.amenities.length > 4 && (
-                      <span className="px-2 py-0.5 text-slate-500 text-xs">
+                      <span className="px-2 py-0.5 text-[#747474] dark:text-[#a8a8a8] text-xs">
                         +{room.amenities.length - 4} more
                       </span>
                     )}
