@@ -198,7 +198,11 @@ API:       http://YOUR_SERVER_IP/api
 | `WAHA_API_URL` | If WAHA enabled | — | WAHA server URL |
 | `WAHA_API_KEY` | If WAHA enabled | — | WAHA API key |
 | `STORAGE_TYPE` | No | `LOCAL` | Storage backend (LOCAL/S3) |
-| `EMAIL_ENABLED` | No | `false` | Enable email notifications |
+| `EMAIL_ENABLED` | No | `false` | Enable email notifications (Resend) |
+| `EMAIL_API_KEY` | If email enabled | — | Resend API key |
+| `EMAIL_FROM` | If email enabled | `noreply@glorios.uk` | From address |
+| `PAKASIR_SLUG` | No | — | Pakasir merchant slug (venueone) |
+| `PAKASIR_API_KEY` | If Pakasir used | — | Pakasir API key |
 
 ### Generate Secure Secrets
 
@@ -216,8 +220,10 @@ openssl rand -hex 16
 |---------|------|-------------|
 | Nginx | 80 | HTTP (frontend + API) |
 | Backend | 3000 | REST API only |
-| Frontend | 3001 | Direct frontend access |
+| Frontend | 3000 | Direct frontend access |
 | PostgreSQL | 5432 | Database (localhost only) |
+
+Nginx routing: `/api` → backend:3000, `/uploads/` → backend:3000, `/` → frontend:3000.
 
 ---
 
@@ -449,10 +455,13 @@ roomflow/
 │   │   ├── bookings/          # Booking management
 │   │   ├── rentals/           # Hourly rental slots + holds
 │   │   ├── payments/          # Payment upload + approval
+│   │   ├── pakasir/           # Pakasir payment gateway (venueone)
+│   │   ├── email/             # Email notifications (Resend)
+│   │   ├── email-config/      # Runtime email config (Admin IT UI)
 │   │   ├── chat/              # Real-time messaging
 │   │   ├── notifications/     # In-app alerts
 │   │   ├── storage/           # File upload + image compression
-│   │   ├── whatsapp/          # WhatsApp integration
+│   │   ├── whatsapp/          # WhatsApp integration (WAHA)
 │   │   └── common/            # Guards, decorators, pipes
 │   ├── prisma/
 │   │   └── schema.prisma       # Database schema + relations
@@ -486,7 +495,7 @@ roomflow/
 |------|-------|----------|
 | IT Admin | admin@roomflow.local | password123 |
 | Room Manager | manager@roomflow.local | password123 |
-| Renter | jack@mail.com | 12345678 |
+| Renter | jack@mail.com | password123 |
 
 ---
 
@@ -508,4 +517,4 @@ sudo docker stats --no-stream
 
 ---
 
-**Last Updated**: 2026-06-18 | **Version**: 10+ | **License**: MIT
+**Last Updated**: 2026-07-18 | **Version**: 10+ | **License**: MIT
