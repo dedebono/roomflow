@@ -13,7 +13,7 @@ interface TimeSlot {
 
 interface TimeSlotselectorProps {
   slots: TimeSlot[];
-  selectedSlot: TimeSlot | null;
+  selectedSlot: TimeSlot[];
   onSlotSelect: (slot: TimeSlot) => void;
   loading?: boolean;
 }
@@ -24,7 +24,7 @@ const formatRupiah = (amount: number) =>
 
 export function TimeSlotSelector({
   slots,
-  selectedSlot,
+  selectedSlots,
   onSlotSelect,
   loading = false,
 }: TimeSlotselectorProps) {
@@ -51,7 +51,9 @@ export function TimeSlotSelector({
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {slots.map((slot) => {
           const isDisabled = !slot.available;
-          const isSelected = selectedSlot?.id === slot.id;
+          const isSelected = selectedSlots.some(
+            (selected) => selected.id === slot.id
+            );
 
           return (
             <button
