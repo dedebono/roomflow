@@ -18,6 +18,7 @@ import { Role } from '@prisma/client';
 import * as express from 'express';
 import { UploadPaymentDto } from './dto/upload-payment.dto';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
+import { InitiateBatchPaymentDto } from './dto/initiate-batch-payment.dto';
 import {
   paymentFileFilter,
   MAX_FILE_SIZE,
@@ -107,6 +108,20 @@ export class PaymentsController {
       dto.bookingHoldId,
       dto.gatewayId,
       dto.amount ?? 0,
+      dto.paymentMethod,
+    );
+  }
+
+  @Post('initiate-batch')
+  initiateBatchPayment(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: InitiateBatchPaymentDto,
+  ) {
+    return this.paymentsService.initiateBatchPayment(
+      userId,
+      dto.bookingHoldIds,
+      dto.gatewayId,
+      dto.amount,
       dto.paymentMethod,
     );
   }

@@ -197,6 +197,7 @@ model Payment {
   externalId       String?         @unique // For linking to external payment gateway transactions
   paymentGatewayId String?
   paymentGateway   PaymentGateway? @relation(fields: [paymentGatewayId], references: [id])
+  bookingHoldIds   String[]        @default([]) // Links a single batch payment to multiple booking holds
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 

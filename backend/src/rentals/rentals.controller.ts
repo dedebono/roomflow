@@ -12,6 +12,7 @@ import {
 import { RentalsService } from './rentals.service';
 import { CheckAvailabilityDto } from './dto/check-availability.dto';
 import { CreateHoldDto } from './dto/create-hold.dto';
+import { CreateHoldsDto } from './dto/create-holds.dto';
 import { CreateRentalSlotDto } from './dto/create-rental-slot.dto';
 import { UpdateRentalSlotDto } from './dto/update-rental-slot.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -80,6 +81,14 @@ export class RentalsController {
       dto.startTime,
       dto.endTime,
     );
+  }
+
+  @Post('create-holds')
+  createHolds(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: CreateHoldsDto,
+  ) {
+    return this.rentalsService.createHolds(userId, dto);
   }
 
   @Post('book-from-hold/:holdId')

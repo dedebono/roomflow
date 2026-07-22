@@ -92,6 +92,16 @@ export const Header = ({ title, description, onMenuClick }: HeaderProps) => {
     router.push(q ? `/renter/rooms?q=${encodeURIComponent(q)}` : '/renter/rooms');
   };
 
+  // "New Booking" CTA routes to the correct portal by role
+  const newBookingHref =
+    user?.role === 'USER'
+      ? '/dashboard'        // employee booking page
+      : user?.role === 'RENTER'
+      ? '/renter/rooms'     // renter portal
+      : user?.role === 'ROOM_ADMIN'
+      ? '/admin/bookings'
+      : '/dashboard';
+
   const getNotifIcon = (type: string) => {
     if (type.includes('PAYMENT_APPROVED') || type.includes('BOOKING_CONFIRMED') || type.includes('RENTAL_BOOKED')) {
       return <span className="text-emerald-500">✓</span>;
@@ -141,14 +151,16 @@ export const Header = ({ title, description, onMenuClick }: HeaderProps) => {
 
       {/* Right: global filters + CTA + notifications */}
       <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-        {/* CTA button */}
-        <button
-          onClick={() => router.push('/renter/rooms')}
-          className="hidden sm:flex items-center gap-1.5 h-9 px-4 bg-[#143258] text-white text-sm font-medium rounded-lg hover:bg-[#0f2744] transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          <span>New Booking</span>
-        </button>
+        {/* CTA button — hidden on employee (USER) dashboard; employees book via the calendar */}
+        {user?.role !== 'USER' && (
+          <button
+            onClick={() => router.push(newBookingHref)}
+            className="hidden sm:flex items-center gap-1.5 h-9 px-4 bg-[#143258] text-white text-sm font-medium rounded-lg hover:bg-[#0f2744] transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New Booking</span>
+          </button>
+        )}
 
         {/* Notification Bell */}
         <div className="relative" ref={dropdownRef}>

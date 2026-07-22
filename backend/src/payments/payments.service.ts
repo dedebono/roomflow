@@ -255,22 +255,34 @@ export class PaymentsService {
       },
     });
 
-    // Update rental booking status to BOOKED so it shows in calendar
-    if (payment.booking.isRental) {
+    // Collect all holds to convert
+    const linkedHoldIds = payment.bookingHoldIds?.length
+      ? payment.bookingHoldIds
+      : payment.bookingHold
+        ? [payment.bookingHold.id]
+        : [];
+
+    // Update ALL rental bookings linked to the holds (handles batch multi-slot)
+    if (linkedHoldIds.length > 0) {
+      const linkedBookings = await this.prisma.booking.findMany({
+        where: { bookingHoldId: { in: linkedHoldIds } },
+      });
+      for (const b of linkedBookings) {
+        await this.prisma.booking.update({
+          where: { id: b.id },
+          data: { status: BookingStatus.BOOKED },
+        });
+      }
+      // Convert all holds
+      await this.prisma.bookingHold.updateMany({
+        where: { id: { in: linkedHoldIds }, status: BookingHoldStatus.ACTIVE },
+        data: { status: BookingHoldStatus.CONVERTED },
+      });
+    } else if (payment.booking && payment.booking.isRental) {
+      // Single non-batch: update just the one booking
       await this.prisma.booking.update({
         where: { id: payment.booking.id },
         data: { status: BookingStatus.BOOKED },
-      });
-    }
-
-    // Convert the associated booking hold if present
-    if (
-      payment.bookingHold &&
-      payment.bookingHold.status === BookingHoldStatus.ACTIVE
-    ) {
-      await this.prisma.bookingHold.update({
-        where: { id: payment.bookingHold.id },
-        data: { status: BookingHoldStatus.CONVERTED },
       });
     }
 
@@ -482,6 +494,109 @@ export class PaymentsService {
   }
 
   /**
+   * Initiate a SINGLE payment covering multiple booking holds (batch booking).
+   * Creates one PENDING booking per hold and ONE Payment record (amount = sum)
+   * linked to all holds via bookingHoldIds, then opens a single gateway transaction.
+   */
+  async initiateBatchPayment(
+    userId: string,
+    bookingHoldIds: string[],
+    gatewayId: string,
+    amount?: number,
+    paymentMethod?: string,
+  ) {
+    // Load + validate all holds
+    const holds = await this.prisma.bookingHold.findMany({
+      where: { id: { in: bookingHoldIds }, userId },
+      include: { room: true },
+    });
+
+    if (holds.length === 0) {
+      throw new NotFoundException('No booking holds found');
+    }
+
+    const invalid = holds.find(
+      (h) => h.status !== BookingHoldStatus.ACTIVE || new Date() > h.expiresAt,
+    );
+    if (invalid) {
+      throw new BadRequestException(
+        'One or more booking holds are no longer active or have expired',
+      );
+    }
+
+    // Create a PENDING booking for each hold (links booking -> hold)
+    const bookings = [];
+    for (const hold of holds) {
+      const existing = await this.prisma.booking.findFirst({
+        where: { bookingHoldId: hold.id },
+      });
+      if (existing) {
+        bookings.push(existing);
+      } else {
+        const booking = await this.prisma.booking.create({
+          data: {
+            roomId: hold.roomId,
+            userId: hold.userId,
+            title: `Rental: ${hold.room.name}`,
+            startTime: hold.startTime,
+            endTime: hold.endTime,
+            isRental: true,
+            status: BookingStatus.PENDING,
+            bookingHoldId: hold.id,
+          },
+        });
+        bookings.push(booking);
+      }
+    }
+
+    const primaryBooking = bookings[0];
+    const totalAmount =
+      amount && amount > 0
+        ? amount
+        : holds.reduce((sum, h) => sum + (h.price || 0), 0);
+
+    const orderId = `RF-BATCH-${primaryBooking.id.slice(0, 8)}-${Date.now()}`;
+    const finalMethod = paymentMethod || 'qris';
+
+    const result = await this.pakasirService.createTransaction(gatewayId, {
+      orderId,
+      amount: totalAmount,
+      paymentMethod: finalMethod,
+    });
+
+    let paymentUrl: string | undefined;
+    const gateway = await this.prisma.paymentGateway.findUnique({
+      where: { id: gatewayId },
+    });
+    if (gateway) {
+      const config = (gateway.config || {}) as Record<string, string>;
+      const frontendBase =
+        process.env.FRONTEND_BASE_URL || 'https://room.ytcb.org';
+      paymentUrl = this.pakasirService.getPaymentUrl(config, {
+        amount: totalAmount,
+        orderId,
+        redirect: `${frontendBase}/renter/payments`,
+      });
+    }
+
+    const payment = await this.prisma.payment.create({
+      data: {
+        bookingId: primaryBooking.id,
+        bookingHoldId: primaryBooking.bookingHoldId,
+        bookingHoldIds: holds.map((h) => h.id),
+        userId,
+        amount: totalAmount,
+        status: PaymentStatus.PENDING,
+        paymentMethod: result.payment?.payment_method || finalMethod,
+        externalId: orderId,
+        paymentGatewayId: gatewayId,
+      },
+    });
+
+    return { payment, paymentUrl, totalAmount, holdCount: holds.length };
+  }
+
+  /**
    * Confirm a payment from redirect callback (Pakasir sends order_id + status via URL params).
    * This is a fallback when webhook is not configured.
    */
@@ -534,7 +649,37 @@ export class PaymentsService {
       });
     }
 
-    if (payment.bookingHoldId) {
+    // Convert ALL linked holds (batch payments) or the single hold
+    const linkedHoldIds = payment.bookingHoldIds?.length
+      ? payment.bookingHoldIds
+      : payment.bookingHoldId
+        ? [payment.bookingHoldId]
+        : [];
+
+    if (linkedHoldIds.length > 0) {
+      await this.prisma.bookingHold.updateMany({
+        where: { id: { in: linkedHoldIds }, status: BookingHoldStatus.ACTIVE },
+        data: {
+          status:
+            newStatus === PaymentStatus.APPROVED
+              ? BookingHoldStatus.CONVERTED
+              : BookingHoldStatus.CANCELLED,
+        },
+      });
+
+      // Convert the corresponding bookings too (for batch multi-booking)
+      if (bookingNewStatus) {
+        const linkedBookings = await this.prisma.booking.findMany({
+          where: { bookingHoldId: { in: linkedHoldIds } },
+        });
+        for (const b of linkedBookings) {
+          await this.prisma.booking.update({
+            where: { id: b.id },
+            data: { status: bookingNewStatus },
+          });
+        }
+      }
+    } else if (payment.bookingHoldId) {
       await this.prisma.bookingHold.update({
         where: { id: payment.bookingHoldId },
         data: { status: BookingHoldStatus.CONVERTED },

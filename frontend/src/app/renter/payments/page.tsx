@@ -288,10 +288,8 @@ export default function RenterPaymentsPage() {
 
   const formatTime = (dateStr: string) => {
     if (!dateStr) return '';
-    return new Date(dateStr).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    // Stored time is the literal booked time (UTC-nominated). Render it as-is.
+    return dateStr.substring(11, 16);
   };
 
   return (

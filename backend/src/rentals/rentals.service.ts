@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CheckAvailabilityDto } from './dto/check-availability.dto';
 import { CreateHoldDto } from './dto/create-hold.dto';
+import { CreateHoldsDto, SlotDto } from './dto/create-holds.dto';
 import { CreateRentalSlotDto } from './dto/create-rental-slot.dto';
 import { UpdateRentalSlotDto } from './dto/update-rental-slot.dto';
 import {
@@ -242,8 +243,11 @@ export class RentalsService implements OnModuleInit {
     });
 
     // Find the slot that contains the requested time range
+    // s.startTime/endTime are HH:MM strings from DB; startTime/endTime are ISO strings from frontend
+    const toHHMM = (v: string | Date) =>
+      typeof v === 'string' ? v.split('T')[1]?.substring(0, 5) : '';
     const slot = allDaySlots.find(
-      (s) => s.startTime <= startTime && s.endTime >= endTime,
+      (s) => toHHMM(s.startTime) <= toHHMM(startTime) && toHHMM(s.endTime) >= toHHMM(endTime),
     );
     const price = slot?.price || 0;
 
@@ -287,6 +291,45 @@ export class RentalsService implements OnModuleInit {
     );
 
     return hold;
+  }
+
+  async createHolds(userId: string, dto: CreateHoldsDto) {
+    // Validate room exists and is rentable
+    const room = await this.prisma.room.findUnique({ where: { id: dto.roomId } });
+    if (!room || !room.isRentable) {
+      throw new NotFoundException('Room not found or not rentable');
+    }
+
+    const created: any[] = [];
+    const errors: { date: string; startTime: string; endTime: string; reason: string }[] = [];
+
+    // Sequential creation so availability/existing-hold checks stay accurate per slot
+    for (const slot of dto.slots) {
+      try {
+        const hold = await this.createHold(
+          userId,
+          dto.roomId,
+          slot.date,
+          slot.startTime,
+          slot.endTime,
+        );
+        created.push(hold);
+      } catch (err: any) {
+        errors.push({
+          date: slot.date,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          reason: err?.response?.message || err?.message || 'Failed to create hold',
+        });
+      }
+    }
+
+    return {
+      created,
+      errors,
+      total: dto.slots.length,
+      createdCount: created.length,
+    };
   }
 
   async bookFromHold(holdId: string) {
@@ -511,11 +554,10 @@ export class RentalsService implements OnModuleInit {
 
   // Get available time slots for a room on a given date
   async getAvailableSlots(roomId: string, date: string) {
-    // Parse date string as a UTC midnight date to avoid timezone shifting the day.
-    // We use UTC days consistently: ((getUTCDay() + 6) % 7) + 1 gives Mon=1, Sun=7
-    // This is stored in DB and must match for all slot queries.
+    // Parse date string as local midnight (WIB). getDay() gives correct day-of-week
+    // since server TZ is Asia/Jakarta. Day numbering: ((getDay()+6)%7)+1 gives Mon=1, Sun=7.
     const dateObj = new Date(date + 'T00:00:00');
-    const dayOfWeek = ((dateObj.getUTCDay() + 6) % 7) + 1; // 1-7 (Mon=1)
+    const dayOfWeek = ((dateObj.getDay() + 6) % 7) + 1; // 1-7 (Mon=1)
     this.logger.log(
       `[getAvailableSlots] roomId=${roomId}, date=${date}, utcDay=${dateObj.getUTCDay()}, dayOfWeek=${dayOfWeek}`,
     );

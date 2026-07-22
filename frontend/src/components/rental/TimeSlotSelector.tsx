@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Clock } from 'lucide-react';
+import { Clock, Check } from 'lucide-react';
 
 interface TimeSlot {
   id: string;
@@ -11,10 +11,10 @@ interface TimeSlot {
   available: boolean;
 }
 
-interface TimeSlotselectorProps {
+interface TimeSlotSelectorProps {
   slots: TimeSlot[];
-  selectedSlot: TimeSlot | null;
-  onSlotSelect: (slot: TimeSlot) => void;
+  selectedSlots: TimeSlot[];
+  onToggleSlot: (slot: TimeSlot) => void;
   loading?: boolean;
 }
 
@@ -24,10 +24,10 @@ const formatRupiah = (amount: number) =>
 
 export function TimeSlotSelector({
   slots,
-  selectedSlot,
-  onSlotSelect,
+  selectedSlots,
+  onToggleSlot,
   loading = false,
-}: TimeSlotselectorProps) {
+}: TimeSlotSelectorProps) {
   if (loading) {
     return (
       <div className="text-center py-8 text-slate-500">
@@ -47,16 +47,16 @@ export function TimeSlotSelector({
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-semibold text-slate-600 tracking-wide uppercase">Available Time Slots</p>
+      <p className="text-xs font-semibold text-slate-600 tracking-wide uppercase">Available Time Slots — tap to add multiple</p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {slots.map((slot) => {
           const isDisabled = !slot.available;
-          const isSelected = selectedSlot?.id === slot.id;
+          const isSelected = selectedSlots.some((s) => s.id === slot.id);
 
           return (
             <button
               key={slot.id}
-              onClick={() => !isDisabled && onSlotSelect(slot)}
+              onClick={() => !isDisabled && onToggleSlot(slot)}
               disabled={isDisabled}
               className={`p-3 rounded-xl text-sm font-bold transition-all border-2 flex flex-col items-center justify-center gap-1 ${
                 isSelected
@@ -75,6 +75,11 @@ export function TimeSlotSelector({
               <div className={`text-xs font-medium ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
                 {formatRupiah(slot.price)}
               </div>
+              {isSelected && (
+                <div className="flex items-center gap-1 text-[10px] uppercase font-bold text-indigo-100">
+                  <Check className="w-3 h-3" /> Added
+                </div>
+              )}
               {isDisabled && <div className="mt-1 text-[10px] uppercase font-bold text-rose-500/80">Booked</div>}
             </button>
           );

@@ -1,30 +1,14 @@
 'use client';
 
 import React from 'react';
-import { CheckCircle, Calendar, Clock, CreditCard, X, ShoppingCart } from 'lucide-react';
+import { ShoppingBag, CreditCard, X, Clock, Calendar, MapPin, Timer } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { BookingHold } from '@/types';
 
-interface TimeSlot {
-  id: string;
-  startTime: string;
-  endTime: string;
-  price: number;
-  available: boolean;
-}
-
-interface CartItem {
-  key: string;
-  date: string;
-  slot: TimeSlot;
-}
-
-interface BookingSummaryProps {
-  cart: CartItem[];
-  roomName: string;
-  onRemove: (key: string) => void;
-  onCreateHolds: () => void;
-  isLoading?: boolean;
-  total: number;
+interface BookingBagProps {
+  holds: BookingHold[];
+  onPayAll: () => void;
+  onCancelled: () => void;
 }
 
 const formatDate = (dateStr: string) =>
@@ -39,58 +23,61 @@ const formatTime = (isoString: string) => isoString.substring(11, 16);
 const formatRupiah = (amount: number) =>
   'Rp ' + amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
-export function BookingSummary({
-  cart,
-  roomName,
-  onRemove,
-  onCreateHolds,
-  isLoading = false,
-  total,
-}: BookingSummaryProps) {
-  const hasItems = cart.length > 0;
+export function BookingBag({ holds, onPayAll, onCancelled }: BookingBagProps) {
+  const active = holds.filter((h) => h.status === 'ACTIVE');
+  const total = active.reduce((sum, h) => sum + (h.price || 0), 0);
+
+  const handleCancelOne = async (id: string) => {
+    if (!confirm('Cancel this booking hold?')) return;
+    try {
+      await fetch(`/api/rentals/holds/${id}`, { method: 'DELETE' });
+      onCancelled();
+    } catch {
+      // ignore
+    }
+  };
 
   return (
     <div className="space-y-4">
       <div className="border border-slate-900 glass rounded-lg p-4 space-y-4">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-indigo-400" />
-            <h3 className="text-lg font-semibold text-slate-900">Booking List</h3>
+            <ShoppingBag className="w-5 h-5 text-indigo-400" />
+            <h3 className="text-lg font-semibold text-slate-900">Booking Bag</h3>
           </div>
-          {hasItems && (
+          {active.length > 0 && (
             <span className="text-xs font-bold bg-indigo-600 text-white rounded-full px-2 py-0.5">
-              {cart.length}
+              {active.length}
             </span>
           )}
         </div>
 
-        {/* Empty state */}
-        {!hasItems ? (
+        {holds.length === 0 ? (
           <div className="py-6 text-center text-slate-500">
-            <p className="text-sm">Pick a date, select one or more time slots, then tap “Add to Booking”.</p>
+            <p className="text-sm">Your booking bag is empty. Pick a date and time slots to start.</p>
           </div>
         ) : (
           <>
-            {/* Cart items */}
-            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-              {cart.map((item) => (
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {holds.map((h) => (
                 <div
-                  key={item.key}
+                  key={h.id}
                   className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-[#f8f8f8] dark:bg-[#2a2a2a] border border-slate-200 dark:border-[#3a3a3a]"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">{roomName}</p>
-                    <p className="text-xs text-slate-500 flex items-center gap-1">
-                      <Calendar className="w-3 h-3" /> {formatDate(item.date)}
+                    <p className="text-sm font-semibold text-slate-900 truncate">
+                      {h.room?.name || 'Room'}
                     </p>
                     <p className="text-xs text-slate-500 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {formatTime(item.slot.startTime)} - {formatTime(item.slot.endTime)}
+                      <Calendar className="w-3 h-3" /> {formatDate(h.holdDate)}
                     </p>
-                    <p className="text-xs font-medium text-indigo-600">{formatRupiah(item.slot.price)}</p>
+                    <p className="text-xs text-slate-500 flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> {formatTime(h.startTime)} - {formatTime(h.endTime)}
+                    </p>
+                    <p className="text-xs font-medium text-indigo-600">{formatRupiah(h.price)}</p>
                   </div>
                   <button
-                    onClick={() => onRemove(item.key)}
+                    onClick={() => handleCancelOne(h.id)}
                     className="shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors"
                     aria-label="Remove"
                   >
@@ -100,10 +87,8 @@ export function BookingSummary({
               ))}
             </div>
 
-            {/* Divider */}
             <div className="border-t border-slate-200 my-2" />
 
-            {/* Total */}
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2 text-base font-semibold text-slate-900">
                 <CreditCard className="w-4 h-4 text-indigo-500" />
@@ -112,21 +97,14 @@ export function BookingSummary({
               <span className="text-lg font-bold text-indigo-600">{formatRupiah(total)}</span>
             </div>
 
-            {/* Note */}
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-xs text-amber-800">
-                ⏱️ Each slot becomes its own 1-hour hold. Complete payment for every hold to confirm all bookings.
-              </p>
-            </div>
-
-            {/* Create Holds Button */}
             <Button
               variant="primary"
-              onClick={onCreateHolds}
-              disabled={isLoading}
+              onClick={onPayAll}
+              disabled={active.length === 0}
               className="w-full"
             >
-              {isLoading ? 'Creating Holds...' : `Book ${cart.length} Slot${cart.length > 1 ? 's' : ''}`}
+              <CreditCard className="w-4 h-4" />
+              Pay All ({active.length})
             </Button>
           </>
         )}
