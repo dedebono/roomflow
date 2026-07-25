@@ -124,12 +124,17 @@ export class WhatsAppService {
     startTime: Date,
     endTime: Date,
   ): Promise<void> {
+    // Nominal-UTC: HH:MM substring IS the wall-clock time; no TZ conversion.
+    const fmt = (d: Date) => {
+      const s = d.toISOString();
+      return `${s.substring(0, 10)} ${s.substring(11, 16)}`;
+    };
     const text =
       `✅ *Booking Confirmed*\n\n` +
       `Room: ${roomName}\n` +
       `Title: ${bookingTitle}\n` +
-      `Start: ${startTime.toLocaleString()}\n` +
-      `End: ${endTime.toLocaleString()}\n\n` +
+      `Start: ${fmt(startTime)}\n` +
+      `End: ${fmt(endTime)}\n\n` +
       `RoomFlow Workspace Booking Engine`;
     await this.sendText(to, text);
   }

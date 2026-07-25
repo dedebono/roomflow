@@ -29,6 +29,24 @@ export class RentalsService implements OnModuleInit {
     private notificationsService: NotificationsService,
   ) {}
 
+  // --- Time convention -------------------------------------------------------
+  // Rental start/end times are stored as NOMINAL UTC: a Date whose HH:MM are the
+  // wall-clock time the user picked (e.g. 09:00 -> "...T09:00:00.000Z"). We NEVER
+  // let the runtime timezone shift the value, and we render by reading the ISO
+  // substring directly. This keeps the displayed time identical everywhere
+  // (WIB user, WIB backend) with no +/-7h surprises.
+  private toNominalUtc(date: string, hhmm: string): Date {
+    // date: YYYY-MM-DD, hhmm: HH:MM -> "...THH:MM:00.000Z"
+    return new Date(`${date}T${hhmm}:00.000Z`);
+  }
+
+  private hhmmOf(value: string | Date): string {
+    // Works for both "09:00" (DB rentalSlot) and ISO "2026-07-27T09:00:00.000Z"
+    const s = typeof value === 'string' ? value : value.toISOString();
+    if (s.includes('T')) return s.substring(11, 16);
+    return s.length >= 5 ? s.substring(0, 5) : '';
+  }
+
   // Auto-cancel expired BookingHolds every 30 seconds
   onModuleInit() {
     setInterval(async () => {
@@ -123,16 +141,9 @@ export class RentalsService implements OnModuleInit {
     startTime: string,
     endTime: string,
   ) {
-    // Parse date string as LOCAL midnight so the selected date stays correct in UTC+7
-    const startDate = new Date(date + 'T00:00:00');
-    const [startHour, startMin] = startTime.split(':').map(Number);
-    const [endHour, endMin] = endTime.split(':').map(Number);
-
-    const startTimeDate = new Date(startDate);
-    startTimeDate.setHours(startHour, startMin, 0, 0);
-
-    const endTimeDate = new Date(startDate);
-    endTimeDate.setHours(endHour, endMin, 0, 0);
+    // Nominal-UTC: HH:MM are the clock times the user picked; no tz shift.
+    const startTimeDate = this.toNominalUtc(date, startTime);
+    const endTimeDate = this.toNominalUtc(date, endTime);
 
     if (startTimeDate >= endTimeDate) {
       throw new ConflictException('Start time must be before end time');
@@ -188,16 +199,9 @@ export class RentalsService implements OnModuleInit {
     startTime: string,
     endTime: string,
   ) {
-    // Parse date string as LOCAL midnight so the selected date stays correct in UTC+7
-    const startDate = new Date(date + 'T00:00:00');
-    const [startHour, startMin] = startTime.split(':').map(Number);
-    const [endHour, endMin] = endTime.split(':').map(Number);
-
-    const startTimeDate = new Date(startDate);
-    startTimeDate.setHours(startHour, startMin, 0, 0);
-
-    const endTimeDate = new Date(startDate);
-    endTimeDate.setHours(endHour, endMin, 0, 0);
+    // Nominal-UTC: HH:MM are the clock times the user picked; no tz shift.
+    const startTimeDate = this.toNominalUtc(date, startTime);
+    const endTimeDate = this.toNominalUtc(date, endTime);
 
     if (startTimeDate >= endTimeDate) {
       throw new ConflictException('Start time must be before end time');
@@ -221,8 +225,10 @@ export class RentalsService implements OnModuleInit {
         userId,
         roomId,
         status: BookingHoldStatus.ACTIVE,
-        startTime: { lte: endTimeDate },
-        endTime: { gte: startTimeDate },
+        // strict (<, >) so adjacent slots [09,10] and [10,11] do NOT
+        // collide (a hold ending exactly at X must not block a new slot starting at X)
+        startTime: { lt: endTimeDate },
+        endTime:   { gt: startTimeDate },
       },
     });
 
@@ -242,16 +248,15 @@ export class RentalsService implements OnModuleInit {
       },
     });
 
-    // Find the slot that contains the requested time range
-    // s.startTime/endTime are HH:MM strings from DB; startTime/endTime are ISO strings from frontend
-    const toHHMM = (v: string | Date) =>
-      typeof v === 'string' ? v.split('T')[1]?.substring(0, 5) : '';
+    // Find the slot that contains the requested time range.
+    // Both slot.startTime (DB, "HH:MM") and startTime (frontend, "HH:MM") are
+    // nominal clock times, so compare HH:MM directly via hhmmOf().
     const slot = allDaySlots.find(
-      (s) => toHHMM(s.startTime) <= toHHMM(startTime) && toHHMM(s.endTime) >= toHHMM(endTime),
+      (s) => this.hhmmOf(s.startTime) <= startTime && this.hhmmOf(s.endTime) >= endTime,
     );
     const price = slot?.price || 0;
 
-    // Create hold that expires in 1 hour from now
+    // Create hold that expires in 1 hour from now (actual clock time)
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 1);
 
@@ -259,7 +264,7 @@ export class RentalsService implements OnModuleInit {
       data: {
         userId,
         roomId,
-        holdDate: startDate,
+        holdDate: this.toNominalUtc(date, '00:00'),
         startTime: startTimeDate,
         endTime: endTimeDate,
         expiresAt,
@@ -554,8 +559,7 @@ export class RentalsService implements OnModuleInit {
 
   // Get available time slots for a room on a given date
   async getAvailableSlots(roomId: string, date: string) {
-    // Parse date string as local midnight (WIB). getDay() gives correct day-of-week
-    // since server TZ is Asia/Jakarta. Day numbering: ((getDay()+6)%7)+1 gives Mon=1, Sun=7.
+    // Parse date string as LOCAL midnight so the selected date stays correct in UTC+7
     const dateObj = new Date(date + 'T00:00:00');
     const dayOfWeek = ((dateObj.getDay() + 6) % 7) + 1; // 1-7 (Mon=1)
     this.logger.log(
@@ -597,13 +601,20 @@ export class RentalsService implements OnModuleInit {
       },
     });
 
-    // Build availability map from booked/held ranges
+    // Build availability map from booked/held ranges.
+    // Rental holds are NOMINAL-UTC (HH:MM = clock time). Employee bookings are
+    // real instants, so convert them to nominal-UTC for an apples-to-apples
+    // overlap test against the nominal rental sub-slots.
+    const toNominal = (d: Date) => this.toNominalUtc(
+      d.toISOString().substring(0, 10),
+      d.toISOString().substring(11, 16),
+    );
     const isSlotBooked = (slotStart: string, slotEnd: string) => {
       const slotStartDate = new Date(slotStart);
       const slotEndDate = new Date(slotEnd);
       return bookings.some((b) => {
-        const bStart = new Date(b.startTime);
-        const bEnd = new Date(b.endTime);
+        const bStart = toNominal(new Date(b.startTime));
+        const bEnd = toNominal(new Date(b.endTime));
         return slotStartDate < bEnd && slotEndDate > bStart;
       });
     };
@@ -612,32 +623,30 @@ export class RentalsService implements OnModuleInit {
       const slotStartDate = new Date(slotStart);
       const slotEndDate = new Date(slotEnd);
       return holds.some((h) => {
-        const hStart = new Date(h.startTime);
-        const hEnd = new Date(h.endTime);
+        const hStart = toNominal(new Date(h.startTime));
+        const hEnd = toNominal(new Date(h.endTime));
         return slotStartDate < hEnd && slotEndDate > hStart;
       });
     };
 
-    // For each rental slot, expand into hourly sub-slots and check availability
+    // For each rental slot, expand into hourly sub-slots and check availability.
+    // Build each sub-slot as a NOMINAL-UTC instant so its HH:MM equals the wall
+    // clock time (no +/-7h tz shift), matching what the frontend sends back.
     const result: any[] = [];
     for (const slot of slots) {
-      const slotStartTime = new Date(dateObj);
+      // slot.startTime / slot.endTime are "HH:MM" nominal clock times.
       const [slotStartH, slotStartM] = slot.startTime.split(':').map(Number);
-      slotStartTime.setHours(slotStartH, slotStartM, 0, 0);
-
-      const slotEndTime = new Date(dateObj);
       const [slotEndH, slotEndM] = slot.endTime.split(':').map(Number);
-      slotEndTime.setHours(slotEndH, slotEndM, 0, 0);
 
-      // Expand into hourly sub-slots
-      const currentHour = new Date(slotStartTime);
-      while (currentHour < slotEndTime) {
-        const subStart = new Date(currentHour);
-        const subEnd = new Date(currentHour);
-        subEnd.setHours(subEnd.getHours() + 1);
-
-        // Don't exceed the slot's end time
-        if (subEnd > slotEndTime) break;
+      let cursorH = slotStartH;
+      let cursorM = slotStartM;
+      while (cursorH * 60 + cursorM < slotEndH * 60 + slotEndM) {
+        const subStart = this.toNominalUtc(date, `${String(cursorH).padStart(2, '0')}:${String(cursorM).padStart(2, '0')}`);
+        // End = start + 1 hour (nominal)
+        let endH = cursorH + 1;
+        let endM = cursorM;
+        if (endH * 60 + endM > slotEndH * 60 + slotEndM) break; // don't exceed slot end
+        const subEnd = this.toNominalUtc(date, `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`);
 
         const subStartISO = subStart.toISOString();
         const subEndISO = subEnd.toISOString();
@@ -646,14 +655,14 @@ export class RentalsService implements OnModuleInit {
         const held = isSlotHeld(subStartISO, subEndISO);
 
         result.push({
-          id: `${slot.id}_${currentHour.getHours()}`,
+          id: `${slot.id}_${cursorH}`,
           startTime: subStartISO,
           endTime: subEndISO,
           price: slot.price,
           available: !booked && !held,
         });
 
-        currentHour.setHours(currentHour.getHours() + 1);
+        cursorH += 1;
       }
     }
     this.logger.log(

@@ -178,17 +178,21 @@ export class EmailService {
     startTime: Date,
     endTime: Date,
   ): Promise<boolean> {
+    // Nominal-UTC: HH:MM substring IS the wall-clock time; no TZ conversion.
+    const fmt = (d: Date) => {
+      const s = d.toISOString();
+      return `${s.substring(0, 10)} ${s.substring(11, 16)}`;
+    };
     const subject = 'RoomFlow - Booking Confirmation';
-    const text = `Your booking "${bookingTitle}" has been confirmed for ${roomName} from ${startTime.toLocaleString()} to ${endTime.toLocaleString()}.`;
+    const text = `Your booking "${bookingTitle}" has been confirmed for ${roomName} from ${fmt(startTime)} to ${fmt(endTime)}.`;
     const html = `
       <h2>Booking Confirmation</h2>
       <p>Your booking <strong>"${bookingTitle}"</strong> has been confirmed.</p>
       <ul>
         <li><strong>Room:</strong> ${roomName}</li>
-        <li><strong>Start:</strong> ${startTime.toLocaleString()}</li>
-        <li><strong>End:</strong> ${endTime.toLocaleString()}</li>
+        <li><strong>Start:</strong> ${fmt(startTime)}</li>
+        <li><strong>End:</strong> ${fmt(endTime)}</li>
       </ul>
-      <p>See you there!</p>
       <p><small>RoomFlow Workspace Booking Engine</small></p>
     `;
     return this.sendEmail({ to, subject, text, html });

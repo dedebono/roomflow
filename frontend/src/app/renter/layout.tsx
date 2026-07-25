@@ -134,8 +134,8 @@ export default function RenterLayout({ children }: RenterLayoutProps) {
   };
 
   const formatTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // NOMINAL-UTC ISO: HH:MM substring IS the clock time. No TZ shift.
+    return dateStr && dateStr.length >= 16 ? dateStr.substring(11, 16) : '';
   };
 
   return (

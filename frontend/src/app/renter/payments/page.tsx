@@ -478,7 +478,7 @@ export default function RenterPaymentsPage() {
                             {(payment as any).booking?.room?.name || (payment as any).booking?.title || 'Room Rental'}
                           </p>
                           <p className="text-xs text-slate-500">
-                            {formatDate((payment as any).booking?.startTime)} at {(payment as any).bookingStartTime} - {(payment as any).bookingEndTime}
+                            {formatDate((payment as any).booking?.startTime)} at {formatTime((payment as any).booking?.startTime || '')} - {formatTime((payment as any).booking?.endTime || '')}
                           </p>
                         </div>
                       </div>

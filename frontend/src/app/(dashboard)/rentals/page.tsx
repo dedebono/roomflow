@@ -144,9 +144,10 @@ export default function RentalsDashboardPage() {
     {
       header: 'Time',
       cell: (h: RentalHold) => {
+        // NOMINAL-UTC: HH:MM is the clock time. Render substring, not toLocaleTimeString.
         const fmt = (dt: any) => {
-          const d = Object.prototype.toString.call(dt) === '[object Date]' ? dt : new Date(dt);
-          return isNaN(d.getTime()) ? 'N/A' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const s = typeof dt === 'string' ? dt : new Date(dt).toISOString();
+          return s.length >= 16 ? s.substring(11, 16) : 'N/A';
         };
         return `${fmt(h.startTime as any)} - ${fmt(h.endTime as any)}`;
       },
@@ -341,9 +342,10 @@ export default function RentalsDashboardPage() {
                 <p className="text-xs text-slate-500">Time</p>
                 <p className="text-slate-800 font-medium">
                   {(() => {
+                    // NOMINAL-UTC: HH:MM is the clock time. Render substring.
                     const fmt = (dt: any) => {
-                      const d = dt instanceof Date ? dt : new Date(dt);
-                      return isNaN(d.getTime()) ? 'N/A' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      const s = typeof dt === 'string' ? dt : new Date(dt).toISOString();
+                      return s.length >= 16 ? s.substring(11, 16) : 'N/A';
                     };
                     return `${fmt(selectedHold.startTime)} - ${fmt(selectedHold.endTime)}`;
                   })()}

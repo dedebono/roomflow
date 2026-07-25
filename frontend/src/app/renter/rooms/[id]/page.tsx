@@ -225,7 +225,10 @@ export default function RoomDetailPage() {
 
     setIsSubmitting(true);
     try {
-      const extractTime = (isoString: string) => isoString.split('T')[1].substring(0, 5);
+      // Times come back from the API as NOMINAL-UTC ISO ("...T09:00:00.000Z")
+      // where the HH:MM IS the wall-clock time the user picked — do NOT apply
+      // any timezone conversion. Just strip the HH:MM.
+      const extractTime = (isoString: string) => isoString.substring(11, 16);
       const res = await api.post('/rentals/create-holds', {
         roomId,
         slots: cart.map((c) => ({

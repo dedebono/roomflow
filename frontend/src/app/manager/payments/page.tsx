@@ -120,10 +120,8 @@ export default function ManagerPaymentsPage() {
 
   const formatTime = (dateStr: string) => {
     if (!dateStr) return '';
-    return new Date(dateStr).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    // NOMINAL-UTC ISO: HH:MM substring IS the booked clock time. No TZ conversion.
+    return dateStr.substring(11, 16);
   };
 
   const statusOptions = [

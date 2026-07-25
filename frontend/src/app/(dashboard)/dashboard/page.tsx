@@ -159,9 +159,11 @@ export default function EmployeeDashboard() {
   const handleEventClick = (clickInfo: any) => {
     const booking: Booking = clickInfo.event.extendedProps.booking;
     const roomName = clickInfo.event.extendedProps.roomName;
-    const startTimeStr = new Date(booking.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const endTimeStr = new Date(booking.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const dateStr = new Date(booking.startTime).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+    // startTime/endTime are NOMINAL-UTC ISO ("...T09:00:00.000Z") — HH:MM is the
+    // wall-clock time. Render by substring, never via toLocaleTimeString (would shift TZ).
+    const startTimeStr = (booking.startTime as string).substring(11, 16);
+    const endTimeStr = (booking.endTime as string).substring(11, 16);
+    const dateStr = new Date((booking.startTime as string).substring(0, 10) + 'T00:00:00').toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
 
     toast(
       (t) => (

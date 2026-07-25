@@ -14,14 +14,10 @@ interface VenueSchedule {
   slots: ScheduleSlot[];
 }
 
-// Helper to format time as HH.mm
-const formatTime = (isoString: string) => {
-  const date = new Date(isoString);
-  return date.toLocaleTimeString('en-GB', { 
-    hour: '2-digit', 
-    minute: '2-digit', 
-    hour12: false 
-  }).replace(':', '.');
+// Helper to format time as HH.mm directly from the nominal "HH:MM" slot time.
+// slot.startTime is the literal clock time (e.g. "09:00"); render it as-is.
+const formatTime = (hhmm: string) => {
+  return hhmm.replace(':', '.');
 };
 
 export const LiveAvailability = ({ rooms }: { rooms: Room[] }) => {
@@ -30,7 +26,7 @@ export const LiveAvailability = ({ rooms }: { rooms: Room[] }) => {
     const activeSlots = room.rentalSlots?.filter(slot => slot.isActive) || [];
 
     const slots: ScheduleSlot[] = activeSlots.map(slot => ({
-      time: formatTime(new Date().toISOString().split('T')[0] + 'T' + slot.startTime),
+      time: formatTime(slot.startTime),
       status: 'available',
       label: room.name,
     }));
@@ -96,7 +92,7 @@ export const LiveAvailability = ({ rooms }: { rooms: Room[] }) => {
         </div>
         <div className="mt-12 text-center">
           <p className="text-[#747474] text-sm flex items-center justify-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-amber-500" /> All times in UTC timezone
+            <span className="h-2 w-2 rounded-full bg-amber-500" /> All times shown in the venue's local time
           </p>
         </div>
       </div>

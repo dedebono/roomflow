@@ -219,11 +219,30 @@ openssl rand -hex 16
 | Service | Port | Description |
 |---------|------|-------------|
 | Nginx | 80 | HTTP (frontend + API) |
-| Backend | 3000 | REST API only |
-| Frontend | 3000 | Direct frontend access |
+| Backend | 3000 | REST API only (host: 3000→3000) |
+| Frontend | 3001 | Direct frontend access (host: 3001→3000) |
 | PostgreSQL | 5432 | Database (localhost only) |
 
 Nginx routing: `/api` → backend:3000, `/uploads/` → backend:3000, `/` → frontend:3000.
+
+### Backend Image Notes (deployment-critical)
+
+The `backend/Dockerfile` ships with two non-obvious settings that **must stay**:
+
+- `ENV TZ=Asia/Jakarta` (+ `tzdata`): the server computes day-of-week and slot
+  availability in **WIB**. Removing this shifts every rental calendar by a day.
+- `ENV NODE_ENV=development`: a deliberate workaround for the npm 10.x
+  "Exit handler never called!" install bug. Production build still runs the
+  compiled `dist/src/main.js`; only the install phase is affected.
+- `express` and `prisma` **must** remain in `dependencies` (not `devDependencies`),
+  otherwise the slim runtime image won't have them after `npm install`.
+
+Verify a built image with:
+```bash
+docker run --rm roomflow-backend:latest node -e \
+  "const { Role } = require('@prisma/client'); console.log(Object.keys(Role));"
+# -> [ 'ADMIN_IT', 'ROOM_ADMIN', 'USER', 'RENTER' ]
+```
 
 ---
 
@@ -426,6 +445,15 @@ sudo docker compose up -d
 
 ## Updating
 
+> ⚠️ **Free disk space BEFORE rebuilding.** A build pulls fresh images and
+> accumulates layers; on a 20 GB box this often fills the disk mid-build and
+> the deploy dies. Always prune first:
+> ```bash
+> sudo docker system prune -af          # remove dangling images, build cache, stopped containers
+> sudo docker image prune -af           # extra: drop all unused images
+> df -h /                               # confirm there is headroom
+> ```
+
 ### Pull Latest Code
 ```bash
 git pull origin main
@@ -442,6 +470,12 @@ sudo docker compose up -d
 sudo docker compose exec backend npx prisma migrate deploy
 ```
 
+### Verify
+```bash
+sudo docker compose ps
+curl -s http://localhost | head -5
+```
+
 ---
 
 ## Project Structure
@@ -455,6 +489,8 @@ roomflow/
 │   │   ├── bookings/          # Booking management
 │   │   ├── rentals/           # Hourly rental slots + holds
 │   │   ├── payments/          # Payment upload + approval
+│   │   │                       #  - POST /payments/initiate-batch (one payment, many slots)
+│   │   │                       #  - approve() marks ALL linked bookings BOOKED
 │   │   ├── pakasir/           # Pakasir payment gateway (venueone)
 │   │   ├── email/             # Email notifications (Resend)
 │   │   ├── email-config/      # Runtime email config (Admin IT UI)
@@ -474,7 +510,9 @@ roomflow/
 │   │   └── (auth)/            # Login, register
 │   ├── src/components/
 │   │   ├── landing/           # Public landing page
-│   │   └── ui/                # Shared UI components
+│   │   ├── ui/                # Shared UI components
+│   │   ├── rental/            # BookingBag + BookingSummary (multi-slot "shopping bag")
+│   │   └── layout/            # Header w/ role-aware "New Booking" CTA
 │   └── Dockerfile
 ├── scripts/
 │   ├── setup.sh               # First-time setup script
