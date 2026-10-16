@@ -16,29 +16,21 @@ export const Button = ({
   ...props
 }: ButtonProps) => {
   const isDisabled = disabled || isLoading;
-
-  const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-200 outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]';
-
+  const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#F59E0B] disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98] min-h-[44px] touch-target';
   const variants = {
-    primary: 'bg-[#143258] hover:bg-[#0f2744] text-white shadow-sm hover:shadow-md focus:ring-[#143258] border border-[#143258]',
-    secondary: 'bg-[#cbe2f0] hover:bg-[#b3d3e8] text-[#143258] hover:text-[#0f2744] border border-[#cbe2f0] focus:ring-[#264da1]',
-    danger: 'bg-rose-600 hover:bg-rose-700 text-white shadow-sm hover:shadow-md focus:ring-rose-500 border border-rose-600',
-    success: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow-md focus:ring-emerald-500 border border-emerald-600',
-    ghost: 'hover:bg-[#cbe2f0] text-[#747474] hover:text-[#143258] focus:ring-[#264da1]',
+    primary: 'bg-[#143258] hover:bg-[#0F172A] text-white shadow-sm hover:shadow-md focus-visible:ring-[#143258] border border-[#143258]',
+    secondary: 'bg-white hover:bg-[#FFFBEB] text-[#0F172A] border-2 border-[#FDE68A] focus-visible:ring-[#F59E0B]',
+    danger: 'bg-[#DC2626] hover:bg-[#B91C1C] text-white shadow-sm focus-visible:ring-[#DC2626] border border-[#DC2626]',
+    success: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm focus-visible:ring-emerald-500 border border-emerald-600',
+    ghost: 'hover:bg-[#FFFBEB] text-[#57534E] hover:text-[#0F172A] focus-visible:ring-[#F59E0B] border border-transparent',
   };
-
   const sizes = {
-    sm: 'text-xs px-3 py-1.5 gap-1.5',
+    sm: 'text-xs px-3 py-1.5 gap-1.5 min-h-[36px]',
     md: 'text-sm px-4 py-2 gap-2',
     lg: 'text-base px-5 py-2.5 gap-2.5',
   };
-
   return (
-    <button
-      disabled={isDisabled}
-      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
-      {...props}
-    >
+    <button disabled={isDisabled} className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`} {...props}>
       {isLoading && (
         <svg className="animate-spin h-4 w-4 text-current" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

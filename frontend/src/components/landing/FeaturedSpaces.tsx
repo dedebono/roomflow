@@ -6,99 +6,84 @@ import { ArrowRight, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Room } from '@/types/index';
 import { getImageUrl } from '@/lib/api';
 
-const VenueCard = ({ room, router }: { room: Room; router: ReturnType<typeof useRouter> }) => (
-  <motion.div
-    whileHover={{ scale: 1.02, y: -4 }}
-    className="bg-[#fefefe] rounded-2xl overflow-hidden border border-[#cbe2f0] hover:border-amber-500/30 shadow-xl hover:shadow-amber-500/10 transition-all duration-300 flex-shrink-0 w-[320px] group cursor-pointer"
-  >
-    <div
-      className="h-48 relative overflow-hidden bg-cover bg-center"
-      style={{ backgroundImage: `url(${getImageUrl(room.imageUrl || '')})` }}
+const VenueCard = ({ room, router }: { room: Room; router: ReturnType<typeof useRouter> }) => {
+  const booked = room.status !== 'ACTIVE';
+  return (
+    <motion.div
+      whileHover={{ y: -4 }}
+      className="bg-white rounded-2xl overflow-hidden border-2 border-[#FDE68A] hover:border-[#F59E0B]/50 shadow-sm hover:shadow-lg hover:shadow-[#F59E0B]/10 transition-all duration-300 flex-shrink-0 w-[280px] sm:w-[320px] snap-start group flex flex-col"
     >
-      <div className="absolute inset-0 bg-gradient-to-t from-[#143258]/80 via-[#143258]/20 to-transparent" />
-      <div className="absolute top-3 right-3">
-        {room.status === 'ACTIVE' ? (
-          <span className="bg-[#22c55e]/20 text-[#22c55e] text-xs font-bold px-2 py-1 rounded-full border border-[#22c55e]/30">
-            Available
-          </span>
-        ) : (
-          <span className="bg-rose-500/20 text-rose-400 text-xs font-bold px-2 py-1 rounded-full border border-rose-500/30">
-            Booked
-          </span>
-        )}
-      </div>
-      <div className="absolute bottom-3 left-3 right-3">
-        <h3 className="text-xl font-bold text-[#fefefe]">{room.name}</h3>
-        <p className="text-xs text-[#cbe2f0]">{room.building?.name || 'N/A'}</p>
-      </div>
-    </div>
-    <div className="p-4 space-y-3">
-      <div className="flex items-center gap-4 text-sm text-[#747474]">
-        <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-amber-400" /> {room.capacity} capacity</span>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <span className="text-xs bg-[#cbe2f0] text-[#474547] px-2 py-1 rounded-full">Modern</span>
-      </div>
-      <div className="flex items-center justify-between pt-2">
-        <p className="text-sm"><span className="text-2xl font-bold text-[#143258]">Rp {(room.price || 0).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span> <span className="text-[#747474]">/hour</span></p>
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          onClick={() => router.push('/login')}
-          className="h-10 w-10 rounded-full bg-amber-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform cursor-pointer"
+      <button
+        onClick={() => router.push('/login')}
+        className="text-left w-full flex flex-col flex-1 focus-visible:outline-none"
+        aria-label={`View ${room.name}`}
+      >
+        <div
+          className="h-44 relative overflow-hidden bg-cover bg-center shrink-0"
+          style={{ backgroundImage: `url(${getImageUrl(room.imageUrl || '') || 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=800&auto=format&fit=crop'})` }}
         >
-          <ArrowRight className="w-4 h-4" />
-        </motion.button>
-      </div>
-    </div>
-  </motion.div>
-);
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A]/80 via-[#0F172A]/10 to-transparent" />
+          <div className="absolute top-3 right-3">
+            {booked ? (
+              <span className="bg-white text-[#DC2626] text-xs font-bold px-2.5 py-1 rounded-full border border-white">Booked</span>
+            ) : (
+              <span className="bg-[#22c55e] text-white text-xs font-bold px-2.5 py-1 rounded-full">Available</span>
+            )}
+          </div>
+          <div className="absolute bottom-3 left-3 right-3">
+            <h3 className="text-lg font-bold text-white leading-tight line-clamp-1">{room.name}</h3>
+            <p className="text-xs text-white/80 truncate">{room.building?.name || 'Venue'}</p>
+          </div>
+        </div>
+        <div className="p-4 space-y-3 flex-1 flex flex-col">
+          <div className="flex items-center gap-4 text-sm text-[#57534E]">
+            <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-[#F59E0B]" /> {room.capacity} capacity</span>
+          </div>
+          <div className="flex items-center justify-between pt-1 mt-auto">
+            <p className="text-sm"><span className="text-xl font-bold text-[#0F172A]">Rp {(room.price || 0).toLocaleString('id-ID')}</span> <span className="text-[#57534E] text-xs">/hour</span></p>
+            <span className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${booked ? 'bg-[#F1F2EF] text-[#57534E]' : 'bg-[#F59E0B] text-[#0F172A] group-hover:bg-[#0F172A] group-hover:text-[#F59E0B]'} transition-colors`}><ArrowRight className="w-4 h-4" /></span>
+          </div>
+        </div>
+      </button>
+    </motion.div>
+  );
+};
 
 export const FeaturedSpaces = ({ rooms }: { rooms: Room[] }) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
-
-  const scroll = (dir: 'left' | 'right') => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: dir === 'left' ? -350 : 350, behavior: 'smooth' });
-    }
-  };
+  const scroll = (dir: 'left' | 'right') => ref.current?.scrollBy({ left: dir === 'left' ? -340 : 340, behavior: 'smooth' });
+  const list = rooms.length ? rooms : [];
 
   return (
-    <section id="featured" className="py-24 bg-[#f1dece] relative">
+    <section id="featured" className="py-12 md:py-24 bg-[#FFFBEB] relative">
       <div className="container mx-auto px-4 max-w-7xl">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-4xl md:text-5xl font-playfair font-bold text-[#143258] mb-4">
-            Featured <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-amber-300">Spaces</span>
-          </h2>
-          <p className="text-[#747474] text-lg max-w-xl mx-auto">
-            Scroll through our most popular venues. Find the perfect fit for your next event or match.
-          </p>
+        <motion.div initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-6 md:mb-10">
+          <p className="text-xs font-bold tracking-[0.2em] uppercase text-[#F59E0B] mb-2">Most Popular</p>
+          <h2 className="text-[32px] md:text-5xl font-bold text-[#0F172A]">Featured <span className="text-[#F59E0B]">Spaces</span></h2>
+          <p className="text-[#57534E] mt-3 max-w-xl mx-auto text-sm md:text-base">Horizontal scroll — snap + peeking on mobile. Tap any card to book.</p>
         </motion.div>
 
         <div className="relative">
-          <button onClick={() => scroll('left')} className="hidden md:flex absolute -left-4 top-1/2 -translate-y-1/2 z-10 h-12 w-12 rounded-full bg-[#fefefe] border border-[#cbe2f0] items-center justify-center text-[#747474] hover:bg-[#cbe2f0] hover:text-[#143258] transition-colors cursor-pointer" aria-label="Scroll left">
+          <button onClick={() => scroll('left')} aria-label="Scroll left" className="hidden md:flex absolute -left-4 top-1/2 -translate-y-1/2 z-10 h-11 w-11 rounded-full bg-white border-2 border-[#FDE68A] items-center justify-center text-[#0F172A] hover:border-[#F59E0B] hover:bg-[#FFFBEB] touch-target">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <div ref={scrollRef} className="flex gap-6 overflow-x-auto pb-8 scroll-smooth no-scrollbar snap-x snap-mandatory">
-            {rooms.map((room, i) => (
-              <div key={room.id} className="snap-start">
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                >
+          <div
+            ref={ref}
+            className="flex gap-4 overflow-x-auto pb-6 scroll-smooth no-scrollbar snap-x snap-mandatory pr-4 md:pr-0"
+            style={{ scrollbarWidth: 'none' }}
+          >
+            {list.length === 0 ? (
+              <p className="text-[#57534E] py-8 mx-auto">No featured spaces yet.</p>
+            ) : (
+              list.map((room, i) => (
+                <motion.div key={room.id} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }}>
                   <VenueCard room={room} router={router} />
                 </motion.div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
-          <button onClick={() => scroll('right')} className="hidden md:flex absolute -right-4 top-1/2 -translate-y-1/2 z-10 h-12 w-12 rounded-full bg-[#fefefe] border border-[#cbe2f0] items-center justify-center text-[#747474] hover:bg-[#cbe2f0] hover:text-[#143258] transition-colors cursor-pointer" aria-label="Scroll right">
+          <button onClick={() => scroll('right')} aria-label="Scroll right" className="hidden md:flex absolute -right-4 top-1/2 -translate-y-1/2 z-10 h-11 w-11 rounded-full bg-white border-2 border-[#FDE68A] items-center justify-center text-[#0F172A] hover:border-[#F59E0B] hover:bg-[#FFFBEB] touch-target">
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>

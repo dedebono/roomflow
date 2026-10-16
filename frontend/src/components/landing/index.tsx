@@ -11,6 +11,7 @@ import { EventZone } from './EventZone';
 import { StatsSection } from './StatsSection';
 import { FinalCTA } from './FinalCTA';
 import { Footer } from './Footer';
+import { MobileBottomNav } from './MobileBottomNav';
 import { Room } from '@/types/index';
 
 export default function LandingPage() {
@@ -37,15 +38,10 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <main className="bg-[#f1dece] min-h-screen overflow-x-hidden">
+    <main className="bg-[#FFFBEB] min-h-screen overflow-x-hidden pb-[72px] md:pb-0">
       <style jsx global>{`
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
       <Navbar />
       <HeroSection />
@@ -57,6 +53,7 @@ export default function LandingPage() {
       <StatsSection />
       <FinalCTA />
       <Footer />
+      <MobileBottomNav />
     </main>
   );
 }
