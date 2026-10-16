@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Clock, Check } from 'lucide-react';
+import { Clock } from 'lucide-react';
 
 interface TimeSlot {
   id: string;
@@ -11,23 +11,26 @@ interface TimeSlot {
   available: boolean;
 }
 
-interface TimeSlotSelectorProps {
+interface TimeSlotselectorProps {
   slots: TimeSlot[];
-  selectedSlots: TimeSlot[];
-  onToggleSlot: (slot: TimeSlot) => void;
+  selectedSlot: TimeSlot | null;
+  onSlotSelect: (slot: TimeSlot) => void;
   loading?: boolean;
 }
 
-const formatTime = (isoString: string) => isoString.substring(11, 16);
+const formatTime = (isoString?: string) => {
+  if (!isoString) return '--:--';
+  return isoString.length >= 16 ? isoString.substring(11, 16) : isoString;
+};
 const formatRupiah = (amount: number) =>
   'Rp ' + amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 export function TimeSlotSelector({
   slots,
-  selectedSlots,
-  onToggleSlot,
+  selectedSlot,
+  onSlotSelect,
   loading = false,
-}: TimeSlotSelectorProps) {
+}: TimeSlotselectorProps) {
   if (loading) {
     return (
       <div className="text-center py-8 text-slate-500">
@@ -47,16 +50,18 @@ export function TimeSlotSelector({
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-semibold text-slate-600 tracking-wide uppercase">Available Time Slots — tap to add multiple</p>
+      <p className="text-xs font-semibold text-slate-600 tracking-wide uppercase">Available Time Slots</p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {slots.map((slot) => {
           const isDisabled = !slot.available;
-          const isSelected = selectedSlots.some((s) => s.id === slot.id);
+          const isSelected = Array.isArray(selectedSlot)
+            ? selectedSlot.some((s) => s.id === slot.id)
+            : selectedSlot?.id === slot.id;
 
           return (
             <button
               key={slot.id}
-              onClick={() => !isDisabled && onToggleSlot(slot)}
+              onClick={() => !isDisabled && onSlotSelect(slot)}
               disabled={isDisabled}
               className={`p-3 rounded-xl text-sm font-bold transition-all border-2 flex flex-col items-center justify-center gap-1 ${
                 isSelected
@@ -75,11 +80,6 @@ export function TimeSlotSelector({
               <div className={`text-xs font-medium ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
                 {formatRupiah(slot.price)}
               </div>
-              {isSelected && (
-                <div className="flex items-center gap-1 text-[10px] uppercase font-bold text-indigo-100">
-                  <Check className="w-3 h-3" /> Added
-                </div>
-              )}
               {isDisabled && <div className="mt-1 text-[10px] uppercase font-bold text-rose-500/80">Booked</div>}
             </button>
           );

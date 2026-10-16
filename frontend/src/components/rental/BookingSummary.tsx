@@ -1,8 +1,6 @@
 'use client';
 
 import React from 'react';
-import { CheckCircle, Calendar, Clock, CreditCard, X, ShoppingCart } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
 
 interface TimeSlot {
   id: string;
@@ -12,125 +10,98 @@ interface TimeSlot {
   available: boolean;
 }
 
-interface CartItem {
-  key: string;
-  date: string;
-  slot: TimeSlot;
-}
-
 interface BookingSummaryProps {
-  cart: CartItem[];
+  selectedDate: string;
+  selectedSlot: TimeSlot | TimeSlot[] | null;
   roomName: string;
-  onRemove: (key: string) => void;
-  onCreateHolds: () => void;
+  onCreateHold: () => void;
   isLoading?: boolean;
-  total: number;
 }
 
-const formatDate = (dateStr: string) =>
-  new Date(dateStr.substring(0, 10) + 'T00:00:00').toLocaleDateString(undefined, {
-    month: 'short',
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return '-';
+  const cleanDate = dateStr.length >= 10 ? dateStr.substring(0, 10) : dateStr;
+  return new Date(cleanDate + 'T00:00:00').toLocaleDateString(undefined, {
+    weekday: 'short',
     day: 'numeric',
-    year: 'numeric',
+    month: 'short',
+    year: 'numeric'
   });
+};
 
-const formatTime = (isoString: string) => isoString.substring(11, 16);
+const formatTime = (isoString?: string) => {
+  if (!isoString) return '--:--';
+  return isoString.length >= 16 ? isoString.substring(11, 16) : isoString;
+};
 
-const formatRupiah = (amount: number) =>
-  'Rp ' + amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+const formatRupiah = (amount: number) => {
+  return 'Rp ' + amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+};
 
 export function BookingSummary({
-  cart,
+  selectedDate,
+  selectedSlot,
   roomName,
-  onRemove,
-  onCreateHolds,
+  onCreateHold,
   isLoading = false,
-  total,
 }: BookingSummaryProps) {
-  const hasItems = cart.length > 0;
+  // Safe array handling untuk single/multiple slots
+  const slots: TimeSlot[] = Array.isArray(selectedSlot)
+    ? selectedSlot
+    : selectedSlot
+      ? [selectedSlot]
+      : [];
+
+  const totalPrice = slots.reduce((sum, slot) => sum + (slot?.price || 0), 0);
+  const isReady = Boolean(selectedDate && slots.length > 0);
 
   return (
     <div className="space-y-4">
-      <div className="border border-slate-900 glass rounded-lg p-4 space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-indigo-400" />
-            <h3 className="text-lg font-semibold text-slate-900">Booking List</h3>
+      <div className="border border-slate-800 bg-slate-900/50 backdrop-blur rounded-lg p-4 space-y-4">
+        <h3 className="text-lg font-bold text-white">Ringkasan Pesanan</h3>
+
+        <div className="space-y-2 text-sm text-slate-300">
+          <div className="flex justify-between">
+            <span className="text-slate-400">Ruangan:</span>
+            <span className="font-medium text-white">{roomName || '-'}</span>
           </div>
-          {hasItems && (
-            <span className="text-xs font-bold bg-indigo-600 text-white rounded-full px-2 py-0.5">
-              {cart.length}
-            </span>
-          )}
+
+          <div className="flex justify-between">
+            <span className="text-slate-400">Tanggal:</span>
+            <span className="font-medium text-white">{formatDate(selectedDate)}</span>
+          </div>
+
+          <div className="flex justify-between">
+            <span className="text-slate-400">Jam / Slot:</span>
+            <div className="text-right font-medium text-white">
+              {slots.length === 0 ? (
+                <span className="text-slate-500">Belum dipilih</span>
+              ) : (
+                slots.map((s, idx) => (
+                  <div key={s?.id || idx}>
+                    {formatTime(s?.startTime)} - {formatTime(s?.endTime)}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Empty state */}
-        {!hasItems ? (
-          <div className="py-6 text-center text-slate-500">
-            <p className="text-sm">Pick a date, select one or more time slots, then tap “Add to Booking”.</p>
-          </div>
-        ) : (
-          <>
-            {/* Cart items */}
-            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-              {cart.map((item) => (
-                <div
-                  key={item.key}
-                  className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-[#f8f8f8] dark:bg-[#2a2a2a] border border-slate-200 dark:border-[#3a3a3a]"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">{roomName}</p>
-                    <p className="text-xs text-slate-500 flex items-center gap-1">
-                      <Calendar className="w-3 h-3" /> {formatDate(item.date)}
-                    </p>
-                    <p className="text-xs text-slate-500 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {formatTime(item.slot.startTime)} - {formatTime(item.slot.endTime)}
-                    </p>
-                    <p className="text-xs font-medium text-indigo-600">{formatRupiah(item.slot.price)}</p>
-                  </div>
-                  <button
-                    onClick={() => onRemove(item.key)}
-                    className="shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors"
-                    aria-label="Remove"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
+        <div className="border-t border-slate-800 pt-3 flex justify-between items-center font-bold text-base">
+          <span className="text-slate-300">Total Harga:</span>
+          <span className="text-blue-400">{formatRupiah(totalPrice)}</span>
+        </div>
 
-            {/* Divider */}
-            <div className="border-t border-slate-200 my-2" />
-
-            {/* Total */}
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2 text-base font-semibold text-slate-900">
-                <CreditCard className="w-4 h-4 text-indigo-500" />
-                <span>Total:</span>
-              </div>
-              <span className="text-lg font-bold text-indigo-600">{formatRupiah(total)}</span>
-            </div>
-
-            {/* Note */}
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-xs text-amber-800">
-                ⏱️ Each slot becomes its own 1-hour hold. Complete payment for every hold to confirm all bookings.
-              </p>
-            </div>
-
-            {/* Create Holds Button */}
-            <Button
-              variant="primary"
-              onClick={onCreateHolds}
-              disabled={isLoading}
-              className="w-full"
-            >
-              {isLoading ? 'Creating Holds...' : `Book ${cart.length} Slot${cart.length > 1 ? 's' : ''}`}
-            </Button>
-          </>
-        )}
+        <button
+          onClick={onCreateHold}
+          disabled={!isReady || isLoading}
+          className="w-full py-2.5 px-4 rounded-md font-semibold text-sm transition-all bg-blue-600 hover:bg-blue-500 text-white disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed"
+        >
+          {isLoading ? 'Memproses...' : 'Lanjutkan Booking'}
+        </button>
       </div>
     </div>
   );
 }
+
+export default BookingSummary;

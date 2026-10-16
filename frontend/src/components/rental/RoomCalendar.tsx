@@ -93,7 +93,7 @@ export function RoomCalendar({ roomId, onDateSelect, selectedDate }: RoomCalenda
     let cancelled = false;
     setLoading(true);
     
-    const apiUrl = `https://room.ytcb.org/api/rentals/rooms/${roomId}/availability?month=${monthKey}&v=${CACHE_VER}`;
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/rentals/rooms/${roomId}/availability?month=${monthKey}&v=${CACHE_VER}`;
     
     fetch(apiUrl)
       .then(r => {

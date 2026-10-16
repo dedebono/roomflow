@@ -14,6 +14,12 @@ export class NotificationsService {
     private emailService: EmailService,
   ) {}
 
+  async remove(id: string) {
+    return this.prisma.notification.deleteMany({
+      where: { id },
+    });
+   }
+
   async create(
     userId: string,
     type: NotificationType,

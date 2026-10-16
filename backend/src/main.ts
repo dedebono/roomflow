@@ -12,6 +12,26 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
+  const envOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+    : [];
+
+  const defaultOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://100.127.221.23',
+    'http://100.127.221.23:3000',
+    'http://100.127.221.23:3001',
+   ];
+
+  const allowedOrigins = Array.from(new Set([...envOrigins, ...defaultOrigins])).filter(Boolean);
+
+  app.enableCors({
+     origin: true, // Mengizinkan semua origin yang melakukan request
+     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+     credentials: true,
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -22,19 +42,6 @@ async function bootstrap() {
 
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  const allowedOrigins = (
-    process.env.ALLOWED_ORIGINS || 'http://localhost:3001,http://localhost:3000'
-  )
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean);
-
-  app.enableCors({
-    origin: allowedOrigins,
-    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    credentials: true,
-  });
-
   // Serve static files for uploads
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
 
@@ -42,7 +49,7 @@ async function bootstrap() {
   app.useWebSocketAdapter(new IoAdapter(app));
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   logger.log(`Application is running on: http://localhost:${port}/api`);
 }
 bootstrap();

@@ -13,24 +13,15 @@ try {
 }
 
 const nextConfig: NextConfig = {
-  // Standalone output for Docker
   output: 'standalone',
-
-  images: {
-    remotePatterns: [
-      {
-        protocol: "http",
-        hostname: "localhost",
+  async rewrites() {
+  return [
+    {
+     source: '/api/:path*',
+     destination: 'http://100.127.221.23:3001/api/:path*',
       },
-      {
-        protocol: "https",
-        hostname: remoteHostname,
-      },
-    ],
+    ];
   },
-
-  // Prevent double rendering in dev mode
-  reactStrictMode: false,
 };
 
 export default nextConfig;

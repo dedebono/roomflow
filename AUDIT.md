@@ -28,7 +28,7 @@ No origin restriction. Any domain can make authenticated requests from user brow
 **Fix:**
 ```ts
 app.enableCors({
-  origin: ['https://room.ytcb.org', 'http://localhost:3001'],
+  origin: ['http://room.ytcb.org', 'http://localhost:3001'],
   methods: ['GET','POST','PATCH','DELETE'],
   credentials: true,
 });
