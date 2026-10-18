@@ -35,6 +35,10 @@ services:
       WAHA_API_URL: ${WAHA_API_URL}
       WAHA_SESSION: ${WAHA_SESSION:-default}
       WAHA_API_KEY: ${WAHA_API_KEY}
+      # QA: lewati gateway, checkout langsung lunas.
+      # WAJIB "false" sebelum go-live — dengan ini renter dapat booking
+      # gratis tanpa pernah membayar.
+      PAYMENT_BYPASS: ${PAYMENT_BYPASS:-false}
     depends_on:
       postgres:
         condition: service_healthy
@@ -83,7 +87,7 @@ services:
       - WAHA_DASHBOARD_USERNAME=admin
       - WAHA_DASHBOARD_PASSWORD=admin
       - WAHA_LOG_LEVEL=info
-      - WHATSAPP_API_KEY=C5KD0HtPu/vtyATWiH4c7CWZWOc7O5XpJOLYG2kI/Wc=
+      - WHATSAPP_API_KEY=${WHATSAPP_API_KEY:?WHATSAPP_API_KEY wajib diisi di .env}
       - WAHA_CORS_ENABLED=true
       - WAHA_CORS_ORIGIN=*
     volumes:

@@ -48,9 +48,13 @@ export default function ManagerChatPage() {
   // Fetch all renters for starting new conversations
   const fetchRenters = useCallback(async () => {
     try {
-      const res = await api.get('/users');
-      // Filter only RENTER role users
-      const rentersList = res.data.filter((u: User) => u.role === 'RENTER');
+      // Endpoint khusus, bukan `GET /users`: yang itu hanya diizinkan
+      // ADMIN_IT, jadi Room Manager mendapat 403 dan daftar renter tetap
+      // kosong tanpa pesan error (ditemukan oleh audit QA).
+      const res = await api.get('/users/renters');
+      const rentersList = (res.data ?? []).filter(
+        (u: User) => u.role === 'RENTER' || u.role === 'USER',
+      );
       setRenters(rentersList);
     } catch {
       // Silently fail
@@ -120,9 +124,18 @@ export default function ManagerChatPage() {
       const res = await api.post('/chat/conversations', {
         participantId: renterId,
       });
-      await fetchConversations();
-      // Select the new conversation
       const newConv = res.data;
+      // Percakapan TIDAK disimpan di tabel — `GET /chat/conversations`
+      // disusun ulang dari ChatMessage. Percakapan yang belum punya pesan
+      // tidak punya baris message, jadi tidak akan pernah muncul di hasil
+      // fetch berikutnya: panel terbuka tapi daftar "Active Chats" tetap
+      // kosong — dan reload pun tidak menolong. Jadi sisipkan optimistic
+      // di state, jangan andalkan fetch di sini.
+      setConversations((prev) =>
+        prev.some((c) => (c.userId ?? c.participant2Id) === renterId)
+          ? prev
+          : [newConv, ...prev],
+      );
       setSelectedConversation(newConv);
       setMessages([]);
     } catch {
@@ -188,7 +201,7 @@ export default function ManagerChatPage() {
     <DashboardLayout
       title="Chat with Renters"
       description="Communicate with room renters about bookings and payments"
-      allowedRoles={['ROOM_ADMIN']}
+      allowedRoles={['ADMIN_IT', 'ROOM_ADMIN']}
     >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
         {/* Renters List */}

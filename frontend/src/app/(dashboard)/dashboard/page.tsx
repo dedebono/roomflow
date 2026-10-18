@@ -227,7 +227,7 @@ export default function EmployeeDashboard() {
   };
 
   return (
-    <DashboardLayout title="Employee Portal" description="Browse meeting rooms, view schedules, and book instantly.">
+    <DashboardLayout title="Employee Portal" description="Browse meeting rooms, view schedules, and book instantly." allowedRoles={['ADMIN_IT', 'ROOM_ADMIN', 'USER']}>
       {/* Filters & Information Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="border border-[#cbe2f0] dark:border-[#3a3a3a]">

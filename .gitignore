@@ -12,11 +12,23 @@ frontend/out/
 .env
 .env.local
 .env.*.local
+# Cadangan env — .env.bak.20261017 dsb. berisi JWT_SECRET + API key
+.env.*
+!.env.example
 backend/.env
+backend/.env.*
 frontend/.env
 frontend/.env.local
 # BUT track the example
 !.env.example
+# Konfigurasi lokal yang tidak boleh masuk repo
+config.yml
+*.save
+roomflow-sync/
+
+# Dump database — berisi data user (email, no HP, hash password)
+*.sql
+backups/
 
 # Logs
 logs

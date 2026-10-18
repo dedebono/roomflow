@@ -1,10 +1,12 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { PakasirService } from './pakasir.service';
 import { PakasirController } from './pakasir.controller';
-import { NotificationsModule } from '../notifications/notifications.module';
+import { CheckoutModule } from '../checkout/checkout.module';
 
+// Circular: PakasirController butuh SettlementService (dari CheckoutModule),
+// CheckoutModule butuh PakasirService. forwardRef menyelesaikan.
 @Module({
-  imports: [NotificationsModule],
+  imports: [forwardRef(() => CheckoutModule)],
   controllers: [PakasirController],
   providers: [PakasirService],
   exports: [PakasirService],

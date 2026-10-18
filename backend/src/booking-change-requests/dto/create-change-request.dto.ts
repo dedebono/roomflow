@@ -11,10 +11,6 @@ export class CreateChangeRequestDto {
   @IsNotEmpty()
   bookingId: string;
 
-  @IsUUID()
-  @IsOptional()
-  requestedRoomId?: string;
-
   @IsDateString()
   @IsOptional()
   requestedStart?: string;

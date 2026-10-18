@@ -178,7 +178,7 @@ export default function AdminChangeRequestsPage() {
   ];
 
   return (
-    <DashboardLayout title="Change Requests Approval Portal" description="Review scheduling conflicts and authorize or deny employee change proposals." allowedRoles={['ROOM_ADMIN']}>
+    <DashboardLayout title="Change Requests Approval Portal" description="Review scheduling conflicts and authorize or deny employee change proposals." allowedRoles={['ADMIN_IT', 'ROOM_ADMIN']}>
       {/* Pending Requests */}
       <Card className="border border-slate-900 glass">
         <CardHeader className="p-0 mb-4">

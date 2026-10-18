@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/Badge';
 import api, { getImageUrl } from '@/lib/api';
 import { Room } from '@/types';
 import toast from 'react-hot-toast';
-import { Calendar, MapPin, Users, LayoutGrid } from 'lucide-react';
+import { Calendar, MapPin, Users, LayoutGrid, Repeat } from 'lucide-react';
 import { RoomCategory } from '@/types';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -112,6 +112,27 @@ export default function AvailableRoomsPage() {
                 Clear
               </Button>
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Sewa berkala / banyak ruangan sekaligus */}
+      <Card className="border-[#264da1]/30 dark:border-[#264da1]/40 bg-[#264da1]/5">
+        <CardContent>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p className="font-bold text-[#143258] dark:text-[#e8e8e8] flex items-center gap-2">
+                <Repeat className="h-4 w-4" /> Sewa Berkala
+              </p>
+              <p className="text-sm text-[#747474] dark:text-[#a8a8a8] mt-0.5">
+                Tiap minggu, tiap 2 minggu, atau hari tertentu — untuk satu atau banyak ruangan.
+              </p>
+            </div>
+            <Link href="/renter/bulk">
+              <Button variant="primary">
+                <Repeat className="w-4 h-4" /> Atur Paket
+              </Button>
+            </Link>
           </div>
         </CardContent>
       </Card>

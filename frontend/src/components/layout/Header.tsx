@@ -66,6 +66,8 @@ export const Header = ({ title, description, onMenuClick }: HeaderProps) => {
   const handleNotificationClick = async (notif: Notification) => {
     try {
       await api.patch(`/notifications/${notif.id}/read`);
+      // Backend clears the row on read — drop it locally too
+      setNotifications((prev) => prev.filter((n) => n.id !== notif.id));
     } catch {
       // continue
     }
@@ -78,8 +80,8 @@ export const Header = ({ title, description, onMenuClick }: HeaderProps) => {
   const markAllRead = async () => {
     try {
       await api.patch('/notifications/read-all');
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      toast.success('All notifications marked as read');
+      setNotifications([]);
+      toast.success('All notifications cleared');
     } catch {
       toast.error('Failed to mark all as read');
     }

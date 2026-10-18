@@ -22,6 +22,21 @@ export class UsersController {
     return this.usersService.getManagers();
   }
 
+  /**
+   * Daftar renter untuk Room Manager — padanan `GET /users/managers` yang
+   * dipakai halaman chat renter.
+   *
+   * Dulu halaman `/chat` milik staff memanggil `GET /users`, yang hanya
+   * diizinkan ADMIN_IT, jadi Room Manager mendapat 403 dan layarnya kosong
+   * tanpa pesan error (ditemukan oleh audit QA). Endpoint khusus ini
+   * mengembalikan field seperlunya saja — bukan data user lengkap.
+   */
+  @Get('renters')
+  @Roles(Role.ADMIN_IT, Role.ROOM_ADMIN)
+  getRenters() {
+    return this.usersService.getRenters();
+  }
+
   @Post()
   @Roles(Role.ADMIN_IT)
   create(@Body() createUserDto: CreateUserDto) {

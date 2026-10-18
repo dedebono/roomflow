@@ -65,12 +65,11 @@ export const NotificationBell = ({ className = '' }: NotificationBellProps) => {
   const handleNotificationClick = async (notif: Notification) => {
     try {
       await api.patch(`/notifications/${notif.id}/read`);
+      // Backend clears the row on read — drop it locally too
+      setNotifications((prev) => prev.filter((n) => n.id !== notif.id));
     } catch {
       // continue
     }
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n))
-    );
     if (notif.link) {
       router.push(notif.link);
     }
@@ -80,7 +79,7 @@ export const NotificationBell = ({ className = '' }: NotificationBellProps) => {
   const markAllRead = async () => {
     try {
       await api.patch('/notifications/read-all');
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setNotifications([]);
     } catch {
       // silent
     }

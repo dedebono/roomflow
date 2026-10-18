@@ -69,7 +69,7 @@ export default function WahaSettingsPage() {
 
   if (loading) {
     return (
-      <DashboardLayout title="WAHA Settings" description="Configure WhatsApp integration">
+      <DashboardLayout title="WAHA Settings" description="Configure WhatsApp integration" allowedRoles={['ADMIN_IT']}>
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin h-8 w-8 border-4 border-[#143258] border-t-transparent rounded-full" />
         </div>
@@ -78,7 +78,7 @@ export default function WahaSettingsPage() {
   }
 
   return (
-    <DashboardLayout title="WAHA Settings" description="WhatsApp Business API integration">
+    <DashboardLayout title="WAHA Settings" description="WhatsApp Business API integration" allowedRoles={['ADMIN_IT']}>
       <div className="max-w-2xl">
         <Card>
           <CardContent>

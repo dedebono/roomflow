@@ -29,6 +29,21 @@ export class UsersService {
     });
   }
 
+  /**
+   * Padanan `getManagers()` untuk staff yang butuh memulai chat dengan
+   * renter. Field dibatasi pada yang dipakai UI — halaman chat tidak butuh
+   * refreshToken, dan mengirimkannya ke browser adalah kebocoran kredensial.
+   */
+  async getRenters() {
+    return this.prisma.user.findMany({
+      where: {
+        role: { in: [Role.RENTER, Role.USER] },
+      },
+      select: { id: true, name: true, email: true, whatsappNumber: true, role: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
   async create(dto: CreateUserDto) {
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },

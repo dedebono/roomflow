@@ -1,4 +1,37 @@
 // RoomFlow - Prisma Schema
+//
+// HOLD/BOOKING ENGINE v2
+//
+// Aturan(main) yang harus bertahan saat refactor berikutnya:
+//  1. Hanya SATU fungsi yang boleh membuat Booking berstatus HELD atau
+//     CONFIRMED (CheckoutService). Semua jalur lain memanggilnya.
+//  2. Exclusion constraint di DB adalah penjaga terakhir. Logika aplikasi
+//     tidak pernah mengabulkan slot yang tidak tersedia.
+//  3. Semua "sekarang" dihitung oleh SQL (now()), tidak pernah oleh Node.
+//     Lihat catatan timezone di bawah.
+
+// CATATAN TIMEZONE — baca sebelum menyentuh kolom waktu.
+//
+// Tiga timezone berbeda dipakai di sistem ini (terverifikasi 2026-10-16):
+//   - roomflow-backend  : TZ=Asia/Jakarta
+//   - roomflow-postgres : TimeZone = UTC
+//   - schema.prisma     : timestamp(3) WITHOUT time zone
+//
+// Kolom waktu booking memakai konvensi NOMINAL-UTC: jam yang dipilih user
+// disimpan sebagai "...T09:00:00.000Z" agar HH:MM-nya persis sama dengan yang
+// diklik user, tanpa pergeseran timezone. Konvensi ini sudah dipakai seluruh
+// frontend dan HARUS dipertahankan.
+//
+// Konsekuensi: kolom tanpa timezone TIDAK bisa membedakan jam dinding
+// (09:00) dari instants absolut (09:00Z). Karena itu:
+//
+//   - startTime/endTime -> nominal-UTC, aman untuk exclusion constraint
+//                         karena keduanya konsisten satu semantik.
+//   - holdExpiresAt / settling / settledAt -> WAJIB dihitung pakai now()
+//                         DI DALAM SQL. Kalau dihitung di Node lalu
+//                         dibandingkan dengan now() Postgres, selisihnya
+//                         7 jam dan setiap hold jadi kedaluwarsa seketika.
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -25,10 +58,22 @@ enum RoomCategory {
   SPORT
 }
 
+/// HELD      = kunci slot, sedang menunggu pembayaran (dipegang constraint)
+/// CONFIRMED = pembayaran terverifikasi, kunci permanen sampai waktu mulai
+/// EXPIRED   = settlement membuktikan tidak dibayar, kunci dilepas
+/// CANCELLED = hanya untuk source='INTERNAL' (booking staff, tanpa uang)
 enum BookingStatus {
-  PENDING
-  BOOKED
+  HELD
+  CONFIRMED
+  EXPIRED
   CANCELLED
+}
+
+/// RENTAL   = renter, wajib bayar
+/// INTERNAL = staff (Role.USER), tanpa payment, hanya di dalam jam kerja
+enum BookingSource {
+  RENTAL
+  INTERNAL
 }
 
 enum ChangeRequestStatus {
@@ -37,18 +82,25 @@ enum ChangeRequestStatus {
   REJECTED
 }
 
-enum PaymentStatus {
-  PENDING
-  PAYMENT_PROOF_UPLOADED
-  APPROVED
-  REJECTED
+/// Hanya booking staff (source='INTERNAL') yang boleh membuat request ini.
+enum ChangeRequestKind {
+  RESCHEDULE
+  CANCEL
 }
 
-enum BookingHoldStatus {
-  ACTIVE
-  CONVERTED
+enum OrderStatus {
+  AWAITING_PAYMENT
+  PAID
   EXPIRED
-  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  /// Gateway tidak merespons. Booking TETAP terkunci; rekonsiliasi yang
+  /// menyelesaikan. Jangan pernah dipakai sebagai "user tidak bayar".
+  EXPIRED
 }
 
 enum NotificationType {
@@ -56,8 +108,6 @@ enum NotificationType {
   BOOKING_CANCELLED
   BOOKING_CONFIRMED
   BOOKING_EXPIRED
-  PAYMENT_UPLOADED
-  PAYMENT_PROOF_UPLOADED
   PAYMENT_APPROVED
   PAYMENT_REJECTED
   NEW_MESSAGE
@@ -65,6 +115,8 @@ enum NotificationType {
   CHANGE_REQUEST_APPROVED
   CHANGE_REQUEST_REJECTED
   CHANGE_REQUEST_SUBMITTED
+  ORDER_EXPIRED
+  LATE_PAYMENT
 }
 
 model User {
@@ -80,12 +132,13 @@ model User {
   role                 Role      @default(USER)
 
   bookings              Booking[]
-  bookingChangeRequests BookingChangeRequest[]
+  bookingChangeRequests BookingChangeRequest[]         @relation("RequestedChangeRequests")
+  reviewedChangeRequests BookingChangeRequest[]        @relation("ReviewedChangeRequests")
+  orders                Order[]
   payments              Payment[]
-  managedPayments       Payment[]              @relation("ApprovedPayments")
-  sentMessages          ChatMessage[]          @relation("ChatSender")
-  receivedMessages      ChatMessage[]          @relation("ChatReceiver")
-  bookingHolds          BookingHold[]
+  sentMessages          ChatMessage[]                 @relation("ChatSender")
+  receivedMessages      ChatMessage[]                 @relation("ChatReceiver")
+  cart                  Cart?
   notifications         Notification[]
 
   createdAt DateTime @default(now())
@@ -115,9 +168,14 @@ model Room {
   maxBookingHours Int?
   category        RoomCategory?
 
+  /// Satuan waktu booking dalam menit. Default 60 per keputusan desain.
+  slotMinutes Int @default(60)
+  /// Jarak minimum dari "sekarang" saat checkout, dalam menit.
+  minAdvanceMinutes Int @default(120)
+
   bookings     Booking[]
   rentalSlots  RentalSlot[]
-  bookingHolds BookingHold[]
+  staffWindows StaffWindow[]
   chatMessages ChatMessage[] @relation("RoomChat")
 
   createdAt DateTime @default(now())
@@ -125,6 +183,47 @@ model Room {
 
   @@index([buildingId])
   @@index([status])
+  @@index([isRentable, status])
+}
+
+/// Jam operasional WAJIB staff (source='INTERNAL').
+/// Di luar rentang ini ruangan terbuka untuk renter (lihat RentalSlot).
+/// Di luar keduanya, ruangan tidak bisa dipesan.
+model StaffWindow {
+  id       String   @id @default(uuid())
+  roomId   String
+  room     Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  /// 1=Senin .. 7=Minggu
+  dayOfWeek Int
+  /// Menit dari tengah malam. 420 = 07:00
+  startMin Int
+  endMin   Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([roomId, dayOfWeek, startMin, endMin])
+  @@index([roomId, dayOfWeek])
+}
+
+/// Jam operasional untuk renter, sekaligus sumber harga.
+model RentalSlot {
+  id        String  @id @default(uuid())
+  roomId    String
+  room      Room    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  /// numeric, bukan float — float merusak rekonsiliasi begitu ada dua
+  /// sistem yang menjumlahkan.
+  price     Decimal @db.Decimal(14, 2)
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([roomId, dayOfWeek, startTime, endTime])
+  @@index([roomId, dayOfWeek, isActive])
 }
 
 model Booking {
@@ -134,24 +233,205 @@ model Booking {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  orderItemId String?    @unique
+  orderItem   OrderItem?
+
+  /// Order asal booking ini. Diisi saat INSERT (Order dibuat lebih dulu di
+  /// dalam transaksi yang sama), sehingga CHECK "HELD harus punya order"
+  /// bisa ditegakkan database. orderItemId tidak bisa dipakai untuk itu
+  /// karena OrderItem lahir SESUDAH Booking — FK-nya ke Booking.
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
   title         String
   notes         String?
+  /// Nominal-UTC: HH:MM == jam yang diklik user. Lihat catatan timezone.
   startTime     DateTime
   endTime       DateTime
-  status        BookingStatus @default(BOOKED)
+  status        BookingStatus @default(HELD)
+  source        BookingSource @default(RENTAL)
   isRental      Boolean       @default(false)
-  bookingHoldId String? // Links to the hold that created this booking
 
-  payment        Payment[]
+  /// TTL. WAJIB ditulis dengan now() + interval '...' di SQL, bukan dari Node.
+  holdExpiresAt DateTime?
+  /// true  = TTL habis, MENUNGGU verdict gateway. Slot MASIH terkunci.
+  /// false = masih dalam TTL normal.
+  settling      Boolean @default(false)
+  /// Perpanjangan +5 menit maksimal SATU kali.
+  holdExtended  Boolean @default(false)
+
+  /// Harga yang dipikul user. Tidak boleh diambil ulang dari RentalSlot
+  /// saat konfirmasi — harga bisa berubah di tengah jalan.
+  priceSnapshot Decimal @db.Decimal(14, 2)
+
+  /// Settlement (settling true -> false) dicatat di sini.
+  settledAt   DateTime?
+  confirmedAt DateTime?
+  cancelledAt DateTime?
+
   changeRequests BookingChangeRequest[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([roomId])
-  @@index([userId])
+  @@index([roomId, status])
+  @@index([userId, status])
+  @@index([orderId])
   @@index([startTime, endTime])
-  @@index([status])
+  // Partial index khusus scheduler/rekonsiliasi
+  @@index([status, holdExpiresAt])
+  @@index([settling])
+}
+
+model Order {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status OrderStatus @default(AWAITING_PAYMENT)
+  total  Decimal     @db.Decimal(14, 2)
+
+  /// Idempotency: retry klik ganda dengan key sama -> Order yang sama.
+  /// Unik per user, bukan global.
+  idempotencyKey String?
+
+  gateway         String?
+  /// order_id yang dikirim ke gateway (untuk rekonsiliasi).
+  gatewayOrderRef String?
+  gatewayTxnId    String?
+
+  /// Masa invoice WAJIB <= holdExpiresAt booking. Divalidasi di checkout.
+  expiresAt DateTime?
+  /// Order dibuat tapi gateway belum mengembalikan txn_id. Kalau lewat
+  /// 60 detik, rekonsiliasi menandai EXPIRED + melepas slot (tidak mungkin
+  /// ada yang bisa membayar karena QRIS-nya belum pernah dibuat).
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  paidAt    DateTime?
+  settledAt DateTime?
+
+  items    OrderItem[]
+  payments Payment[]
+  bookings Booking[]
+
+  @@unique([userId, idempotencyKey])
+  @@index([gatewayOrderRef])
+  @@index([gatewayTxnId])
+  @@index([status, createdAt])
+}
+
+model OrderItem {
+  id      String @id @default(uuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  /// Satu booking hanya boleh punya satu OrderItem.
+  bookingId String?  @unique
+  booking   Booking? @relation(fields: [bookingId], references: [id])
+
+  /// Didenormalisasi supaya pembatalan bisa dihitung tanpa join.
+  roomId        String
+  startTime     DateTime
+  endTime       DateTime
+  priceSnapshot Decimal @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+}
+
+model Payment {
+  id      String @id @default(uuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  gateway         String?
+  gatewayTxnId    String?
+  status          PaymentStatus @default(PENDING)
+  paymentGatewayId String?
+  paymentGateway  PaymentGateway? @relation(fields: [paymentGatewayId], references: [id])
+
+  amount      Decimal  @db.Decimal(14, 2)
+  /// Fee gateway. Disimpan supaya total yang dibayar user bisa diaudit.
+  fee         Decimal? @db.Decimal(14, 2)
+  method      String?
+
+  /// Body webhook mentah, untuk forensik saat ada sengketa.
+  rawPayload Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  paidAt    DateTime?
+
+  @@index([orderId])
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@index([gatewayTxnId])
+}
+
+/// Kunci idempotensi webhook. Delivery kedua kena unique violation lalu
+/// keluar 200 tanpa efek samping.
+model WebhookEvent {
+  id           String   @id @default(uuid())
+  gateway      String
+  gatewayTxnId String
+  eventType    String?
+  payload      Json?
+  /// ignored_sandbox / unknown_order / duplicate / processed
+  outcome      String?
+  receivedAt   DateTime @default(now())
+  processedAt  DateTime?
+
+  @@unique([gateway, gatewayTxnId])
+  @@index([receivedAt])
+}
+
+/// Append-only. Sumber kebenaran untuk "kenapa booking ini CONFIRMED".
+model AuditLog {
+  id         String   @id @default(uuid())
+  entityType String
+  entityId   String
+  action     String
+  fromState  String?
+  toState    String?
+  actorType  String?
+  actorId    String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([action, createdAt])
+}
+
+/// SATU keranjang per user. Tidak mengunci apa pun — tidak ada FK ke
+/// Booking, tidak ada constraint exclusion di tabel ini.
+model Cart {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items CartItem[]
+}
+
+model CartItem {
+  id     String @id @default(uuid())
+  cartId String
+  cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  roomId        String
+  startTime     DateTime
+  endTime       DateTime
+  priceSnapshot Decimal  @db.Decimal(14, 2)
+  createdAt     DateTime  @default(now())
+
+  @@unique([cartId, roomId, startTime, endTime])
+  @@index([cartId])
 }
 
 model BookingChangeRequest {
@@ -160,14 +440,21 @@ model BookingChangeRequest {
   booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   requestedById String
-  requestedBy   User   @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+  requestedBy   User   @relation("RequestedChangeRequests", fields: [requestedById], references: [id], onDelete: Cascade)
 
-  requestedRoomId String?
-  requestedStart  DateTime?
-  requestedEnd    DateTime?
-  reason          String?
+  /// roomId TIDAK bisa diubah. Perpindahan ruangan menghasilkan booking
+  /// baru di ruangan lain yang mungkin sudah bentrok dengan booking milik
+  /// requester sendiri — tidak ada satu baris pun yang constraint tangkap.
+  requestedStart DateTime?
+  requestedEnd   DateTime?
+  reason         String?
 
-  status ChangeRequestStatus @default(PENDING)
+  kind   ChangeRequestKind      @default(RESCHEDULE)
+  status ChangeRequestStatus     @default(PENDING)
+
+  reviewedById String?
+  reviewedBy   User?    @relation("ReviewedChangeRequests", fields: [reviewedById], references: [id])
+  reviewedAt   DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -177,42 +464,13 @@ model BookingChangeRequest {
   @@index([status])
 }
 
-model Payment {
-  id               String          @id @default(uuid())
-  bookingId        String
-  booking          Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  bookingHoldId    String?
-  bookingHold      BookingHold?    @relation(fields: [bookingHoldId], references: [id])
-  userId           String
-  user             User            @relation(fields: [userId], references: [id])
-  amount           Float
-  status           PaymentStatus   @default(PENDING)
-  paymentMethod    String? // e.g., "qris", "bank_transfer", "manual_transfer"
-  proofImageUrl    String?
-  fileUrl          String? // Kept for manual proof upload compatibility
-  managerId        String?
-  manager          User?           @relation("ApprovedPayments", fields: [managerId], references: [id])
-  approvedAt       DateTime?
-  notes            String?
-  externalId       String?         @unique // For linking to external payment gateway transactions
-  paymentGatewayId String?
-  paymentGateway   PaymentGateway? @relation(fields: [paymentGatewayId], references: [id])
-  bookingHoldIds   String[]        @default([]) // Links a single batch payment to multiple booking holds
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-
-  @@index([userId])
-  @@index([status])
-  @@index([bookingId])
-  @@index([bookingHoldId])
-}
-
 model PaymentGateway {
-  id        String   @id @default(uuid())
-  name      String   @unique // e.g., "Pakasir", "Ipaymu"
-  logo      String? // Optional: URL to logo for display in frontend
-  config    Json? // Store gateway-specific config (API keys, slugs etc.)
-  enabled   Boolean  @default(false)
+  id      String   @id @default(uuid())
+  name    String   @unique
+  logo    String?
+  config  Json?
+  enabled Boolean  @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -236,46 +494,6 @@ model ChatMessage {
   @@index([senderId])
   @@index([receiverId])
   @@index([roomId])
-}
-
-model RentalSlot {
-  id        String  @id @default(uuid())
-  roomId    String
-  room      Room    @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  dayOfWeek Int
-  startTime String
-  endTime   String
-  price     Float
-  isActive  Boolean @default(true)
-
-  @@unique([roomId, dayOfWeek, startTime, endTime])
-  @@index([roomId, dayOfWeek, isActive])
-}
-
-model BookingHold {
-  id        String            @id @default(uuid())
-  userId    String
-  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  roomId    String
-  room      Room              @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  holdDate  DateTime
-  startTime DateTime
-  endTime   DateTime
-  expiresAt DateTime
-  price     Float // Rental price for this hold
-  status    BookingHoldStatus @default(ACTIVE)
-  paymentId String?           @unique
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  payments  Payment[]
-
-  @@index([userId])
-  @@index([roomId])
-  @@index([holdDate])
-  @@index([status])
-  @@index([expiresAt])
-  @@index([paymentId])
 }
 
 model Notification {

@@ -1,65 +1,35 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Param,
-  Body,
-  UseInterceptors,
-  UploadedFile,
-  ParseUUIDPipe,
-  Req,
-} from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
-import { Role } from '@prisma/client';
-import * as express from 'express';
-import { UploadPaymentDto } from './dto/upload-payment.dto';
-import { InitiatePaymentDto } from './dto/initiate-payment.dto';
-import { InitiateBatchPaymentDto } from './dto/initiate-batch-payment.dto';
-import {
-  paymentFileFilter,
-  MAX_FILE_SIZE,
-} from '../common/validators/file.validator';
 import { Public } from '../common/decorators/public.decorator';
+import { Role } from '@prisma/client';
 
+/**
+ * Payment kini read-only lewat API.
+ *
+ * Endpoint yang DIHAPUS (dan alasannya):
+ *   POST  /payments/upload          -> bukti bayar manual; konfirmasi hanya webhook
+ *   PATCH /payments/:id/approve     -> approval manual; tidak ada jalur refund
+ *   PATCH /payments/:id/reject      -> idem
+ *   POST  /payments/initiate        -> digantikan POST /checkout
+ *   POST  /payments/initiate-batch  -> idem (multi-item kini all-or-nothing)
+ *   GET   /payments/confirm-callback -> @Public dan status diambil dari query
+ *      string, jadi siapa pun bisa membuka URL itu dan menandai order lunas.
+ */
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
-  @Post('upload')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      limits: { fileSize: MAX_FILE_SIZE },
-      fileFilter: paymentFileFilter,
-    }),
-  )
-  upload(
-    @CurrentUser('userId') userId: string,
-    @Req() req: express.Request,
-    @UploadedFile() file: Express.Multer.File,
-  ) {
-    let dto: UploadPaymentDto;
-    try {
-      const rawData = req.body.paymentData || req.body;
-      dto = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-    } catch (e) {
-      throw new Error('Invalid payment data format');
-    }
+  @Get('gateways')
+  @Public()
+  getGateways() {
+    return this.paymentsService.getEnabledGateways();
+  }
 
-    if (!dto || !dto.bookingHoldId) {
-      throw new Error('Missing bookingHoldId in payment data');
-    }
-
-    return this.paymentsService.upload(
-      userId,
-      dto.bookingHoldId,
-      file,
-      Number(dto.amount),
-      dto.description,
-    );
+  @Get('my')
+  myPayments(@CurrentUser('userId') userId: string) {
+    return this.paymentsService.myPayments(userId);
   }
 
   @Get('pending')
@@ -68,73 +38,23 @@ export class PaymentsController {
     return this.paymentsService.getPending();
   }
 
-  @Get('gateways')
-  @Public()
-  getGateways() {
-    return this.paymentsService.getEnabledGateways();
-  }
-
-  @Patch(':id/approve')
+  @Get('awaiting-settlement')
   @Roles(Role.ADMIN_IT, Role.ROOM_ADMIN)
-  approve(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser('userId') managerId: string,
-  ) {
-    return this.paymentsService.approve(id, managerId);
+  listAwaiting() {
+    return this.paymentsService.listAwaiting();
   }
 
-  @Patch(':id/reject')
+  @Get('by-user/:userId')
   @Roles(Role.ADMIN_IT, Role.ROOM_ADMIN)
-  reject(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser('userId') managerId: string,
-    @Body('notes') notes?: string,
+  listForUser(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @CurrentUser('role') role: Role,
   ) {
-    return this.paymentsService.reject(id, managerId, notes);
+    return this.paymentsService.listForUser(userId, role);
   }
 
-  @Get('my')
-  getMyPayments(@CurrentUser('userId') userId: string) {
-    return this.paymentsService.getMyPayments(userId);
-  }
-
-  @Post('initiate')
-  initiatePayment(
-    @CurrentUser('userId') userId: string,
-    @Body() dto: InitiatePaymentDto,
-  ) {
-    return this.paymentsService.initiatePayment(
-      userId,
-      dto.bookingHoldId,
-      dto.gatewayId,
-      dto.amount ?? 0,
-      dto.paymentMethod,
-    );
-  }
-
-  @Post('initiate-batch')
-  initiateBatchPayment(
-    @CurrentUser('userId') userId: string,
-    @Body() dto: InitiateBatchPaymentDto,
-  ) {
-    return this.paymentsService.initiateBatchPayment(
-      userId,
-      dto.bookingHoldIds,
-      dto.gatewayId,
-      dto.amount,
-      dto.paymentMethod,
-    );
-  }
-
-  /**
-   * Called when Pakasir redirects the user back after payment.
-   * Pakasir appends ?order_id=...&status=completed/failed.
-   * This acts like a manual webhook for redirect-based flows.
-   */
-  @Get('confirm-callback')
-  @Public()
-  confirmCallback(@Req() req: express.Request) {
-    const { order_id, status } = req.query as Record<string, string>;
-    return this.paymentsService.confirmPaymentCallback(order_id, status);
+  @Get(':id')
+  getOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.paymentsService.getOne(id);
   }
 }

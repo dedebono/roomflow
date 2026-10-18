@@ -1,15 +1,8 @@
-import {
-  Controller,
-  Get,
-  Put,
-  Post,
-  Body,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Get, Put, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { EmailConfigService } from './email-config.service';
 import { EmailService } from '../email/email.service';
 import { Roles } from '../common/decorators/roles.decorator';
+import { redact, REDACTED } from '../common/utils/redact';
 import { Role } from '@prisma/client';
 
 @Controller('email-config')
@@ -21,13 +14,14 @@ export class EmailConfigController {
 
   @Get()
   @Roles(Role.ADMIN_IT)
-  get() {
-    return this.emailConfigService.get();
+  async get() {
+    // smtp password (field `pass`) tidak boleh keluar lewat API.
+    return redact(await this.emailConfigService.get());
   }
 
   @Put()
   @Roles(Role.ADMIN_IT)
-  update(
+  async update(
     @Body()
     body: {
       enabled?: boolean;
@@ -39,9 +33,14 @@ export class EmailConfigController {
       fromAddress?: string;
     },
   ) {
-    const result = this.emailConfigService.update(body);
+    // Nilai tersamar / kosong = "jangan ubah password", bukan "hapus password".
+    const incoming = body.pass;
+    const unchanged = incoming === undefined || incoming === '' || incoming === REDACTED;
+    const payload = unchanged ? { ...body, pass: undefined } : body;
+
+    const result = await this.emailConfigService.update(payload);
     this.emailService.clearCache();
-    return result;
+    return redact(result);
   }
 
   @Post('test')

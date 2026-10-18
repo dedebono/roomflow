@@ -1,121 +1,109 @@
 import {
   Injectable,
-  BadRequestException,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateBookingDto } from './dto/create-booking.dto';
-import { BookingStatus, Role, BookingHoldStatus } from '@prisma/client';
-import { getPrismaPagination } from '../common/dto/pagination.dto';
 import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { CheckoutService } from '../checkout/checkout.service';
+import { CreateBookingDto } from './dto/create-booking.dto';
+import { UpdateBookingDto } from './dto/update-booking.dto';
+import { BookingStatus, BookingSource, Role } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 
+/**
+ * Bookings = booking STAFF (source='INTERNAL').
+ *
+ * PEMBEDAAN PERAN:
+ *   RENTER -> TIDAK boleh lewat service ini. Renter lewat keranjang ->
+ *            CheckoutService (Hold + Order + Payment).
+ *   USER   -> booking instan, gratis, HANYA di dalam StaffWindow.
+ *   ADMIN  -> bisa melihat/mengubah booking staff.
+ *
+ * Booking RENTAL (sudah dibayar) tidak bisa diedit lewat sini.
+ *
+ * CATATAN: pembuatan booking TIDAK lagi memakai INSERT langsung di file ini.
+ * Semua jalur masuk ke CheckoutService.createStaffBooking supaya reaping
+ * sinkron + exclusion constraint tetap berlaku. Kalau service ini punya
+ * INSERT sendiri, slot bisa tertabrak constraint yang tidak dihitung.
+ */
 @Injectable()
 export class BookingsService {
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
+    private notificationsService: NotificationsService,
+    private checkoutService: CheckoutService,
   ) {}
 
-  async validateBookingConflict(
-    roomId: string,
-    startTime: Date,
-    endTime: Date,
-    excludeBookingId?: string,
-  ) {
-    // Conflict logic: (Requested_Start < Existing_End) AND (Requested_End > Existing_Start)
-    const bookingConflicts = await this.prisma.booking.findMany({
-      where: {
-        roomId,
-        status: BookingStatus.BOOKED,
-        id: excludeBookingId ? { not: excludeBookingId } : undefined,
-        AND: [{ startTime: { lt: endTime } }, { endTime: { gt: startTime } }],
-      },
-    });
-
-    // Also check for active rental holds (renter has a temporary hold on the room)
-    const holdConflicts = await this.prisma.bookingHold.findMany({
-      where: {
-        roomId,
-        status: BookingHoldStatus.ACTIVE,
-        AND: [{ startTime: { lt: endTime } }, { endTime: { gt: startTime } }],
-      },
-    });
-
-    return bookingConflicts.length > 0 || holdConflicts.length > 0;
+  private assertNotRenter(role: Role) {
+    if (role === Role.RENTER) {
+      throw new ForbiddenException(
+        'Renter harus memesan lewat keranjang dan pembayaran. Endpoint ini untuk staff.',
+      );
+    }
   }
 
-  async create(userId: string, createBookingDto: CreateBookingDto) {
-    const startTime = new Date(createBookingDto.startTime);
-    const endTime = new Date(createBookingDto.endTime);
-
-    if (startTime >= endTime) {
-      throw new BadRequestException('Start time must be before end time');
-    }
-
-    const room = await this.prisma.room.findUnique({
-      where: { id: createBookingDto.roomId },
-    });
-    if (!room) throw new NotFoundException('Room not found');
-    if (room.status === 'MAINTENANCE')
-      throw new BadRequestException('Room is under maintenance');
-
-    const hasConflict = await this.validateBookingConflict(
-      createBookingDto.roomId,
-      startTime,
-      endTime,
+  async create(userId: string, role: Role, dto: CreateBookingDto) {
+    this.assertNotRenter(role);
+    const booking = await this.checkoutService.createStaffBooking(
+      { id: userId, role },
+      {
+        roomId: dto.roomId,
+        title: dto.title,
+        startTime: dto.startTime,
+        endTime: dto.endTime,
+        notes: dto.notes,
+      },
     );
 
-    if (hasConflict) {
-      throw new BadRequestException(
-        'Room is already booked or has a pending rental hold for this time period',
-      );
-    }
-
-    const booking = await this.prisma.booking.create({
-      data: {
-        ...createBookingDto,
-        userId,
-        startTime,
-        endTime,
-      },
-      include: {
-        room: true,
-        user: { select: { email: true, name: true } },
-      },
-    });
-
-    // Send booking confirmation email
     if (booking.user.email) {
-      await this.emailService.sendBookingConfirmation(
-        booking.user.email,
-        booking.title,
-        booking.room.name,
-        booking.startTime,
-        booking.endTime,
-      );
+      await this.emailService
+        .sendBookingConfirmation(
+          booking.user.email,
+          booking.title,
+          booking.room.name,
+          booking.startTime,
+          booking.endTime,
+        )
+        .catch(() => undefined);
     }
 
+    for (const admin of await this.adminIds()) {
+      await this.notificationsService
+        .create(
+          admin.id,
+          'BOOKING_CREATED',
+          'New Booking',
+          `${booking.user.name} booked "${booking.title}" in ${booking.room.name}.`,
+        )
+        .catch(() => undefined);
+    }
     return booking;
   }
 
-  async findAll(
-    roomId?: string,
-    userId?: string,
-    page?: number,
-    limit?: number,
-  ) {
-    const { skip, take } = getPrismaPagination(page, limit);
+  private async adminIds() {
+    return this.prisma.user.findMany({
+      where: { role: { in: [Role.ROOM_ADMIN, Role.ADMIN_IT] } },
+      select: { id: true },
+    });
+  }
+
+  /**
+   * Hanya booking aktif (HELD + CONFIRMED) yang tampil.
+   * EXPIRED/CANCELLED sudah tidak memegang slot.
+   */
+  async findAll(roomId?: string, userId?: string, page?: number, limit?: number) {
     return this.prisma.booking.findMany({
       where: {
         roomId,
         userId,
-        status: {
-          in: [BookingStatus.BOOKED], // Only show confirmed bookings
-        },
+        status: { in: [BookingStatus.HELD, BookingStatus.CONFIRMED] },
       },
-      skip,
-      take,
+      skip: page ? (page - 1) * (limit || 20) : undefined,
+      take: limit || 20,
       include: {
         room: { include: { building: true } },
         user: { select: { id: true, name: true, email: true } },
@@ -124,91 +112,81 @@ export class BookingsService {
     });
   }
 
-  async cancel(bookingId: string, userId: string, userRole: Role) {
+  /**
+   * Pembatalan hanya booking STAFF. Booking RENTAL tidak bisa dibatalkan
+   * siapa pun: uang sudah masuk, tidak ada jalur mengembalikannya.
+   */
+  async cancel(bookingId: string, userId: string, role: Role) {
+    return this.checkoutService.cancelStaffBooking({ id: userId, role }, bookingId);
+  }
+
+  /**
+   * Edit booking staff.
+   *
+   * Menggeser jadwal TIDAK dilakukan sebagai UPDATE startTime/endTime.
+   * Langsung UPDATE bisa mendarat di slot yang sedang disettle atau di
+   * slot yangConstraint-nya belum dihitung. Karena itu_user adjust
+   * membuat change request, dan admin yang menyetujui lewat jalur yang
+   * sudah計算 reaping + insert ulang.
+   */
+  async update(
+    bookingId: string,
+    actorId: string,
+    role: Role,
+    updateDto: UpdateBookingDto,
+  ) {
+    this.assertNotRenter(role);
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { room: true, user: { select: { email: true, name: true } } },
+      include: { room: true, user: { select: { id: true, email: true } } },
     });
     if (!booking) throw new NotFoundException('Booking not found');
 
-    if (userRole === Role.USER) {
-      throw new ForbiddenException(
-        'USER role cannot directly cancel bookings. Please submit a cancellation request instead.',
-      );
+    if (booking.source === BookingSource.RENTAL) {
+      throw new ForbiddenException('Tidak bisa mengedit booking yang sudah dibayar.');
+    }
+    const isAdmin = role === Role.ADMIN_IT || role === Role.ROOM_ADMIN;
+    if (!isAdmin && booking.userId !== actorId) {
+      throw new ForbiddenException('Kamu hanya bisa mengubah booking sendiri.');
     }
 
-    if (
-      userRole !== Role.ADMIN_IT &&
-      userRole !== Role.ROOM_ADMIN &&
-      booking.userId !== userId
-    ) {
-      throw new ForbiddenException('You can only cancel your own bookings');
-    }
-
-    // Send cancellation email
-    if (booking.user.email) {
-      await this.emailService.sendBookingCancellation(
-        booking.user.email,
-        booking.title,
-        booking.room.name,
-      );
+    if (updateDto.startTime || updateDto.endTime || updateDto.roomId) {
+      if (updateDto.roomId && updateDto.roomId !== booking.roomId) {
+        throw new BadRequestException(
+          'Pindah ruangan harus lewat change request; booking lama tidak ikut hilang.',
+        );
+      }
+      return this.prisma.bookingChangeRequest.create({
+        data: {
+          id: randomUUID(),
+          bookingId,
+          requestedById: actorId,
+          requestedStart: updateDto.startTime ? new Date(updateDto.startTime) : null,
+          requestedEnd: updateDto.endTime ? new Date(updateDto.endTime) : null,
+          reason: updateDto.notes ?? 'Staff meminta perubahan jadwal',
+          kind: 'RESCHEDULE',
+        },
+        include: { booking: { include: { room: true } } },
+      });
     }
 
     return this.prisma.booking.update({
       where: { id: bookingId },
-      data: { status: BookingStatus.CANCELLED },
+      data: { title: updateDto.title, notes: updateDto.notes },
     });
   }
 
-  async update(
-    bookingId: string,
-    updateDto: {
-      title?: string;
-      notes?: string;
-      roomId?: string;
-      startTime?: string;
-      endTime?: string;
-    },
-  ) {
+  async findOne(bookingId: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
-    });
-    if (!booking) throw new NotFoundException('Booking not found');
-
-    const roomId = updateDto.roomId || booking.roomId;
-    const startTime = updateDto.startTime
-      ? new Date(updateDto.startTime)
-      : booking.startTime;
-    const endTime = updateDto.endTime
-      ? new Date(updateDto.endTime)
-      : booking.endTime;
-
-    if (startTime >= endTime) {
-      throw new BadRequestException('Start time must be before end time');
-    }
-
-    const hasConflict = await this.validateBookingConflict(
-      roomId,
-      startTime,
-      endTime,
-      bookingId,
-    );
-
-    if (hasConflict) {
-      throw new BadRequestException(
-        'Room is already booked or has a pending rental hold for this time period',
-      );
-    }
-
-    return this.prisma.booking.update({
-      where: { id: bookingId },
-      data: {
-        title: updateDto.title,
-        notes: updateDto.notes,
-        roomId,
-        startTime,
-        endTime,
+      include: {
+        room: { include: { building: true } },
+        user: { select: { id: true, name: true, email: true } },
+        orderItem: { include: { order: true } },
+        changeRequests: true,
       },
     });
+    if (!booking) throw new NotFoundException('Booking not found');
+    return booking;
   }
 }

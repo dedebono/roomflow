@@ -294,7 +294,7 @@ export default function MyBookingsPage() {
   ];
 
   return (
-    <DashboardLayout title="My Bookings" description="Manage your current office reservations and track changes.">
+    <DashboardLayout title="My Bookings" description="Manage your current office reservations and track changes." allowedRoles={['ADMIN_IT', 'ROOM_ADMIN', 'USER']}>
       {/* active bookings */}
       <Card className="border border-slate-900 glass">
         <CardHeader className="p-0 mb-4 flex-row items-center justify-between">

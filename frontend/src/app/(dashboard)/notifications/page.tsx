@@ -41,8 +41,8 @@ export default function NotificationsPage() {
   // WebSocket for real-time notifications
   useWebSocket({
     onNotification: (data) => {
-      // Add new notification to the list
-      setNotifications((prev) => [data, ...prev]);
+      // Add new notification to the list; WS payload uses isRead, UI reads `read`
+      setNotifications((prev) => [{ ...data, read: data.isRead ?? false }, ...prev]);
     },
   });
 
@@ -50,28 +50,23 @@ export default function NotificationsPage() {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  // Mark notification as read
+  // Mark notification as read — backend clears it, so drop it from the list
   const handleMarkAsRead = async (notificationId: string) => {
     try {
       await api.patch(`/notifications/${notificationId}/read`);
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === notificationId ? { ...n, read: true } : n
-        )
-      );
+      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+      toast.success('Notification cleared');
     } catch {
       toast.error('Failed to mark notification as read');
     }
   };
 
-  // Mark all as read
+  // Mark all as read — backend clears them all, so empty the list
   const handleMarkAllAsRead = async () => {
     try {
       await api.patch('/notifications/read-all');
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, read: true }))
-      );
-      toast.success('All notifications marked as read');
+      setNotifications([]);
+      toast.success('All notifications cleared');
     } catch {
       toast.error('Failed to mark all as read');
     }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType } from '@prisma/client';
 import { WebSocketService } from '../websocket/websocket.service';
@@ -14,11 +14,16 @@ export class NotificationsService {
     private emailService: EmailService,
   ) {}
 
-  async remove(id: string) {
-    return this.prisma.notification.deleteMany({
-      where: { id },
+  async remove(id: string, userId: string) {
+    // Always scope by userId so a missing/garbage id can never wipe other rows
+    const result = await this.prisma.notification.deleteMany({
+      where: { id, userId },
     });
-   }
+    if (result.count === 0) {
+      throw new NotFoundException('Notification not found');
+    }
+    return { success: true };
+  }
 
   async create(
     userId: string,
@@ -82,20 +87,28 @@ export class NotificationsService {
     });
   }
 
-  async markAsRead(notificationId: string) {
-    return this.prisma.notification.update({
-      where: { id: notificationId },
-      data: { isRead: true },
+  /**
+   * Mark one notification as read, then clear it.
+   * Ownership is enforced: the id must belong to the requesting user.
+   */
+  async markAsRead(notificationId: string, userId: string) {
+    const notification = await this.prisma.notification.findFirst({
+      where: { id: notificationId, userId },
     });
+    if (!notification) throw new NotFoundException('Notification not found');
+
+    await this.prisma.notification.delete({ where: { id: notification.id } });
+    return { success: true };
   }
 
+  /**
+   * Mark everything as read, then clear it all for this user.
+   */
   async markAllAsRead(userId: string) {
-    await this.prisma.notification.updateMany({
+    await this.prisma.notification.deleteMany({
       where: {
         userId,
-        isRead: false,
       },
-      data: { isRead: true },
     });
 
     return { success: true };

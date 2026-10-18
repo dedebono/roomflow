@@ -18,6 +18,7 @@ import { EmailModule } from './email/email.module';
 import { RentalsModule } from './rentals/rentals.module';
 import { PakasirModule } from './pakasir/pakasir.module';
 import { PaymentsModule } from './payments/payments.module';
+import { CheckoutModule } from './checkout/checkout.module';
 import { PaymentGatewaysModule } from './payment-gateways/payment-gateways.module';
 import { ChatModule } from './chat/chat.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -44,6 +45,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     RentalsModule,
     PakasirModule,
     PaymentsModule,
+    CheckoutModule,
     PaymentGatewaysModule,
     ChatModule,
     NotificationsModule,

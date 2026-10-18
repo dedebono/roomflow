@@ -254,7 +254,7 @@ export default function AdminBookingsPage() {
   };
 
   return (
-    <DashboardLayout title="Master Operations Calendar" description="Drag-and-drop slots, create room maintenance blocks, or edit schedules directly." allowedRoles={['ROOM_ADMIN']}>
+    <DashboardLayout title="Master Operations Calendar" description="Drag-and-drop slots, create room maintenance blocks, or edit schedules directly." allowedRoles={['ADMIN_IT', 'ROOM_ADMIN']}>
       {/* Filters Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="border border-slate-900 glass">

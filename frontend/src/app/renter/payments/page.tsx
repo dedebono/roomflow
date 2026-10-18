@@ -1,642 +1,409 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
+/**
+ * Halaman pembayaran renter.
+ *
+ * Alur: keranjang -> POST /checkout (hold HELD 15 menit) -> bayar via Pakasir
+ * -> webhook terverifikasi -> CONFIRMED.
+ *
+ * Tiga hal yang TIDAK boleh ada di halaman ini, karena ketiganya pernah jadi
+ * lubang di versi lama:
+ *
+ *   1. TIDAK ADA upload bukti transfer. Konfirmasi hanya dari webhook gateway
+ *      yang diverifikasi; kalau form upload masih ada, siapa pun bisa menandai
+ *      order sebagai "sudah bayar" — jalur pencairan uang yang tidak tercatat.
+ *   2. TIDAK ADA polling yang mengubah status. Halaman hanya MEMBACA
+ *      GET /orders/:id. Menulis status dari browser = memalsukan pembayaran.
+ *   3. TIDAK ADA redirect callback ?status=... . Query string bukan bukti.
+ */
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
-import api, { paymentGatewaysApi } from '@/lib/api';
-import { BookingHold, Payment } from '@/types';
-import type { PaymentGatewayPublic } from '@/types/payment-gateway';
+import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { Upload, CreditCard, CheckCircle, Clock, XCircle, FileText, Calendar, DollarSign, Timer, ExternalLink, Wallet, Trash2 } from 'lucide-react';
+import { CreditCard, CheckCircle, Clock, DollarSign, Timer, ExternalLink, Wallet, AlertCircle } from 'lucide-react';
 
 const formatRupiah = (amount: number) =>
-  'Rp ' + amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  'Rp ' + Number(amount || 0).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
-// Shape returned by /rentals/my-holds
-interface PendingHold {
+// Bentuk dari GET /orders/:id — cerminan decorateOrder() di backend.
+interface OrderView {
+  order: {
+    id: string;
+    total: number;
+    status: 'AWAITING_PAYMENT' | 'PAID' | 'EXPIRED';
+    expiresAt: string | null;
+  };
+  payment: {
+    status: string;
+    txnId: string | null;
+    method: string | null;
+    amount: number;
+    fee: number | null;
+    qrString: string | null;
+    vaNumber: string | null;
+    paymentUrl: string | null;
+  };
+  hold: { expiresAt: string | null };
+  items?: number;
+}
+
+// Bentuk dari GET /orders (myOrders) — Order, bukan Booking.
+interface OrderRow {
   id: string;
-  roomId: string;
-  holdDate: string;
-  startTime: string;
-  endTime: string;
-  expiresAt: string;
+  total: string | number;
   status: string;
-  room: { name: string };
-  payments: { id: string; status: string; amount: number; createdAt: string }[];
-}
-
-interface PendingPayment {
-  id: string;
-  bookingHoldId: string;
-  bookingHold: BookingHold;
-  amount: number;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  expiresAt: string | null;
   createdAt: string;
-  updatedAt: string;
+  items: Array<{
+    id: string;
+    startTime: string;
+    endTime: string;
+    priceSnapshot: string | number;
+    booking?: { status: string; holdExpiresAt: string | null; settling: boolean };
+  }>;
+  payments: Array<{ status: string; amount: string | number }>;
 }
 
-function getCountdown(expiresAt: string): string {
-  const now = new Date().getTime();
-  const expires = new Date(expiresAt).getTime();
-  const diff = expires - now;
-  if (diff <= 0) return 'Expired';
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
-  return `${minutes}m ${seconds}s`;
+function countdown(expiresAt: string | null): { text: string; expired: boolean; pct: number } {
+  if (!expiresAt) return { text: '—', expired: true, pct: 0 };
+  const diff = new Date(expiresAt).getTime() - Date.now();
+  if (diff <= 0) return { text: 'Kedaluwarsa', expired: true, pct: 0 };
+  const m = Math.floor(diff / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  return {
+    text: `${m}m ${String(s).padStart(2, '0')}s`,
+    expired: false,
+    pct: Math.max(0, Math.min(100, Math.round((diff / (15 * 60000)) * 100))),
+  };
 }
 
-function getCountdownPercent(expiresAt: string): number {
-  const now = new Date().getTime();
-  const expires = new Date(expiresAt).getTime();
-  const total = 60 * 60 * 1000; // 1 hour
-  const remaining = Math.max(0, expires - now);
-  return Math.round((remaining / total) * 100);
+const STATUS_STYLE: Record<
+  string,
+  { label: string; tone: 'success' | 'danger' | 'info' | 'warning' | 'neutral' }
+> = {
+  AWAITING_PAYMENT: { label: 'Menunggu pembayaran', tone: 'warning' },
+  PAID: { label: 'Lunas', tone: 'success' },
+  EXPIRED: { label: 'Kedaluwarsa', tone: 'neutral' },
+};
+
+// Booking disimpan nominal-UTC: HH:MM pada ISO adalah jam yang diklik user.
+// `new Date(iso).toLocaleTimeString()` mengonversi ke zona browser sehingga
+// menggesernya (09:00 tampil 17:00 di WIB) dan renter datang pada jam
+// yang salah. Baca substring langsung, jangan lewat Date.
+function fmtDay(iso: string): string {
+  // +12 jam agar tanggal tidak melintasi batas hari saat diformat di UTC.
+  return new Date(new Date(iso).getTime() + 12 * 3600_000).toLocaleDateString('id-ID', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
+}
+function fmtTime(iso: string): string {
+  return iso.substring(11, 16);
 }
 
 export default function RenterPaymentsPage() {
-  console.log('PAYMENTS_PAGE_MOUNTED');
-  const [pendingHolds, setPendingHolds] = useState<PendingHold[]>([]);
-  const [allPayments, setAllPayments] = useState<Payment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [selectedHoldId, setSelectedHoldId] = useState<string>('');
-  const [selectedAmount, setSelectedAmount] = useState<number>(0);
-  const [paymentFile, setPaymentFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [gateways, setGateways] = useState<PaymentGatewayPublic[]>([]);
-  const [selectedGatewayId, setSelectedGatewayId] = useState<string>('');
-  const [selectedGatewayName, setSelectedGatewayName] = useState<string>('');
-  const [isInitiatingGateway, setIsInitiatingGateway] = useState(false);
-  // countdownMap: holdId → "Mm Ss" string
-  const [countdowns, setCountdowns] = useState<Record<string, string>>({});
-  const [tick, setTick] = useState(0); // force re-render every second
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<OrderView | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [extending, setExtending] = useState(false);
+  const extendedFor = useRef<Set<string>>(new Set());
 
-  const fetchPayments = useCallback(async () => {
-    setIsLoading(true);
+  const load = useCallback(async () => {
     try {
-      const holdsRes = await api.get('/rentals/my-holds', { timeout: 20000 });
-      const holds: PendingHold[] = holdsRes.data;
-
-      // Seed initial countdowns
-      const initial: Record<string, string> = {};
-      holds.forEach((h) => {
-        if (h.expiresAt) {
-          initial[h.id] = getCountdown(h.expiresAt);
-        }
-      });
-      setCountdowns(initial);
-      setPendingHolds(holds);
-
-      const paymentsRes = await api.get('/payments/my', { timeout: 20000 });
-      setAllPayments(paymentsRes.data);
+      const { data } = await api.get<OrderRow[]>('/orders');
+      setOrders(Array.isArray(data) ? data : []);
     } catch {
-      toast.error('Failed to load payment data');
+      toast.error('Gagal memuat pesanan.');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }, []);
 
-  // Initial data load
   useEffect(() => {
-    fetchPayments();
-  }, [fetchPayments]);
+    void load();
+  }, [load]);
 
-  // Handle Pakasir redirect (payment completed via QR/redirect)
+  // Polling status HANYA selama ada order menunggu pembayaran. Ini baca-saja:
+  // GET /orders/:id tidak pernah mengubah state. Konfirmasi tetap datang dari
+  // webhook gateway, bukan dari browser ini.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const orderStatus = params.get('status');
-    const orderId = params.get('order_id');
-    if (orderStatus && orderId) {
-      // Clear URL params without reload
-      window.history.replaceState({}, '', window.location.pathname);
-      if (orderStatus === 'success' || orderStatus === 'completed') {
-        toast.success('Payment completed! Confirming with server...');
-        // Call backend to process redirect callback (acts like webhook for redirect-based flows)
-        // Use fetch with timeout to avoid hanging forever if backend is slow
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api'}/payments/confirm-callback?order_id=${encodeURIComponent(orderId)}&status=${encodeURIComponent(orderStatus)}`, {
-          signal: controller.signal,
-        })
-          .then(() => {
-            clearTimeout(timeoutId);
-            toast.success('Payment confirmed!');
-            fetchPayments();
-          })
-          .catch(() => {
-            clearTimeout(timeoutId);
-            // Fallback: just refresh the payment list
-            fetchPayments();
-          });
-      } else if (orderStatus === 'failed') {
-        toast.error('Payment failed. Please try again.');
-        fetchPayments();
-      }
-    }
-  }, [fetchPayments]);
+    if (!orders.some((o) => o.status === 'AWAITING_PAYMENT')) return;
+    const t = setInterval(() => void load(), 5000);
+    return () => clearInterval(t);
+  }, [orders, load]);
 
-  // Tick every second to update countdowns
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTick((t) => t + 1);
-      setPendingHolds((prev) => {
-        const updated: Record<string, string> = {};
-        let changed = false;
-        prev.forEach((h) => {
-          if (h.expiresAt) {
-            const cd = getCountdown(h.expiresAt);
-            updated[h.id] = cd;
-            if (cd !== countdowns[h.id]) changed = true;
-          }
-        });
-        if (changed) setCountdowns(updated);
-        return prev;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [countdowns]);
-
-  const handleOpenUpload = async (holdId: string) => {
-    setSelectedHoldId(holdId);
-    const hold = pendingHolds.find((h) => h.id === holdId);
-    setSelectedAmount(hold?.payments?.[0]?.amount ?? 0);
-    setPaymentFile(null);
-    setSelectedGatewayId('');
-    setSelectedGatewayName('');
-    setIsUploadModalOpen(true);
-
-    // Load available gateways
+  const openDetail = useCallback(async (id: string) => {
+    setActiveId(id);
+    setDetailLoading(true);
     try {
-      const data = await paymentGatewaysApi.getAvailable();
-      setGateways(data);
-      if (data.length > 0) {
-        setSelectedGatewayId(data[0].id);
-        setSelectedGatewayName(data[0].name);
-      }
+      const { data } = await api.get<OrderView>(`/orders/${id}`);
+      setDetail(data);
     } catch {
-      setGateways([]);
-    }
-  };
-
-  const handlePaymentUpload = async () => {
-    if (!paymentFile || !selectedHoldId) {
-      toast.error('Please select a payment file');
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('paymentData', JSON.stringify({ bookingHoldId: selectedHoldId, amount: selectedAmount }));
-      formData.append('file', paymentFile);
-
-      await api.post('/payments/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      toast.success('Payment proof uploaded successfully!');
-      setIsUploadModalOpen(false);
-      setPaymentFile(null);
-      setSelectedHoldId('');
-      fetchPayments();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to upload payment proof');
+      toast.error('Gagal memuat detail pesanan.');
+      setDetail(null);
     } finally {
-      setIsUploading(false);
+      setDetailLoading(false);
     }
-  };
+  }, []);
 
-  const handleInitiateGatewayPayment = async () => {
-    if (!selectedGatewayId || !selectedHoldId || !selectedAmount) {
-      toast.error('Please select a payment gateway and ensure an amount is set.');
-      return;
-    }
-
-    setIsInitiatingGateway(true);
+  const extendHold = useCallback(async () => {
+    if (!activeId) return;
+    setExtending(true);
     try {
-      const res = await api.post('/payments/initiate', {
-        bookingHoldId: selectedHoldId,
-        gatewayId: selectedGatewayId,
-        amount: selectedAmount,
-        paymentMethod: 'qris',
-      });
-
-      const { paymentUrl } = res.data;
-      if (paymentUrl) {
-        toast.success('Redirecting to payment gateway...');
-        setTimeout(() => {
-          window.location.href = paymentUrl;
-        }, 1000);
-      } else {
-        toast.success(`Payment initiated via ${selectedGatewayName}. Please complete payment on the gateway.`);
-        setIsUploadModalOpen(false);
-        fetchPayments();
-      }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to initiate payment');
+      await api.post(`/orders/${activeId}/extend-hold`);
+      extendedFor.current.add(activeId);
+      toast.success('Waktu pembayaran diperpanjang 5 menit.');
+      await openDetail(activeId);
+      await load();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message ?? 'Gagal memperpanjang waktu.');
     } finally {
-      setIsInitiatingGateway(false);
+      setExtending(false);
     }
-  };
+  }, [activeId, openDetail, load]);
 
-  const handleCloseModal = () => {
-    setIsUploadModalOpen(false);
-    setSelectedGatewayId('');
-    setSelectedGatewayName('');
-    setGateways([]);
-  };
-
-  const handleCancelHold = async (holdId: string) => {
-    if (!confirm('Remove this expired hold? You can book again later.')) return;
-    try {
-      await api.delete(`/rentals/holds/${holdId}`);
-      toast.success('Hold removed');
-      fetchPayments();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to remove hold');
+  const slotLabel = (o: OrderRow) => {
+    const items = o.items ?? [];
+    if (items.length === 0) return 'Pesanan';
+    const first = items[0];
+    const head = `${fmtDay(first.startTime)} · ${fmtTime(first.startTime)}–${fmtTime(first.endTime)}`;
+    // Paket sewa berkala berisi banyak sesi. Tampilkan tanggal pertama DAN
+    // terakhir supaya renter tahu persis cakupan yang dibayar; sebelumnya
+    // hanya item[0] yang tampil sehingga order 4 sesi terlihat seperti 1.
+    if (items.length > 1) {
+      const last = items[items.length - 1];
+      const span =
+        first.startTime.substring(0, 10) === last.startTime.substring(0, 10)
+          ? head
+          : `${head} → ${fmtDay(last.startTime)}`;
+      return `${span} · ${items.length} sesi`;
     }
+    return head;
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'PENDING':
-        return <Badge variant="warning">Pending</Badge>;
-      case 'PAYMENT_PROOF_UPLOADED':
-        return <Badge variant="info">Waiting</Badge>;
-      case 'APPROVED':
-        return <Badge variant="success">Approved</Badge>;
-      case 'REJECTED':
-        return <Badge variant="danger">Rejected</Badge>;
-      default:
-        return <Badge variant="neutral">{status}</Badge>;
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    return new Date(dateStr.substring(0, 10) + 'T00:00:00').toLocaleDateString([], {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
-  const formatTime = (dateStr: string) => {
-    if (!dateStr) return '';
-    // Stored time is the literal booked time (UTC-nominated). Render it as-is.
-    return dateStr.substring(11, 16);
-  };
-
-  return (
-    <>
-      {/* Pending Payments Section */}
-      <Card className="border border-slate-900 glass">
-        <CardHeader className="p-0 mb-4">
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-amber-400" />
-            Pending Payments
-          </CardTitle>
-          <CardDescription>
-            Complete your payment by uploading proof of transfer — your slot is held for 1 hour
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full" />
-            </div>
-          ) : pendingHolds.filter(h => {
-            const latestPayment = h.payments?.[0];
-            return !latestPayment || latestPayment.status === 'PENDING';
-          }).length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
-              <CheckCircle className="w-12 h-12 mx-auto mb-3 text-emerald-500/50" />
-              <p>No pending payments. You're all caught up!</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {pendingHolds.filter(h => {
-                const latestPayment = h.payments?.[0];
-                return !latestPayment || latestPayment.status === 'PENDING';
-              }).map((hold) => {
-                const countdown = countdowns[hold.id] ?? '';
-                const pct = getCountdownPercent(hold.expiresAt ?? new Date().toISOString());
-                const isExpired = countdown === 'Expired';
-                const latestPayment = (hold.payments?.[0] as any) || null;
-                const paymentStatus = latestPayment?.status ?? 'PENDING';
-                const amount = latestPayment?.amount ?? 0;
-
-                return (
-                  <div
-                    key={hold.id}
-                    className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors ${
-                      isExpired
-                        ? 'border-slate-300/50 bg-slate-100/20'
-                        : 'border-amber-500/20 bg-amber-500/5'
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${
-                        isExpired ? 'bg-slate-100' : 'bg-amber-500/20'
-                      }`}>
-                        {isExpired ? (
-                          <XCircle className="w-6 h-6 text-slate-500" />
-                        ) : (
-                          <DollarSign className="w-6 h-6 text-amber-400" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-900">
-                          {hold.room?.name || 'Room'}
-                        </p>
-                        <p className="text-sm text-slate-500">
-                          {hold.holdDate && formatDate(hold.holdDate)} at {formatTime(hold.startTime)} - {formatTime(hold.endTime)}
-                        </p>
-                        {amount > 0 && (
-                          <p className="text-lg font-bold text-amber-400 mt-1">
-                            {formatRupiah(amount)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-2">
-                      {/* Countdown timer */}
-                      {!isExpired && hold.expiresAt && (
-                        <div className="w-full sm:w-48">
-                          <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="text-amber-400 font-semibold flex items-center gap-1">
-                              <Timer className="w-3 h-3" />
-                              Time remaining
-                            </span>
-                            <span className="text-amber-300 font-mono font-bold">{countdown}</span>
-                          </div>
-                          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-1000"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {isExpired && (
-                        <>
-                          <Badge variant="neutral">Hold Expired</Badge>
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            onClick={() => handleCancelHold(hold.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Remove
-                          </Button>
-                        </>
-                      )}
-
-                      <div className="flex items-center gap-2">
-                        {getStatusBadge(paymentStatus)}
-                        {!isExpired && paymentStatus !== 'APPROVED' && (
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => handleOpenUpload(hold.id)}
-                          >
-                            <Upload className="w-4 h-4" />
-                            Upload Proof
-                          </Button>
-                        )}
-                        {latestPayment && paymentStatus !== 'PENDING' && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => window.open(latestPayment.fileUrl, '_blank')}
-                          >
-                            <FileText className="w-4 h-4" />
-                            View Proof
-                          </Button>
-                        )}
-                      </div>
-                      </div>
-                      </div>
-                      );
-                      })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Payment History Section */}
-      <Card className="border border-slate-900 glass">
-        <CardHeader className="p-0 mb-4">
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-indigo-400" />
-            Payment History
-          </CardTitle>
-          <CardDescription>Track all your past payments and their status</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full" />
-            </div>
-          ) : allPayments.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
-              <CreditCard className="w-12 h-12 mx-auto mb-3 text-slate-600" />
-              <p>No payment history yet</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-800/20">
-              {allPayments.map((payment) => {
-                try {
-                  return (
-                    <div
-                      key={payment.id}
-                      className="p-4 flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                          payment.status === 'APPROVED' ? 'bg-emerald-500/20' :
-                          payment.status === 'REJECTED' ? 'bg-rose-500/20' :
-                          'bg-slate-100'
-                        }`}>
-                          {payment.status === 'APPROVED' ? (
-                            <CheckCircle className="w-5 h-5 text-emerald-400" />
-                          ) : payment.status === 'REJECTED' ? (
-                            <XCircle className="w-5 h-5 text-rose-400" />
-                          ) : (
-                            <Clock className="w-5 h-5 text-slate-500" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-slate-800">
-                            {(payment as any).booking?.room?.name || (payment as any).booking?.title || 'Room Rental'}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {formatDate((payment as any).booking?.startTime)} at {formatTime((payment as any).booking?.startTime || '')} - {formatTime((payment as any).booking?.endTime || '')}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className="font-bold text-slate-900">{formatRupiah((payment as any).amount)}</span>
-                        <div className="flex items-center gap-2">
-                          {getStatusBadge(payment.status)}
-                          {(payment as any).fileUrl && (
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => window.open((payment as any).fileUrl, '_blank')}
-                            >
-                              <FileText className="w-4 h-4" />
-                              View Proof
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                } catch (e) {
-                  console.error('Payment render error:', e, payment);
-                  return null;
-                }
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Upload Payment Modal */}
-      <Modal
-        isOpen={isUploadModalOpen}
-        onClose={handleCloseModal}
-        title="Complete Payment"
-        size="md"
-      >
-        {/* Gateway Selection */}
-        {gateways.length > 0 && (
-          <div className="mb-4">
-            <label className="text-xs font-semibold text-slate-600 tracking-wide uppercase mb-2 block">
-              <Wallet className="w-3.5 h-3.5 inline mr-1" />
-              Select Payment Gateway
-            </label>
-            <div className="grid grid-cols-1 gap-2">
-              {gateways.map((gw) => (
-                <button
-                  key={gw.id}
-                  type="button"
-                  onClick={() => { setSelectedGatewayId(gw.id); setSelectedGatewayName(gw.name); }}
-                  className={`p-3 rounded-lg border text-left transition-all ${
-                    selectedGatewayId === gw.id
-                      ? 'border-indigo-500 bg-indigo-500/10'
-                      : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-500/5'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
-                      selectedGatewayId === gw.id ? 'bg-indigo-500/20' : 'bg-slate-100'
-                    }`}>
-                      {gw.logo ? (
-                        <img src={gw.logo} alt={gw.name} className="h-5 w-5 rounded object-contain" />
-                      ) : (
-                        <Wallet className={`w-4 h-4 ${selectedGatewayId === gw.id ? 'text-indigo-400' : 'text-slate-500'}`} />
-                      )}
-                    </div>
-                    <div>
-                      <p className={`font-semibold text-sm ${selectedGatewayId === gw.id ? 'text-indigo-600' : 'text-slate-800'}`}>
-                        {gw.name}
-                      </p>
-                      <p className="text-xs text-slate-500">Pay directly via {gw.name}</p>
-                    </div>
-                    {selectedGatewayId === gw.id && (
-                      <CheckCircle className="w-4 h-4 text-indigo-500 ml-auto" />
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            <Button
-              variant="primary"
-              className="w-full mt-3"
-              isLoading={isInitiatingGateway}
-              onClick={handleInitiateGatewayPayment}
-            >
-              <ExternalLink className="w-4 h-4" />
-              Pay with {selectedGatewayName || 'Gateway'}
-            </Button>
-
-            {selectedGatewayName?.toLowerCase() !== 'pakasir' ? (
-              <div className="space-y-4">
-                <div className="relative my-4">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-200" />
-                  </div>
-                  <div className="relative flex justify-center">
-                    <span className="bg-white px-3 text-xs text-slate-400">or upload proof manually</span>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-lg border border-indigo-500/20 bg-indigo-500/5">
-                  <p className="text-xs text-indigo-300">
-                    <strong>Manual Transfer Instructions:</strong><br />
-                    Bank: Demo Bank<br />
-                    Account: 1234-5678-9012<br />
-                    Name: RoomFlow Rentals
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-600 tracking-wide uppercase">
-                    Payment Receipt / Screenshot
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => setPaymentFile(e.target.files?.[0] || null)}
-                    className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-500/20 file:text-indigo-300 hover:file:bg-indigo-500/30 cursor-pointer"
-                  />
-                </div>
-
-                {paymentFile && (
-                  <div className="p-3 rounded-lg bg-slate-100/50 flex items-center gap-3">
-                    <FileText className="w-5 h-5 text-indigo-400" />
-                    <div>
-                      <p className="text-sm text-slate-600">{paymentFile.name}</p>
-                      <p className="text-xs text-slate-500">
-                        {(paymentFile.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/40">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setIsUploadModalOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={handlePaymentUpload}
-                    isLoading={isUploading}
-                    disabled={!paymentFile}
-                  >
-                    <Upload className="w-4 h-4" />
-                    Submit Payment
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-        </div>
-        )}
-        </Modal>
-      </>
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="h-24 animate-pulse rounded-xl bg-muted/40" />
+      </div>
     );
   }
+
+  const pending = orders.filter((o) => o.status === 'AWAITING_PAYMENT');
+  const settled = orders.filter((o) => o.status !== 'AWAITING_PAYMENT');
+
+  return (
+    <div className="p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <CreditCard className="h-6 w-6" /> Pembayaran
+        </h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Selesaikan pembayaran sebelum waktu habis. Slot kamu dilepas otomatis setelah itu.
+        </p>
+      </div>
+
+      {pending.length === 0 && settled.length === 0 && (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            Belum ada pesanan. Pilih ruangan dulu untuk mulai booking.
+          </CardContent>
+        </Card>
+      )}
+
+      {pending.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="font-semibold text-sm text-muted-foreground">
+            Menunggu pembayaran ({pending.length})
+          </h2>
+          {pending.map((o) => {
+            const c = countdown(o.items?.[0]?.booking?.holdExpiresAt ?? o.expiresAt);
+            const st = STATUS_STYLE[o.status] ?? { label: o.status, tone: 'neutral' as const };
+            return (
+              <Card key={o.id}>
+                <CardContent className="p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{slotLabel(o)}</span>
+                        <Badge variant={st.tone}>{st.label}</Badge>
+                        {o.items?.[0]?.booking?.settling && (
+                          <Badge variant="warning">Memverifikasi pembayaran</Badge>
+                        )}
+                      </div>
+                      <div className="text-sm text-muted-foreground flex items-center gap-3">
+                        <span className="flex items-center gap-1">
+                          <DollarSign className="h-3.5 w-3.5" />
+                          {formatRupiah(Number(o.total))}
+                        </span>
+                        {o.items && o.items.length > 1 && <span>{o.items.length} sesi</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <div className={`text-sm font-mono ${c.expired ? 'text-destructive' : ''}`}>
+                          <Timer className="h-3.5 w-3.5 inline mr-1" />
+                          {c.text}
+                        </div>
+                        <div className="h-1 w-28 bg-muted rounded-full mt-1 overflow-hidden">
+                          <div
+                            className={`h-full ${c.expired ? 'bg-destructive' : 'bg-primary'}`}
+                            style={{ width: `${c.pct}%` }}
+                          />
+                        </div>
+                      </div>
+                      <Button onClick={() => void openDetail(o.id)}>Bayar</Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {settled.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="font-semibold text-sm text-muted-foreground">Riwayat</h2>
+          {settled.map((o) => {
+            const st = STATUS_STYLE[o.status] ?? { label: o.status, tone: 'neutral' as const };
+            return (
+              <Card key={o.id}>
+                <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{slotLabel(o)}</span>
+                      <Badge variant={st.tone}>{st.label}</Badge>
+                    </div>
+                    <span className="text-sm text-muted-foreground">{formatRupiah(Number(o.total))}</span>
+                  </div>
+                  {o.status === 'PAID' && (
+                    <Button variant="secondary" size="sm" onClick={() => void openDetail(o.id)}>
+                      Lihat detail
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {activeId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setActiveId(null);
+          }}
+        >
+          {/* Overlay ini tutup HANYA kalau klik jatuh tepat di overlay.
+              Memakai e.target === e.currentTarget, bukan stopPropagation,
+              supaya tidak perlu(event: any) => void pada elemen di dalamnya. */}
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Wallet className="h-5 w-5" /> Detail pembayaran
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {detailLoading || !detail ? (
+                <p className="text-sm text-muted-foreground">Memuat…</p>
+              ) : (
+                <>
+                  <div className="rounded-lg border p-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Total</span>
+                      <span className="font-semibold">{formatRupiah(detail.order.total)}</span>
+                    </div>
+                    {detail.payment.fee != null && Number(detail.payment.fee) > 0 && (
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Biaya gateway</span>
+                        <span>{formatRupiah(Number(detail.payment.fee))}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Status</span>
+                      <Badge variant={STATUS_STYLE[detail.order.status]?.tone ?? 'default'}>
+                        {STATUS_STYLE[detail.order.status]?.label ?? detail.order.status}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {detail.order.status === 'PAID' && (
+                    <div className="flex items-center gap-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-3 text-sm text-emerald-700 dark:text-emerald-300">
+                      <CheckCircle className="h-4 w-4 shrink-0" />
+                      Pembayaran diterima. Ruangan sudah dipesan untuk kamu.
+                    </div>
+                  )}
+
+                  {detail.order.status === 'EXPIRED' && (
+                    <div className="flex items-start gap-2 rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+                      <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                      Pesanan ini kedaluwarsa dan slotnya sudah dilepas.
+                    </div>
+                  )}
+
+                  {detail.order.status === 'AWAITING_PAYMENT' && (
+                    <div className="space-y-3">
+                      {detail.payment.vaNumber && (
+                        <div className="rounded-lg border p-4 text-center space-y-1">
+                          <p className="text-xs text-muted-foreground">Nomor Virtual Account</p>
+                          <p className="text-2xl font-mono font-bold tracking-wider">
+                            {detail.payment.vaNumber}
+                          </p>
+                        </div>
+                      )}
+                      {detail.payment.qrString && (
+                        <div className="rounded-lg border p-4 text-center space-y-2">
+                          <p className="text-xs text-muted-foreground">QRIS</p>
+                          {/* qr_string dari gateway berupa string QR, bukan gambar.
+                              Ditampilkan apa adanya supaya bisa discan aplikasi pembayaran. */}
+                          <p className="text-xs font-mono break-all bg-muted p-2 rounded max-h-24 overflow-auto">
+                            {detail.payment.qrString}
+                          </p>
+                        </div>
+                      )}
+                      {detail.payment.paymentUrl && (
+                        <Button
+                          className="w-full"
+                          onClick={() => window.open(detail.payment.paymentUrl!, '_blank')}
+                        >
+                          Buka halaman pembayaran <ExternalLink className="h-4 w-4 ml-2" />
+                        </Button>
+                      )}
+                      {!detail.payment.vaNumber &&
+                        !detail.payment.qrString &&
+                        !detail.payment.paymentUrl && (
+                          <p className="text-sm text-muted-foreground">
+                            Metode pembayaran sedang disiapkan. Muat ulang halaman beberapa saat lagi.
+                          </p>
+                        )}
+                      {!extendedFor.current.has(activeId) && (
+                        <Button
+                          variant="secondary"
+                          className="w-full"
+                          onClick={extendHold}
+                          disabled={extending}
+                        >
+                          <Clock className="h-4 w-4 mr-2" />
+                          {extending ? 'Memproses…' : 'Perpanjang 5 menit'}
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}

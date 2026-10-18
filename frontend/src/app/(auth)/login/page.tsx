@@ -88,26 +88,7 @@ export default function LoginPage() {
           </CardFooter>
         </Card>
 
-        {/* Seed Credentials Info */}
-        <div className="mt-6 p-4 rounded-lg border border-gray-200 bg-white text-xs text-gray-600 flex flex-col gap-2">
-          <p className="font-semibold text-gray-700">💡 Quick-start Seed Credentials:</p>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <span className="font-medium text-gray-700">IT Admin:</span>
-              <p className="text-gray-500">admin@roomflow.local</p>
-              <p className="text-gray-500">password123</p>
-            </div>
-            <div>
-              <span className="font-medium text-gray-700">Room Manager:</span>
-              <p className="text-gray-500">manager@roomflow.local</p>
-              <p className="text-gray-500">password123</p>
-            </div>
-          </div>
-          <div className="border-t border-gray-200 pt-2 mt-1">
-            <span className="font-medium text-gray-700">Regular Employee:</span>
-            <p className="text-gray-500">user@roomflow.local / password123</p>
-          </div>
-        </div>
+        {/* Seed credentials disembunyikan di produksi — lihat login/page.tsx */}
       </div>
     </div>
   );

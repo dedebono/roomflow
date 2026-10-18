@@ -550,7 +550,7 @@ export default function AdminRoomsPage() {
   ];
 
   return (
-    <DashboardLayout title="Rooms & Buildings" description="Manage spatial allocations, add meeting rooms, and toggle operational states." allowedRoles={['ROOM_ADMIN']}>
+    <DashboardLayout title="Rooms & Buildings" description="Manage spatial allocations, add meeting rooms, and toggle operational states." allowedRoles={['ADMIN_IT', 'ROOM_ADMIN']}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Buildings Table Panel */}
         <div className="lg:col-span-1 space-y-4">

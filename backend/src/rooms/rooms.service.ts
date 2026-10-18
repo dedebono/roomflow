@@ -67,7 +67,7 @@ export class RoomsService {
   async findOne(id: string) {
     const room = await this.prisma.room.findUnique({
       where: { id },
-      include: { building: true, bookings: { where: { status: 'BOOKED' } } },
+      include: { building: true, bookings: { where: { status: 'CONFIRMED' } } },
     });
     if (!room) {
       throw new NotFoundException(`Room with ID ${id} not found`);

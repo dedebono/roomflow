@@ -27,9 +27,27 @@ async function bootstrap() {
   const allowedOrigins = Array.from(new Set([...envOrigins, ...defaultOrigins])).filter(Boolean);
 
   app.enableCors({
-     origin: true, // Mengizinkan semua origin yang melakukan request
-     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-     credentials: true,
+    // Pakai allowlist, BUKAN `origin: true`.
+    //
+    // Sebelumnya `allowedOrigins` dihitung lalu dibuang, sehingga setiap
+    // origin diteruskan apa adanya — termasuk https://evil.example.com.
+    // Yang amplifying dampaknya: token disimpan di localStorage, jadi CORS
+    // longgar + Authorization header = situs mana pun bisa memanggil API
+    // atas nama user yang sedang login di venueone (harus login dulu,
+    // localStorage tidak dibaca lintas origin, tapi tetap jauh lebih longgar
+    // dari allowlist yang diiklankan di AUDIT.md).
+    //
+    // `origin` sebagai fungsi menolak origin yang tidak terdaftar; header
+    // allow-origin hanya dikembalikan untuk yang lolos.
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      // Request tanpa Origin (curl, health check, same-origin non-CORS)
+      // bukan browser cross-origin — biarkan lewat.
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error('Origin tidak diizinkan.'), false);
+    },
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
   });
 
   app.useGlobalPipes(

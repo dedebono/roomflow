@@ -23,15 +23,34 @@ export class PaymentGatewaysService {
       );
     }
 
-    return this.prisma.paymentGateway.create({
-      data: createDto,
-    });
+    return this.prisma.paymentGateway
+      .create({ data: createDto })
+      .then((row) => this.maskConfig(row));
+  }
+
+  /**
+   * Jangan pernah mengirim nilai apiKey ke browser.
+   *
+   * `GET /payment-gateways` dipanggil admin dari halaman pengaturan, jadi
+   * "/admin saja" bukan alasan cukup — kredensial produksi tetap residing di
+   * respons, di Network tab, dan di screenshot QA. Yang dikembalikan hanya
+   * `hasApiKey`, jadi UI tetap tahu key terisi tanpa pernah memuat nilainya.
+   * Form edit memakai nilai kosong = "jangan diubah".
+   */
+  private maskConfig<T extends { config?: unknown }>(row: T): T & { hasApiKey: boolean } {
+    const cfg = (row.config ?? {}) as Record<string, unknown>;
+    const { apiKey, ...rest } = cfg;
+    return { ...row, config: rest, hasApiKey: typeof apiKey === 'string' && apiKey.length > 0 };
+  }
+
+  private maskMany(rows: any[]) {
+    return rows.map((r) => this.maskConfig(r));
   }
 
   findAll() {
-    return this.prisma.paymentGateway.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
+    return this.prisma.paymentGateway
+      .findMany({ orderBy: { createdAt: 'desc' } })
+      .then((rows) => this.maskMany(rows));
   }
 
   findAllEnabled() {
@@ -57,7 +76,7 @@ export class PaymentGatewaysService {
       throw new NotFoundException(`Payment gateway with ID '${id}' not found.`);
     }
 
-    return gateway;
+    return this.maskConfig(gateway);
   }
 
   async update(id: string, updateDto: UpdatePaymentGatewayDto) {
@@ -81,10 +100,29 @@ export class PaymentGatewaysService {
       }
     }
 
-    return this.prisma.paymentGateway.update({
-      where: { id },
-      data: updateDto,
-    });
+    // apiKey tidak lagi dikirim di respons GET (lihat maskConfig), jadi form
+    // edit mengirim string kosong. Config yang tersimpan harus TIDAK ditimpa
+    // dengan kosong — tanpa ini, satu klik "Save Changes" di halaman admin
+    // menghapus kunci produksi secara permanen.
+    let config = updateDto.config;
+    if (config) {
+      const incoming = (config as Record<string, unknown>).apiKey;
+      const keep = incoming === undefined || incoming === null || String(incoming).trim() === '';
+      if (keep) {
+        const oldCfg = (existing.config ?? {}) as Record<string, unknown>;
+        config = { ...oldCfg, ...config, apiKey: oldCfg.apiKey };
+      }
+    }
+
+    return this.prisma.paymentGateway
+      .update({
+        where: { id },
+        data: {
+          ...updateDto,
+          ...(config !== undefined && { config: config as any }),
+        },
+      })
+      .then((row) => this.maskConfig(row));
   }
 
   async toggleEnabled(id: string, enabled: boolean) {

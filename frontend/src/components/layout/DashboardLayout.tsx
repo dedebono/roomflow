@@ -28,10 +28,15 @@ export const DashboardLayout = ({
     if (!loading && !user) {
       router.push('/login');
     } else if (!loading && user && allowedRoles && !hasRole(allowedRoles)) {
+      // Redirect harus ke halaman yang benar-benar bisa dibuka role ini.
+      // Sebelumnya ADMIN_IT -> /system/users dan ROOM_ADMIN -> /admin/bookings,
+      // tapi /admin/* hanya untuk ROOM_ADMIN saja, jadi keduanya saling
+      // melempar dan tidak pernah sampai ke konten.
       if (user.role === 'ADMIN_IT') {
-        router.push('/system/users');
-      } else if (user.role === 'ROOM_ADMIN') {
         router.push('/admin/bookings');
+      } else if (user.role === 'RENTER') {
+        // Renter tidak punya halaman dashboard employee sama sekali.
+        router.push('/renter/dashboard');
       } else {
         router.push('/dashboard');
       }

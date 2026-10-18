@@ -12,9 +12,10 @@ export class BookingChangeRequestsController {
   @Post()
   create(
     @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: Role,
     @Body() dto: CreateChangeRequestDto,
   ) {
-    return this.service.create(userId, dto);
+    return this.service.create(userId, role, dto);
   }
 
   @Get()
@@ -27,13 +28,13 @@ export class BookingChangeRequestsController {
 
   @Patch(':id/approve')
   @Roles(Role.ADMIN_IT, Role.ROOM_ADMIN)
-  approve(@Param('id') id: string) {
-    return this.service.approve(id);
+  approve(@Param('id') id: string, @CurrentUser('userId') reviewerId: string) {
+    return this.service.approve(id, reviewerId);
   }
 
   @Patch(':id/reject')
   @Roles(Role.ADMIN_IT, Role.ROOM_ADMIN)
-  reject(@Param('id') id: string) {
-    return this.service.reject(id);
+  reject(@Param('id') id: string, @CurrentUser('userId') reviewerId: string) {
+    return this.service.reject(id, reviewerId);
   }
 }
